@@ -1,0 +1,1214 @@
+%% add criteria for grading, change due dates for papers.
+\documentclass[10pt]{article}
+\usepackage{bibentry,natbib,url,comment,amsmath}
+\usepackage{graphicx,svn,parskip}
+\usepackage{sometexdefs}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+%% \renewcommand{\rmdefault}{pmnj}
+%% \renewcommand{\sfdefault}{phv} %helvetica
+\usepackage{tgpagella}
+\usepackage[sc]{mathpazo}
+\renewcommand*{\bfdefault}{bx}
+\renewcommand{\oldstylenums}[1]{%
+  {\fontfamily{pplj}\selectfont #1}}
+\usepackage{microtype}
+
+\hyphenation{Incomplete}
+
+% \usepackage[bookmarks,pdftex,letterpaper]{hyperref}
+\bibliographystyle{apalike}
+% \renewcommand\harvardurl[1]{\textsf{\textbf{url:}} \url{#1}}
+% \urlstyle{rm} parskip.sty does next two lines better
+% \setlength{\parindent}{0pt} \addtolength{\parskip}{.5\baselineskip}
+\usepackage[letterpaper,bottom=.75in,top=1in,right=1in,lmargin=1.15in]{geometry}
+
+\usepackage{advdate}
+
+\usepackage[compact,nobottomtitles*]{titlesec} %nobottomtitles
+\titleformat{\part}[hang]{\large\scshape}{\hspace{-.75in}\thepart}{.5em}{}{}
+\titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection}{.5em}{}{}
+\titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}
+\titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}
+\titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}
+
+\titlespacing{\part}{0ex}{.5ex plus .1ex minus .2ex}{-.25\parskip}
+\titlespacing{\section}{0ex}{1.5ex plus .1ex minus .2ex}{-.25\parskip}
+\titlespacing{\subsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
+\titlespacing{\subsubsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
+\titlespacing{\paragraph}{0em}{1ex}{.5ex plus .1ex minus .1ex}
+
+
+\newenvironment{introstuff} {\setcounter{secnumdepth}{0}%
+  \titlespacing*{\section}{-.75in}{1em}{0em}{}%
+  \titleformat{\subsection}[leftmargin]{\itshape\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
+  \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
+  \titleformat{\paragraph}[hang]{\bfseries}{\theparagraph}{0em}{}{}%
+  \titlespacing{\subsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+  \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
+  \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+} {\setcounter{secnumdepth}{0}%
+  \titleformat{\part}[hang]{\large\bfseries}{\hspace{-.75in}\thepart}{.5em}{}{}%
+  \titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection}{.5em}{}{}%
+  \titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
+  \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
+  \titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}%
+  % \titleformat{\subsection}[hang]{\itshape}{\thesubsection}{.5em}{}{}%
+  \titlespacing{\section}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+  \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
+  \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+}
+
+% Create new title appearance
+\makeatletter
+\def\maketitle{%
+  %\null
+  \thispagestyle{empty}%
+  \begin{center}\leavevmode
+    \normalfont
+    {\large \bfseries\@title\par}%
+    {\large \@author\par}%
+    {\large \@date\par}%
+  \end{center}%
+  \null }
+\makeatother
+
+
+%% To use svn info in the file remember to do:
+%%svn propset svn:keywords "Date Id Revision" myfile.tex
+\SVN $Rev$
+\SVN $Date$
+\SVN $Id$
+
+%\usepackage[all]{svn-multi}
+%\svnid{$Id$}
+%for \svnmainfilename for future tagging
+
+\usepackage{fancyhdr}
+% \renewcommand{\sectionmark}[1]{\markright{#1}{}}
+
+\fancypagestyle{myfancy}{%
+  \fancyhf{}
+  % \fancyhead[R]{\small{Page~\thepage}}
+  \fancyhead[R]{\small{PS 531 -- Spring 2014 -- \thepage}}
+  \fancyfoot[R]{\footnotesize{Version~of~\input{|"date"}}}
+  % \fancyfoot[R]{\small{\today -- Jake Bowers}}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0pt}}
+
+\pagestyle{myfancy}
+
+\newcommand{\entrylabel}[1]{\mbox{\textsf{#1:}}\hfil}
+
+
+%% These next lines tell latex that it is ok to have a single graphic
+%% taking up most of a page, and they also decrease the space arou
+%% figures and tables.
+\renewcommand\floatpagefraction{.9} \renewcommand\topfraction{.9}
+\renewcommand\bottomfraction{.9} \renewcommand\textfraction{.1}
+\setcounter{totalnumber}{50} \setcounter{topnumber}{50}
+\setcounter{bottomnumber}{50} \setlength{\intextsep}{2ex}
+\setlength{\floatsep}{2ex} \setlength{\textfloatsep}{2ex}
+
+%\newenvironment{entry} {\begin{list}{}%
+%    {\renewcommand{\makelabel}{\entrylabel}%
+%      \setlength{\labelwidth}{1in}% \setlength{\labelwidth}{35pt}%
+%      \setlength{\leftmargin}{\labelwidth+\labelsep}%
+%      }%
+%    }
+%    {\end{list}}
+%
+%  \newenvironment{Ventry}[1]%
+%  {\begin{list}{}{\renewcommand{\makelabel}[1]{\textbf{##1:}\hfil}%
+%        \settowidth{\labelwidth}{\textbf{#1~:}}%
+%        \setlength{\leftmargin}{\labelwidth+\labelsep}}}%
+%      {\end{list}}
+%
+%    \newcommand{\Mentrylabel}[1]%
+%    {\raisebox{0pt}[1em][0pt]{\makebox[\labelwidth][l]%
+%        {\parbox[t]{\labelwidth}{\hspace{0pt}\textsf{#1:}}}}}
+%
+%    \newenvironment{Mentry}%
+%    {\renewcommand{\entrylabel}{\Mentrylabel}\begin{entry}}%
+%      {\end{entry}}
+%
+
+\specialcomment{com} {\begingroup\sffamily\small\bfseries}{\endgroup}
+\excludecomment{com}
+
+\title{Political Science 531 \\ Quantitative Political Analysis II \\
+  Linear Models and Statistical Inference}
+
+\author{Jake Bowers \\
+  \small{jwbowers@illinois.edu \\
+    Online:
+    \url{http://jakebowers.org/}}
+} 
+
+\date{Spring 2014}%, \SVNDate, Version \SVNRev}
+
+\usepackage[pdftex,colorlinks=TRUE,citecolor=blue]{hyperref}
+
+\renewcommand{\bibname}{ }
+% \renewcommand{\refname}{\normalsize{Required:}}
+\renewcommand{\refname}{\vspace{-2em}}
+
+\def\themonth{\ifcase\month\or
+  January\or February\or March\or April\or May\or June\or
+  July\or August\or September\or October\or November\or December\fi}
+
+\begin{document}
+\maketitle
+
+\begin{introstuff}
+  \section{General Information}
+  We will be distributing readings and assignments on the blog and moodle.
+
+  \subsection{Where/When}
+  We meet Mondays, 4:00--6:20pm in 404 David Kinley Hall.
+
+  \subsection{Office Hours}
+  Jake's office hours are by appointment. I will hold Wed 2--4 free for
+  office hours in general.
+
+  \section{Overview}
+  What does it mean to say ``statistically significant''? When is it
+  reasonable to say this?  When is it confusing? Why can we report that
+  a 95\% confidence interval contains some set of plausible values for a
+  quantity of interest? When would we mislead ourselves and others with
+  such claims?  In your last course you practiced fitting linear models
+  to data and gained the computational and conceptual foundations for
+  thinking about statistical inference (sampling distributions as
+  approximated by the Normal and $t$-distributions justified by the
+  Central Limit Theorem(s) and/or as approximated by bootstrap
+  re-sampling) and for thinking about specifying, fitting, and
+  interpreting linear models. In this course, you will deepen your
+  understanding of statistical inference and estimation. This is a
+  course in applied statistical theory focusing on linear models. The
+  approach here is to work toward understanding statistical theory by
+  application. As such we will emphasize the hard work of writing
+  computer programs rather than the hard work of proving theorems. By
+  the end of the term you will have developed strategies for answering
+  the questions posed above and thus will be well-positioned to use
+  linear models with confidence and creativity and good judgement.
+
+  \section{Goals and Expectations}
+  This class aims to help you learn to think about statistical inference
+  from and estimation of linear models.
+
+  The point of the course is to position you to do the future learning
+  that is at the core of your work as an academic analyzing data.
+
+  I also hope that this course will help you continue to develop the
+  acumen as a reader, writer, programmer and social scientist essential
+  for your daily life as a social science researcher.
+
+  \subsection{Expectations}
+  First and foremost, I assume you are eager to learn. Eagerness,
+  curiosity and excitement will impel your energetic engagement with the
+  class throughout the term. If you are bored, not curious, or unhappy
+  about the class you should come and talk with me
+  immediately. Energetic engagement manifests itself in meeting with
+  your classmates outside of the class, in asking questions during the
+  class, and in taking the term paper seriously.
+
+  Second, I assume you are ready to work. Learning requires work. As
+  much as possible I will link practice directly to
+  application rather than merely as a opportunity for me to rank you
+  among your peers. Making work about learning rather than ranking,
+  however, will make our work that much more difficult and time
+  consuming. You will make errors. These errors are opportunities for
+  you to learn --- some of your learning will be about how to help
+  yourself and some will be about statistics. If you have too much to do
+  this term, then again, consider dropping the course. Graduate school
+  is a place for you to develop and begin to pursue your own
+  intellectual agendas: this course may be important for you this term,
+  or it may not. That is up for you to decide.
+
+  Third, I assume you are willing to go along with my decisions about
+  the material and sequence. I will be open to constructive and concrete
+  suggestions about how to teach the class as we go along, and I will
+  value such evaluations at any point in the class. That said, if you do
+  not think you need to take this course, then don't take it.
+
+  Fourth, I assume some previous engagement with high school mathematics,
+  probability and statistical computing in R~ (see,
+  for example, the syllabus for PS530 as taught last term).
+
+  \subsection{Rules}
+
+  There aren't many rules for the course, but they're all important.
+  First, read the assigned readings before you come to class.  Second,
+  turn everything in on time. Third, ask questions when you don't
+  understand things; chances are you're not alone.  Fourth, don't miss
+  class or section.
+
+  All papers written in this class will assume familiarity with the
+  principles of good writing in \citet{Beck:1986}.
+
+  All final written work will be turned in as pdf files. I will not
+  accept Microsoft, Apple, OpenOffice, or any other proprietary
+  format.
+
+  \subsection{Late Work}
+  I do not like evaluation for the sake of evaluation. Evaluation should
+  provide opportunities for learning. Thus, if you'd prefer to spend
+  more time using the paper assignment in this class to learn more, I am
+  happy for you to take that time. I will not, however, entertain late
+  submissions for the subsidiary paper assignments that are due
+  throughout the term. If you think that you and/or the rest of the
+  class have a compelling reason to change the due date on one of those
+  assignments, let me know in advance and I will probably just change
+  the due date for the whole class.
+
+  \subsection{Incompletes}
+  Incompletes are fine in theory but terrible in practice. I urge you to
+  avoid an incomplete in this class. If you must take an incomplete, you
+  must give me \emph{at least} 2 months from the time of turning in an
+  incomplete before you can expect a grade from me. This means that if
+  your fellowship, immigration status, or job depends on erasing an
+  incomplete in this class, you should not leave this incomplete until
+  the last minute.
+
+  \subsection{Participation}
+  We will be doing hands-on work nearly every class meeting. I will
+  lecture very little and instead will pose problems of statistical
+  theory, research design, and data, which will require us to confront
+  and apply the reading that prepared us for the day's work. I
+  anticipate that you'll work in small groups and that I'll circulate
+  and offer help. I will break away to draw on the board or
+  demonstrate on my own computer now and then if everyone is running
+  into the same problem or is asking a question that raised by the work.
+
+  \subsection{Short Reports}
+
+  Every two weeks or so, I will ask you to complete a short assignment that
+  summarizes the preceding two weeks of work. I will try to make this assignment
+  encourage you to apply what you've learned to your final paper.
+
+  \subsection{Papers}
+  Other than the reading, the main assignment for this term is for you
+  to write a short paper that teaches us about and/or advances the ball
+  regarding some problem of statistical methodology and/or research design
+  that is important to your own work or subfield.
+
+  %%       that assesses the usefulness/reasonableness of the
+  %%       standard linear model (and associated pre-packaged statistical
+  %%       inference measures) for your own work.
+  %% 
+  %%       The ideal paper will take the pre-packaged regression table which I
+  %%       presume would be the centerpiece of a paper that you wrote last term,
+  %%       or which you are writing this term in some other class and would
+  %%       deeply scrutinize this table using simulations and theory: do your
+  %%       95\% confidence intervals reject true null hypotheses 5\% of the time
+  %%       or less? how biased are your calculations of effects/slopes and/or
+  %%       standard errors? what is your target of inference? why is that target
+  %%       reasonable and/or useful? why should you use least squares rather than
+  %%       mle (or vice-versa)?
+  %% 
+  %%       After doing this task you will be prepared to assess any other paper
+  %%       you write in the future --- you will know when, how, and why your
+  %%       linear model is or is not persuasive as an engine of statistical
+  %%       inference.\footnote{Causal inference from the linear model will only
+  %% 	be touched on in this class. But, it will be a central concern of your
+  %% 	class in research design as well as the third course in this series, PS532.}
+  %% 
+  \subsection{Grades}
+  I'll calculate your grade for the course this way: 50\% class involvement and
+  participation, and 50\% the paper.
+
+  Because moments of evaluation are also moments of learning in this
+  class, I do not curve. If you all perform at 100\%, then I will give
+  you all As.
+
+  \subsubsection{Involvement}
+  Quality class participation does not mean ``talking a lot.''  It
+  includes coming to class; turning in assignments on time; thinking and
+  caring about the material and expressing your thoughts respectfully
+  and succinctly in class.  As much as possible, we will be working in
+  groups during the class meetings. This work will require that you have
+  done the assigned reading in advance and that you are an active
+  collaborator. Involvement also means meeting with your classmates at
+  least once per week outside of class to complete the work begun in the
+  class.
+
+  % I expect courageous behavior in this class: I expect you
+  % to make a guess when I ask a question (in writing or in person), I
+  % expect that you will ask a question when you have a problem.
+
+  % \subsubsection{Reading}
+  % Reading mathematical material is different from reading mostly
+  % words. I will try to keep the reading assigned
+
+
+  \subsection{Computing}
+  We will be using R~in class so those of you with laptops available
+  should bring them. Of course, I will not tolerate the use of computers
+  for anything other than class related work during active class
+  time. Please install R~(\url{http://www.r-project.org}) on your
+  computers before the first class session.
+
+  Computing is an essential part of modern statistical data analysis ---
+  both for turning data into information and for conveying that information
+  persuasively (and thus transparently and reliably) to the scholarly
+  community. In this course we will pay attention to computing, with special
+  emphasis on understanding what is going on behind the scenes. You will
+  be writing your own routines for a few simple and common procedures.
+
+  Most applied researchers use two or three computing packages at any
+  one time because no single language or environment for statistical
+  computing can do it all. In this class, I will be using the R~
+  statistical language.  You are free to use other languages, although I
+  suspect you will find it easier to learn R~unless you are
+  already a code ninja in some other language that allows matrix
+  manipulation, optimization, and looping.
+
+  As you work on your papers, you will also learn to write about data
+  analysis in a way that sounds and looks professional by using either a
+  WYSIWYG system like Word, OpenOffice, or Wordperfect, or a typesetting
+  system like \LaTeX, to produce documents that are suitable for
+  correspondence, collaboration, publication, and reproduction. No paper will be
+  accepted without a code appendix or reproduction archive attached (or
+  available to me online). No paper will be accepted unless it is in
+  Portable Document Format
+  (\href{http://en.wikipedia.org/wiki/Portable_Document_Format}{pdf}).\footnote{Actually,
+    I'm willing to consider HTML or Postscript although practice with
+    pdf will help you most in submitting papers to journals and other
+    forms of scholarly communication.} No paper will be accepted with cut
+  and pasted computer output in the place of well presented and
+  replicable figures and tables. Although good empirical work requires
+  that the analyst understand her tools, she must also think about how
+  to communicate effectively: ability to reproduce past analyses and
+  clean and clear presentations of data summaries are almost as
+  important as clear writing in this regard.
+
+  \nobibliography*
+  %\nobibliography{/Users/jwbowers/Documents/BIB/trunk/big}
+
+  \section{Books}\vspace{-2em}
+  I'm am not requiring any particular books this term. The readings will be
+  drawn from a variety of sources. I will try to make most of them
+  available to you as we go if you can't find them easily online yourselves.
+
+  \subsection{Recommended}
+  No book is perfect for all students. I suggest you ask around, look at
+  other syllabi online, and just browse the shelves at the library and
+  used bookstores to find books that make things clear to you. Here are
+  some recommendations:
+
+  \bibentry{fox2008applied}.   \footnote{For additional materials and
+    appendices see \url{http://socserv.socsci.mcmaster.ca/jfox/Books/Applied-Regression-2E/index.html}} This book does a great job of combining mathematical clarity with readability for social scientists.
+
+  \bibentry{achen82}. This book is a crucial resource. Highly highly recommended.
+
+  \bibentry{fox2011r}. \footnote{\url{http://socserv.socsci.mcmaster.ca/jfox/Books/Companion/index.html}}
+
+
+
+  % \bibentry{fox2002r}
+
+  % \bibentry{faraway2005lmr}
+
+  % \bibentry{faraway2006elm}
+
+  % \bibentry{verzani2005uri}
+
+  % \bibentry{kaplan2009ism}
+
+  % \bibentry{fpp07}
+
+  % \bibentry{gonick1993cgs}
+
+  % \bibentry{berk04}
+
+  % \bibentry{rice2007msd}
+
+  % \bibentry{trosset2009isi}
+
+  % \bibentry{gelman2007dau}
+
+  % \end{introstuff}
+
+  % \bibliography{/Users/jwbowers/Documents/BIB/trunk/big}
+
+  \paragraph{Books much like \cite{fox2008applied} with slightly
+    different emphases and more R~in the text:}
+
+  \bibentry{gelman2007dau}.\footnote{\url{http://www.stat.columbia.edu/~gelman/arm/}}
+  A nice supplement to Fox and Achen especially with the chapters on
+  causal inference and on post-estimation model exploration and
+  interpretation as well as many excellent chapters on multilevel
+  models.
+
+  \bibentry{lancaster2004introduction}. This book is a nice introduction
+  to Bayesian inference (in addition to Gelman and Hill, which is also an
+  introduction to Bayesian inference without being as explicit about
+  it). Come and talk with me if you'd like pointers to more of the
+  Bayesian literature.
+
+  \bibentry{trosset2009isi}. This book represents a nice modern take on
+  what you'd learn in your first or second course in a statistics
+  department. The linear model plays a relatively small role. However,
+  the coverage of frequentist theory is very nicely done.
+
+  \paragraph{If you'd like books that more closely link the statistics
+    with R~:}
+
+  \bibentry{faraway2005lmr}
+
+  \bibentry{faraway2006elm}
+
+  \bibentry{verzani2005uri}
+
+  \paragraph{If you'd like different perspectives on the material and
+    perhaps a bit less math I \emph{highly} recommend the following
+    books. I love them!}
+
+  These books are particularly good to help you get clear on the
+  fundamental concepts of statistical inference: what it means to test a
+  hypothesis, construct a confidence interval, etc...
+
+  \bibentry{berk04}
+
+  \bibentry{fpp07}
+
+  \bibentry{gonick1993cgs}
+
+  \cite{kaplan2012ism} \footnote{Second edition:{\url{http://mosaic-web.org/go/StatisticalModeling/}}, First edition still has interesting resources: \url{http://www.macalester.edu/~kaplan/ism/}}
+
+  \paragraph{If you'd like more math and theory try these:}
+
+  \bibentry{Cox:2006}. This is one of my favorite books on statistical
+  theory at the moment.
+
+  \bibentry{rice2007msd}. This is commonly assigned for first year
+  statistics ph.d. students.
+
+  \bibentry{greene97} (Or any edition of Greene.). This is commonly
+  assigned for first year economics ph.d. students.
+
+  \bibentry{angrist2009mostly} Now canonical in applied economics. Very
+  accessible introduction to an econ perspective on applied statistics.
+
+  \bibentry{kennedy2003guide} Newer editions of this surely exist.
+
+  \paragraph{Math books}
+
+  You should also have at least one math book on your shelves. Some
+  general recommendations for books that combine linear algebra and
+  calculus among other topics:
+
+  \bibentry{chiang}
+
+  \bibentry{fox2008mathematical}
+
+  \bibentry{gill2006essential}
+
+  \bibentry{simon94}
+
+  \paragraph{Self-Help}
+  If you discover any books that are particularly useful to you, please
+  alert me and the rest of the class about them. Thanks!
+
+  \section{Schedule}
+
+  \textbf{Note: } This schedule is preliminary and subject to change. If
+  you miss a class make sure you contact me or one of your colleagues to
+  find out about changes in the lesson plans or assignments.
+
+  The idea behind the sequencing here is to start as simple as possible
+  and complicate later. Many of you have already been ``doing
+  regression'' and this class exists to help you understand more deeply
+  what you are doing --- to give you power over your tools, to enable
+  creativity, flexibility, and, at minimum, to help you avoid errors.
+
+  This class emphasizes the linear model. There are mathematically
+  simpler ways to introduce the concepts and techniques of statistical
+  inference, but you are already using linear models and you'll continue
+  to use them throughout your careers (where linear models include
+  linear regression, logit, probit, poisson, multinomial logit,
+  etc \ldots). Since this class aims to help you do work and privileges such
+  doing over deep theory, and since this is your second course, we'll
+  thus focus on the mathematically and conceptually more complex but
+  more commonly used linear model.
+
+  \textbf{Data: } I'll be bringing in data that I have on hand. This
+  means our units of analysis will often be individual people or perhaps
+  political or geographic units, mostly in the United States. I'd love
+  to use other data, so feel free to suggest and provide it to me ---
+  come to office hours and we can talk about how to use your favorite
+  datasets in the class.
+
+  \textbf{Theory: } This class is about statistical inference and thus
+  statistical theory. Yet, statistics as a discipline exists to help us
+  understand more than why the linear model works as it does. Thus,
+  social science theory cannot be far from our minds as we think about
+  what makes a given data analytic strategy meaningful. That is, while
+  we spend a term thinking a lot about how to make meaningful statements
+  about statistical inference, we must also keep substantive
+  significance foremost in our minds.
+
+
+\end{introstuff}
+\part{Fit criteria, descriptive inference, causal inference, and adjustment}
+
+Last term you engaged with the idea of ``controlling for'' and fitting lines
+to scatterplots (or planes to clouds of points). In this section of the course
+we revisit the idea of adjustment and fitting criteria (including introducing
+the idea of median regression and the lasso for fitting and the idea of
+matching for control and adjustment)
+
+\SetDate[24/01/2014]
+
+\section{Homework 0 Due -- \themonth~\the\day}
+
+\SetDate[27/01/2014]
+
+
+\section{0---\themonth~\the\day--- Review and Overview}
+
+
+
+What kinds of questions should one ask about a linear model? Why are
+those questions relevant to our substantive work?
+
+\subsection{Read:}
+
+\citealp{berk2010you}
+
+\citealp[Chap 1 and 2]{gerber2012field}
+
+\citealp{holland:1986a}
+
+
+% \citealp[Chapter 4]{berk04}
+
+
+\AdvanceDate[7]
+\section{1---\themonth~\the\day--- What is the linear model for? What does
+  it mean to ``control for'' in the context of a linear model? }
+
+\subsection{Reminder:} Bring laptops if you have them. Those bringing
+laptops should have R installed or be able to access their RStudio
+accounts and be able to access the net.
+
+\subsection{Topics:} Review of the bivariate linear model; Linear
+model as description using smoothed conditional means; Uses of the the
+linear model (description, forecasting, statistical inference, causal
+inference); Dummy variables; Differences of means; Predicted values;
+Residuals; Linearity assessment; Residualization
+
+% How can we figure out and communicate the effect of an experimental
+% treatment on an outcome? How would a linear model be useful for this
+% purpose?
+
+% How do we tell a computer to fit a line to data?
+
+% Linear model to get difference of means. (in class).
+
+% What is a \emph{reasonable guess} about this effect? How can we
+% defend the claim that our guess is reasonable?
+% [confounding/ommittted variables; also about linearity and
+% globality; claims no important outliers; no unduly influential
+% points]
+
+% Why guess? [to describe, to predict, to infer to what could be
+% directly observed with enough work (statistical inference), to infer
+% to what can never be observed directly (causal inference)]
+
+% How to assess the reasonable ness of the guess? [scatter plots of
+% residuals, nonlinearity etc.., a bit on potentially influential
+% points]
+
+% Gelman and Hill Chap 3 (overview) for later
+\subsection{Read:}
+\textbf{Henceforth, ``*'' means ``recommended'' or ``other useful''
+  reading. The readings not marked with ``*'' are required.}
+
+
+\citealp[Pages 1--8]{berk2008statistical}\footnote{\url{http://www.library.uiuc.edu/proxy/go.php?url=http://dx.doi.org/10.1007/978-0-387-77501-2}}
+
+\citealp[Chap 6--7]{berk04} (skipping stuff on standardized coefs)
+
+\citealp[Chap 9.0--9.2]{gelman2007dau} (on causal inference and especially interpolation and extrapolation)
+
+\citealp[skim Chap 3 (on linear models) and Chap 6.2.2 and 6.2.3 on the lasso ]{james2013introduction}
+\footnote{\url{http://www-bcf.usc.edu/~gareth/ISL/getbook.html}}
+
+*\citealp[Chapters 1,2,5.1]{fox2008applied} %Fox Chap 1,2,5.1
+*\citealp[Chap 5.2]{fox2008applied} (multiple regression scalar form).
+
+
+\subsection{Do:} \textbf{``Do'' means, ``do in class.'' I am writing
+  down sketches about what we might do in class so that you might be
+  thinking about these tasks as you read.}
+
+Practice the linear model and prove to selves that a linear model with
+dummy variables tells us something about a difference of means and
+that the proposed computational technique does minimize the sum of
+squared residuals. Consider and explore other ways to summarize the
+conditional distribution of an outcome on an explanatory variable
+(summaries of ranks? quantiles? something else?).
+
+\AdvanceDate[7]
+\section{2---\themonth~\the\day---More on the problems of adjustment of observational
+  studies.} %January 26 ---
+
+\subsection{Read:}
+\citealp[Chap 11]{fox2008applied} on Overly Influential Points
+
+\citealp{ache:02} (on why kitchen sink regressions are a problem)
+
+\citealp[Chap 1,3,7,8,9,13]{rosenbaum2010design}  (
+\url{http://www.springerlink.com/content/978-1-4419-1212-1/contents/} )
+
+*\citealp[Chap 19]{fox2008applied} on making linear models resistant to overly influential points.
+
+
+\citet{hansen:2004}
+
+\part{General Principles for Frequentist Statistical Inference:
+  Randomize, Repeat, Reject}
+
+This section of the class focuses as directly as possible on the
+foundations of statistical inference for the linear model. We need to
+know the target of our inference, and why we might be justified in
+inferring to such a target.\footnote{\citet{cobb2007introductory}
+  provided the ``randomize, repeat, reject'' motto and otherwise
+  articulates some of the inspiration for this course.} It turns out
+that computers make the job of doing such inference much easier, but
+in committing to computation we'll have to learn a bit more math so
+that we can communicate most effectively with our computers as they
+make our lives easier.
+
+\AdvanceDate[7]
+\section{3---\themonth~\the\day---What is a hypothesis test?} %January 26 ---
+
+How much evidence does some data summary provide against a
+substantively relevant hunch about the process under study? How can we
+formalize and communicate the plausibility of such hunches in light of our observation?
+
+\subsection{Topics:} Two bases out of at least three bases for
+frequentist statistical inference (random assignment, random
+sampling); randomization distributions and sampling distributions of
+test statistics. Today focus on random assignment and randomization
+distributions of test statistics under the sharp null hypothesis of no
+relationship. Generating randomization distributions for hypotheses
+about aspects of the linear model using enumeration (aka permutation)
+and simulation (shuffling). Introduction to significance level of a
+test versus size of a test.
+
+\subsection{Read:}
+
+\citealp[Chap 2]{fisher:1935} explains \emph{the} invention of
+random-assignment based randomization inference in about 15 pages.
+
+\citealp[Chap 2]{rosenbaum2010design}  ( \url{http://www.springerlink.com/content/978-1-4419-1212-1/contents/} )
+
+\citealp[Chap 15,16.1,16.6,16.7,17.5,17.7,17.8]{kaplan2009ism} discusses tests of hypotheses in the
+context of permutation distributions of linear model based test
+statistics. He wants to emphasize the $F$-statistic and $R^2$ and the
+ANOVA table, but his discussion of permutation based testing will
+apply to our concern with the effect of an experimental treatment on an outcome.
+
+\citealp[Chap 8]{gonick1993cgs} explains the classical approach to
+hypothesis testing based on Normal and $t$-distributions.
+
+\citealp[Chap 5]{imbens2009causal} explains Fisher's approach to the
+sharp or strict null hypothesis test in the context of the potential
+outcomes framework for causal inference.
+
+*\citealp[Chap 4]{berk04} provides an excellent and readable overview
+of the targets of inference and associated justifications often used
+by social scientists.
+
+% \subsection{Other Useful Reading}
+*\citealp[Chap 21.4]{fox2008applied} explains about bootstrap hypothesis tests
+(i.e. sampling model justified hypothesis tests).
+
+*\citealp[Chap 2--2.4]{rosenbaum:2002} explains and formalizes Fisher's randomization inference.
+
+*\citealp{rosenbaum:2002a} explains how one might use Fisher-style
+randomization inference with linear regression.
+
+\AdvanceDate[7]
+\section{3---\themonth~\the\day---What is a confidence interval? }
+Given a reasonable data summary, what other guesses about said
+quantity are plausible?
+
+\subsection{Topics} Continuing on statistical inference; Inverting
+hypothesis tests; null hypotheses and alternatives; Introduce the weak
+null and the average treatment effect; The bootstrap; Today focus on
+sampling models for statistical inference but link back to assignment
+models via hypothesis test inversion. More on concepts of
+level of test versus size of test, Type I and Type II errors, power of tests.
+
+\subsection{Read:}
+\citealp[Chap 14]{kaplan2009ism}
+
+\citealp[Chap 7]{gonick1993cgs}
+
+
+*\citealp{neyman1937outline} invents the confidence interval.
+
+*\citealp[Chap 21]{fox2008applied}
+
+*\citealp[Chap 6]{imbens2009causal} discusses and compares Fisher's
+approach to Neyman's approach. We will defer discussion about the the parts of the
+discussion regarding Normality until later in the course. Review their
+chapter 5.8 for discussion about inversion of the hypothesis test to
+create confidence intervals.
+
+*\citealp{neyman:1923,rubin1990apt} \emph{the} invention of
+random-sampling based randomization inference.
+
+*\citealp[Chap 2.7]{lohr:1999} a clear exposition of the
+random-sampling based approach.
+
+\subsection{Do:} TBA. Notice some of the limitations
+of the each computational approach to generating confidence intervals:
+the sampling model as approximated by the bootstrap has problems with
+small samples (introduce ideas about collinearity and efficiency); the
+assignment model as approximated with shuffling (or enumeration)
+becomes computationally expensive. Both require models of effects.
+
+\AdvanceDate[7]
+\section{5---\themonth~\the\day---More on operating characteristics of
+  statistical inference methods.}
+
+\subsection{Topics:} We've worked through \emph{unbiasedness} for two
+weeks, so you now know how to assess whether an \emph{point estimator} is an
+unbiased procedure. Today we'll focus on whether a hypothesis \emph{test} (and by
+extension a confidence interval) has good properties.
+
+\subsection{Read:}
+
+\citealp[Glossary]{rosenbaum2010design}  (\url{http://www.springerlink.com/content/978-1-4419-1212-1/contents/})
+
+\citealp{bertrand2004msw} (for an example of why paying attention to dependence matters)
+
+*\citealp[Chap 9 and especially 9.3]{trosset2009isi}
+
+\AdvanceDate[7]
+\section{5---\themonth~\the\day---How can we compute reasonable guesses without
+  fuss? (try matrices).}
+
+%\subsection{Note:} Meet from 1--3pm rather than 1:30--3:50pm to enable
+%us to attend the Hibbing talk.
+
+\subsection{Topics:} Basic matrix algebra (also called ``linear
+algebra'') [matrices and vectors introduced; addition, subtraction,
+multiplication, transposition and inversion]; Matrix algebra of the
+linear model (the importance and meaning and source of $\bX \hat{\bbeta}$ and
+$(\bX^{T}\bX)^{-1} \bX^{T}\by$); Matrix algebra for estimating and
+interpreting the linear model in R; More engagement with collinearity
+and dummy variables.
+
+\subsection{Read:}
+*\citealp[Appendix B.1.0--B.1.3 and Chap 9]{fox2008applied}
+
+*\citealp[Chap 10]{fox2008applied} (another geometric interpretation)
+
+*\citealp[Appendix B]{fox2008applied} (more on matrices)
+
+\subsection{Do:} Explain, explore and unpack the function we've been
+using to produce slopes. What limitations on the $\bX$ matrix are
+required by the least squares criterion? How might we manage
+them. Prove to ourselves that our functions work.
+
+\AdvanceDate[7] 
+\section{6---\themonth~\the\day---Challenges to reasonable guessing/description
+  and inference:  Overly (Multi)Collinear
+  predictors.}
+
+\subsection{Topics:} Methods for handling overly multicollinear predictors.
+
+\subsection{Read:}
+
+\citealp[Chap 3.6 and Chap 6.4--6.6]{james2013introduction}
+
+%  *\citealp[Chap 11]{fox2008applied} on Overly Influential Points
+
+On 'micronumerosity': \url{http://davegiles.blogspot.com/2011/09/micronumerosity.html}
+
+*\citealp[Chap 13]{fox2008applied} on Overly (Multi)Collinear predictors.
+
+*\citealp{ache:02} (on why kitchen sink regression are a problem)
+
+*\citealp[Chap 7]{fox2008applied} on a common case of collinearity:
+categorical predictors/dummy variables
+
+%  *\citealp[Chap 19]{fox2008applied} on making linear models resistant to overly influential points.
+
+
+
+% \AdvanceDate[7]
+% \section{7---\themonth~\the\day---Inference for combinations of
+%   predictors.}
+
+
+% \subsection{Topics:} Interaction terms; Constrained linear regression
+% and linear contrasts; $F$-tests, Wald-type-tests and
+% related confidence regions; Inference for predictions; Goodness of fit
+% (part 1) ($R^2$ and standard error of the regression). Understanding
+% more about the algebra of expectations/variances.
+
+% \subsection{Read:}
+% *\citealp[Chap 5.2.3,7, 8.5]{fox2008applied} (on $R^2$ and dummy variables and interactions)
+
+% \citealp[Chap 16]{kaplan2009ism} (on $F$-tests and $R^2$)
+
+% TBA for more on $R^2$ and goodness of fit.
+
+% *\citealp{BramClarGold:2006} (on large-sample based approach for interaction terms)
+
+%   \AdvanceDate[7]
+%   \section{\themonth~\the\day---Short Assignment 3 Due}
+%   Answer these questions:
+%   \begin{enumerate}
+%     \item If your regression table does not already involve an interaction
+%       term, produce a version with an interaction term. Interpret the
+%       resulting model in substantive terms. Remember that the variables in an
+%       interaction model are not the same as the individual terms for which we
+%       estimate coefficients. Did adding an
+%       interaction make your linear model more (or less) useful as a
+%       description?
+%     \item Produce a confidence interval for the effect of each of the
+%       variables involved in the interaction term using one of the
+%       approaches that we've engaged in the class so far. Recall that a variable
+%       will involve more than one term in an interaction model.
+%     \item Produce $\hat{y}$ for two substantively different values of one
+%       of the interacting variables in the model  using R's matrix algebra
+%       facilities.
+%     \item Should you worry about multicollinearity in your model? Evaluate the
+%       multicollinearity present in your model and make a recommendation for
+%       changing your model if you discover that multicollinearity is a problem. (Do
+%       not use rules of thumb for anything other than to alert you to investigate
+%       further. If you use a rule of thumb, explain why the rule has the values
+%       that it does.)
+%     \item Explain whether you found any
+%       overly influential points which could make your regression
+%       table produce misleading descriptions. (Do not use rules of thumb for
+%       anything other than to alert you to investigate further. If you use a rule
+%       of thumb, explain why the rule has the values that it does.)
+%   \end{enumerate}
+
+\part{Connections to Large-Sample Statistical Theory}
+
+When we don't have the time for our computers to do the ``repeat''
+phase of ``randomize, repeat, reject'', what can we do? Luckily for
+us, the mathematical underpinning of ``repeat'' after ``randomize''
+has been well developed. It is this foundational mathematics that
+enables the standard regression table to exist (you know, the one that
+you get when you type \texttt{summary(myregression)} in
+R~). Much of the time this table is an excellent approximation
+to what we did with repetitive computing in the previous section of
+the course. Sometimes it is a terrible approximation. This part of the
+course aims to connect the computationally intensive but conceptually
+clear and mathematically simple theory that we learned and applied
+above to the computationally simple but mathematically complex theory
+that provides most of the information social scientists currently use
+from linear models.
+
+Since we have little time, we will not do proofs; instead we will
+convince ourselves that the mathematicians and statisticians working
+between roughly 1690 and 1940 invented reasonable approximations using
+simulations. More importantly, we'll learn how to
+evaluate when those analytic results help us and when they do
+not.
+
+% 1690
+% (Bernoulli), 1720 (DeMoivre), 1748 (Euler), 1809 (Gauss), 1909
+% (Gossett), and were correct.
+
+
+% (starting at least around 1690 and 1720 with Bernoulli and DeMoivre
+% and continuing through LaPlace and Gauss 1790s--1820s and at least
+% through Gossett (aka Student) around 1910).
+
+\AdvanceDate[7]
+%\SetDate[25/03/2013]
+\section{Spring Break --- \themonth~\the\day---No Class}
+
+
+% \section{8---\themonth~\the\day--- Catch Up.}
+% Make sure that the concepts so far are clear in your mind. Go over the short
+% assignments step by step.
+
+\AdvanceDate[7]
+\section{8---\themonth~\the\day---The Mathemagic of Sums.}
+
+\subsection{Topics:} Foundations of the large-sample theory: laws of
+large numbers and central limit theorems; more explanation for the
+pervasiveness of the mean as a data summary. Approximation.
+
+\subsection{Reading:}
+\citealp[Chap 16--18]{fpp07} (especially Chapter 18)
+
+%%TBA from Rice?
+
+*\citealp[Chap 8]{trosset2009isi}
+
+*\citealp[Chap 2.7--2.8]{lohr:1999} Recall the use of a sampling
+theory approach requiring the Central Limit Theory and compare to an approach
+positing a distribution for outcomes.
+
+\subsection{Do:} Prove to ourselves that one Central Limit Theorem and
+one Law of Large Numbers actually works; Show how we can approximate
+our simulation based results very well (or very badly) using this mathemagic.
+
+\AdvanceDate[7]
+\section{9---\themonth~\the\day---Sampling based Large sample/Asymptotic theory
+  for the linear model.}
+
+\subsection{Topics:} Gauss-Markov theorem and associated classic
+linear model assumptions (introducing notions of non-constant
+variance, dependence); The different roles of Normality in the theory
+of the linear model; The $t$-distribution and $t$-test; the
+$F$-distribution and $F$-test; The usefulness of the large sample
+theory in flexible interpretation and assessment of the linear model
+(i.e. the ease of simulation from the implied sampling distribution of
+the coefficients).
+
+\subsection{Read:}
+*\citealp[Chap 6,9]{fox2008applied}
+
+\citealp{achen82}
+
+\citealp[Chapter 4,6]{berk04}
+
+\citealp[Chap 7]{gelman2007dau} (using the large sample theory to
+interpret and assess the linear model)
+
+*\citealp[Chap 9]{trosset2009isi} (not about the linear model, but nice
+on large sample hypothesis testing in general)
+
+*\citealp[Chap 12]{fox2008applied} (on approaches to adjusting for
+violations of the large-sample theory assumptions. (WLS, GLS)
+
+\subsection{Do:} Design simulations to assess how well the
+large-sample theory approximates the simulation based results in some
+common datasets and designs. Begin to develop some intuitions for when
+the standard regression table is fine and when it is worrisome. Notice
+how useful these results are in research design (before we can collect
+data we cannot shuffle or re-sample). Discuss how we might design
+studies to enhance statistical inference. Notice the role of
+assumptions --- especially the additional assumptions.
+
+
+% Notice: Adding assumptions about constant variance and that the CLT is
+% working. Maintaining previous assumptions about independence and
+% linearity (i.e. reasonableness of the description) and, for causal
+% interpretation, assumptions about lack of ommitted variable bias. (see
+% Fox 12 on some corrections to the approximations useful when the
+% direct approaches appear difficult)
+
+\part{From Populations and Sampling Processes to Models} %Gelman and Hill
+% ?Hansen and Bowers? ?Small et al?
+
+\AdvanceDate[7]
+\section{10---\themonth~\the\day---A general, large sample, based approach to
+  making reasonable guesses: Maximum Likelihood for the linear model.}
+
+Frequentists make inferences to control groups based on experimental
+design (following Fisher), to a population based on sampling design
+(following Neyman). They also make inferences to \emph{a model of the
+  population} often called a \emph{data generating process}. Such
+models are at the core of the likelihood approach to statistical
+inference (also credited to Fisher).
+
+\subsection{Topic:} A third frequentist mode of inference; Role of the
+central limit theorem and Normality in this approach; OLS is MLE.
+
+\subsection{Read:}
+*\citealp[Chap 9.3.3]{fox2008applied}
+
+\citealp[Use the 2009 Version of]{green1991mle}  from \url{https://sites.google.com/site/donaldpgreen/plsc504}
+
+*\citealp[Chap 5]{fox2011r} and see also \url{http://socserv.socsci.mcmaster.ca/jfox/Courses/SPIDA/index.html}
+
+*\citealp[Chap 4]{king89}
+
+*\citealp[Chap 1,2]{Cox:2006}
+
+*TBA from \citet{rice2007msd} or other more canonical and mathematical
+treatments
+
+\subsection{Do:} Re-estimate our linear models using our own
+likelihood maximizing function (first by examining the profile
+likelihood function graphically and second by asking the computer to
+find the maximum). Assess the statistical inferences
+from MLE compared to those arising from shuffling and/or bootstrapping
+(or enumerating, or even Normal approximations to the shuffles).
+
+% Notice: Allows you to use information not in the design (i.e. that the
+% data generating process was Poisson, or Binomial, etc..) Show for
+% Normal and Poisson or Binomial.
+
+% Notice: Very flexible and general (thus, is the theory behind logit
+% and probit, survival analysis, time-series analysis, and many other
+% such approaches)
+
+
+%\SetDate[29/03/2011]
+\AdvanceDate[7]
+\section{11---\themonth~\the\day---Logit, Probit, Poisson, Oh My!}
+
+\subsection{Topics:} We continue to work with maximum likelihood as a
+method for generating closed-form estimators and for providing
+closed-form estimators of standard errors, and thus as a very useful
+approach to statistical inference. We will focus on understanding some
+common parameterizations of binomial and Poisson outcome generating
+functions.
+
+\subsection{Read:}
+
+*\citealp[Chap 14]{fox2008applied}
+
+\citealp[Chap 5]{gelman2007dau}
+
+*\citealp[Chap 6]{gelman2007dau}
+
+*\citealp[Chap 15]{fox2008applied}
+
+
+\subsection{Do:} Write our own logit fitting routine. Assess the
+circumstances under which we would prefer to find mle estimates versus
+rely on consistency results and large sample theory of simple linear
+regression models versus use some form of resampling for statistical
+inference with binary outcomes.
+
+%   \AdvanceDate[7]
+%   \section{\themonth~\the\day---Short Assignment 4 Due}
+%   Answer these questions:
+%   \begin{enumerate}
+%     \item Starting with a stochastic outcome generating process for an
+%       individual observation, write out a likelihood function that might
+%       usefully describe your outcomes. Write out the closed form
+%       expression for the values of $\bbeta$ at which your likelihood
+%       function is maximized. Calculate the MLE for your regression
+%       table. Show your work. Recall that we are not here talking about a research
+%       design generating samples (rows of your data, observations, cases) or values
+%       for an explanatory or driving or causal variable (like an experiment or
+%       policy intervention).
+%     \item In general, how would a thoughtful person justify the use of the $p$-values
+%       from the canned regression table that you are investigating? (Recall
+%       that by now you have four different general ways to justify statistical
+%       inference that one could tell.) By justify, recall the Berk 2004 reading in
+%       which he describes ways to justify statistical inference.
+%     \item How would you know if the large-sample theory and/or the
+%       likelihood story are not working in your favor in your canned
+%       regression table? Execute and report on a simulation study that will
+%       offer you some insight into the reasonableness of the large-sample
+%       and/or likelihood-based justifications. In class we've focused on
+%       Type I error rate, and that might be the easiest way to answer this
+%       question. Of course, other properties of the estimators may be more
+%       interesting and/or useful to you: consistency, bias, MSE, etc\ldots.
+%   \end{enumerate}
+
+\AdvanceDate[7]
+\section{12---\themonth~\the\day---Introduction to Bayesian Statistical Inference}
+
+Now that we have traveled quite far from the idea of repeating a
+physical operation, we can take one more step: the idea that our model
+of the outcome might not actually reflect some population, but rather
+that our model represents our beliefs about some population. Or,
+perhaps, that our model of the population ought to be seen as only one
+of many possible but related models.
+
+\subsection{Topics:} Bayes rule and MLE; posteriors, priors,
+hyper-priors. The idea of sampling from a posterior and of the
+posterior distribution of a parameter as a basis for statistical
+inference.
+
+\subsection{Read:}
+
+\citealp[Chap 18.1--18.3]{gelman2007dau}
+
+\citealp[Chap 3,7]{lynch2007introduction} (see it all via a campus machine/VPN connection  at \url{http://www.springerlink.com/content/978-0-387-71264-2/contents/} )
+
+*\citealp[Chap 1, 3, 5.2, Appendix 1]{lancaster2004introduction}
+
+*\citealp[Chap 9]{albert2009bayesian}
+
+*\citealp{kruschke2010doing}
+
+* If this were a semester long course in Bayes, we'd use these next
+textbooks.
+
+*\citealp{JeffGill2002a}
+
+*\citealp{jackman2009bayesian}
+
+*\citealp{gelmanbda04}
+
+%\url{http://www.r-bloggers.com/general-bayesian-estimation-using-mhadaptive/}
+%\url{http://doingbayesiandataanalysis.blogspot.com/2012/01/now-in-jags-now-in-jags.html}
+%\url{http://cran.r-project.org/web/packages/bayesm/bayesm.pdf}
+%\url{http://cran.r-project.org/web/packages/lmm/index.html}
+
+\subsection{Do:} Link the ideas about likelihood to Bayesian
+conceptions of statistical inference; fit a Normal outcomes, linear
+parameters, Bayesian model (i.e. a Normal mle model, i.e. a least
+squares model, i.e. a difference of means model).
+
+
+\AdvanceDate[7]
+\section{13---\themonth~\the\day---Possible Extra Class Bayesian Statistical Inference for Linear Models: Normal, Binomial, Poisson Models}
+
+
+\subsection{Topics:}
+
+\subsection{Read:}
+
+\subsection{Do:}
+
+%% \AdvanceDate[7]
+%% \section{14---\themonth~\the\day---Multilevel models and RCSE }
+%%
+%% \subsection{Topics:} An introduction to, and some critical engagement with, two common methods of dealing with dependent observations.
+%%
+%% \subsection{Read:}
+%% \citealp{bertrand2004msw} (for an example of why paying attention to dependence matters)
+%%
+%% \textbf{On Multilevel models}
+%%
+%% \citealp[Chap 11--13]{gelman2007dau}
+%%
+%% \citealp{BoweDrak:2005} on alternative graphical and exploratory methods
+%%
+%% *\citealp[Chap 16,21,23--24]{gelman2007dau} on fitting, checking, and interpreting multilevel models.
+%%
+%% *\citealp[Chap 10.7]{gelman2007dau} (on longitudinal designs.)
+%%
+%% \textbf{On `Robust Clustered Standard Errors'}
+%%
+%% *\citealp[Chap 12]{fox2008applied} (especially 12.2)
+%%
+%% \citealp{LongErvi:2000} (on the general idea of estimating a model while
+%% ignoring dependence and then correcting some piece of that model.)
+%%
+%% \citealp{wooldridge2003csm} (on the block-diagonal variance-covariance
+%% matrix methods (``cluster robust'') types of corrections.)
+%%
+%% \citealp{Free:2006:On-t} (for some criticism of these kinds of methods.)
+%%
+%% *\citealp{cribarineto2004aiu} (on other methods for making the simple
+%% correction and problems arising from the initial ideas of Huber and White.)
+%%
+%% *\citealp{green2007acr} (for an exemplar of using simulation to check the performance of such methods in some particular designs.)
+%%
+%% *\cite{faes2009effective} (on different conceptions of what ``degrees of
+%% freedom'' and ``sample size'' might mean in a complex design)
+%%
+%% \subsection{Do:} Compare and contrast the empirical bayesian approach to the estimation of multilevel models to the post-hoc correction and/or design based approach to consistently estimating $\hat{V}(\hat{\bbeta})$ for non-iid data.
+%%
+
+\SetDate[16/05/2014]
+\section{\themonth~\the\day---Final Papers Due}
+
+\part{References}
+\bibliography{/Users/jwbowers/Documents/PROJECTS/BIB/big}
+
+  \end{document}
+
