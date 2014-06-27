@@ -1,0 +1,2 @@
+% $pdflatex = 'latexmk -pdf -shell-escape %S'
+

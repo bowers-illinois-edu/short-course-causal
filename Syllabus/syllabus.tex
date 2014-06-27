@@ -1,12 +1,10 @@
-%% add criteria for grading, change due dates for papers.
+% latexmk -pdf -shell-escape syllabus.tex
 \documentclass[10pt]{article}
 \usepackage{bibentry,natbib,url,comment,amsmath}
 \usepackage{graphicx,svn,parskip}
 \usepackage{sometexdefs}
 \usepackage[T1]{fontenc}
 \usepackage{textcomp}
-%% \renewcommand{\rmdefault}{pmnj}
-%% \renewcommand{\sfdefault}{phv} %helvetica
 \usepackage{tgpagella}
 \usepackage[sc]{mathpazo}
 \renewcommand*{\bfdefault}{bx}
@@ -27,36 +25,40 @@
 
 \usepackage[compact]{titlesec} %nobottomtitles
 \titleformat{\part}[hang]{\large\scshape}{\hspace{-.75in}\thepart}{.5em}{}{}
-\titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection}{.5em}{}{}
-\titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}
-\titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}
+\titleformat{\section}[hang]{\large\bfseries}{\thesection}{.5em}{\hspace{-.75in}}{}
+\titleformat{\subsection}[leftmargin]{\small\bfseries\filcenter}{\thesubsection}{.5em}{}{}
+%\titleformat{\subsection}[hang]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.5in}}{}
+%\titleformat{\subsection}[leftmargin]{\small\bfseries\filright}{\thesubsection}{.5em}{\hspace{-1in}}{}
+%\titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}
 \titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}
 
 \titlespacing{\part}{0ex}{.5ex plus .1ex minus .2ex}{-.25\parskip}
-\titlespacing{\section}{0ex}{1.5ex plus .1ex minus .2ex}{-.25\parskip}
-\titlespacing{\subsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
+%\titlespacing{\section}{0ex}{1.5ex plus .1ex minus .2ex}{-.25\parskip}
+\titlespacing{\subsection} {4pc}{1.5ex plus .1ex minus .2ex}{1pc}
+%\titlespacing{\subsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
 \titlespacing{\subsubsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
 \titlespacing{\paragraph}{0em}{1ex}{.5ex plus .1ex minus .1ex}
 
-
 \newenvironment{introstuff} {\setcounter{secnumdepth}{0}%
   \titlespacing*{\section}{-.75in}{1em}{0em}{}%
+  \titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection}{.5em}{}{}  
   \titleformat{\subsection}[leftmargin]{\itshape\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
   \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
   \titleformat{\paragraph}[hang]{\bfseries}{\theparagraph}{0em}{}{}%
   \titlespacing{\subsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
   \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
   \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
-} {\setcounter{secnumdepth}{0}%
-  \titleformat{\part}[hang]{\large\bfseries}{\hspace{-.75in}\thepart}{.5em}{}{}%
-  \titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection}{.5em}{}{}%
-  \titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
-  \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
-  \titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}%
-  % \titleformat{\subsection}[hang]{\itshape}{\thesubsection}{.5em}{}{}%
-  \titlespacing{\section}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
-  \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
-  \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+} {%
+  %% \setcounter{secnumdepth}{0}%
+  %% \titleformat{\part}[hang]{\large\bfseries}{\hspace{-.75in}\thepart}{.5em}{}{}%
+  %% \titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection}{.5em}{}{}%
+  %% \titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
+  %% \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
+  %% \titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}%
+  %% % \titleformat{\subsection}[hang]{\itshape}{\thesubsection}{.5em}{}{}%
+  %% \titlespacing{\section}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+  %% \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
+  %% \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
 }
 
 % Create new title appearance
@@ -210,6 +212,7 @@
   particularly difficult tasks.
 
   \subsection{Computing}
+
   We will be using R~in class so those of you with laptops available
   should bring them. Of course, I will not tolerate the use of computers
   for anything other than class related work during active class
@@ -249,11 +252,10 @@
 
   \bibentry{gelman2007dau}  (particularly chapters 9,10 and 23 see \url{http://www.stat.columbia.edu/~gelman/arm/}).
 
-  \bibentry{MorWin:2007:Coun} See \url{http://www.wjh.harvard.edu/~cwinship/cfa.html} for some
+  \bibentry{MorWin:2007:Coun} (See \url{http://www.wjh.harvard.edu/~cwinship/cfa.html} for some
   links and background reading)
 
-  \bibentry{rosenbaum:2002} (see
-  \url{http://www-stat.wharton.upenn.edu/~rosenbap/index.html} for lots of papers and presentations).
+  \bibentry{rosenbaum:2002} (see \url{http://www-stat.wharton.upenn.edu/~rosenbap/index.html} for lots of papers and presentations).
 
   \bibentry{Rub:2006:Matc}
 
@@ -264,41 +266,49 @@
   \textbf{Note: } This schedule is preliminary and subject to change. We will
   spend roughly 4 hours together for three of the days and 3 hours on one of
   the days. I anticipate mixing  group discussions of your questions from the
-  readings with in-class work using your own laptops to get practice creating,
-  analyzing, and assessing matched designs.
+  readings with in-class work using your own laptops or those provided by the
+  school to get practice creating, analyzing, and assessing matched designs.
 
-  Right now, we have too much reading assigned. Some of it will be moved to
-  "recommended" sections soon.
 
 \end{introstuff}
 
-%\part{Fit criteria, descriptive inference, causal inference, and adjustment}
 
 \SetDate[14/07/2014]
-\section{1---\themonth~\the\day---Potential Outcomes, Confounding, and Linear Models}
+\section{1---\themonth~\the\day---Experiments, Potential Outcomes, and Treatment Effects}
 
-How does the linear model ``control for'' or ``adjust for'' potentially
-confounding variables when assessing a relationship between some outcome and
-some explanatory or causal variable? How can we know whether we have
-``controlled for'' enough? How worried should we be about the influence of
-functional form on our causal inferences? How does a randomized experiment do the
-same task using design? 
+\subsection{Questions and Reading:}
 
-\subsection{Reading:}
+What is the point of experiments? What are the key characteristics of
+experiments? Why are experiments special?
 
-\citet[Chap 1, 3, 7]{rosenbaum2010design}
+\citealp{kinder1993behalf}
 
-\citet[Chap 9 and 10]{gelman2007dau} especially on (a) adjusting for
-post-treatment variables and (b) discussion of issues of
-interpolation, extrapolation, and covariance adjustment depending on
-functional form.
+\citealp[Chap 1]{gerber2012field}
+
+How can we bolster the interpretability of our comparisons if we do not have
+an experiment? 
+
+\citealp[Chap 1]{rosenbaum2010design}
+
+What do we mean by ``causal inference''? Can we convince ourselves that
+experiments have special advantages like ``unbiased estimation of averages of
+potential outcomes''?
+
+\citealp[Chap 2]{gerber2012field}
+
+\subsection{Extra Reading:}
+
+\citealp[Chap 9.0 --  9.3]{gelman2007dau} (On potential outcomes and causal
+inference)
 
 
-%\citealp{berk2010you}
+\citealp[Chap 2]{angrist2009mostly}
 
-\citealp[Chap 1 and 2]{gerber2012field}
+\citealp{holland:1986a} (on the Counterfactual/Manipulationist conception of
+causality)
 
-\citealp{holland:1986a}
+\citealp{brady02} (for a survey of other major conceptions of causality from
+the perspective of applied social science)
 
 
 % \citealp[Chapter 4]{berk04}
@@ -313,9 +323,25 @@ whether a matched design adjusted enough or not? What does it mean to adjust
 enough? What actual steps do we take in order to flexibly express our ideas
 about what it means for ``like to be compared with like.''
 
-\subsection{Reading:}
+\subsection{Questions and Reading:}
 
-\citet[Chap 8--9,13]{rosenbaum2010design}
+Why not use the linear model for adjustment? How do we know when we have
+adjusted enough to make a strong case for clear, interpretable comparisons?
+
+\citealp[Chap 6]{rosenbaum2010design}
+
+\citealp[Chap 9.5--9.6]{gelman2007dau}
+
+What is the basic intuition behind post-stratified designs and modern optimal
+versions of post-stratification that we call ``matched designs''? What is
+``balance''? How do we use R to create and evaluate matched designs?
+
+\citealp[Chap 7--9, 13]{rosenbaum2010design} (Especially Chap 7, Chap 8.6,
+Chap 9)
+
+\subsection{Extra:}
+
+\citealp[Chap 3]{rosenbaum2010design} 
 
 \cite{hansen:2004a}
 
@@ -323,7 +349,7 @@ about what it means for ``like to be compared with like.''
 including a discussion of missing data on covariates.
 
 \cite{ho2007man} [esp. their discussion of model sensitivity, for
-example their Fig 2] 
+example their Fig 2]
 
 Three different ideas about balance testing: (1) \cite{imai2008mae}; (2)
 \cite{sekhon2007alternative}\footnote{
@@ -334,28 +360,32 @@ version of the same argument \cite[\S 3]{bowers2011mem}.
 
 
 \AdvanceDate[1]
-\section{3---\themonth~\the\day---Statistical Inference for
-  Matched/Post-stratified Designs}
-
-What does it mean to do statistical inference for a matched design? To what
-unobserved quantities might we want to infer? What might justify the idea that
-what we observed might have been different? Here we focus on Neyman's ideas,
-but we will also talk briefly about Fisher's sharp null hypothesis of no
-effects.
-
-\subsection{Reading:}
-
-\citet[Chap 6,7,17]{imbens2009causal}
+\section{3---\themonth~\the\day---Statistical Inference for Matched/Post-stratified Designs}
 
 
-\citet[Chap 4]{berk04} on general requirements for statistical
+\subsection{Questions and Reading:}
+
+Given a matched design, how can we produce tests of substantively meaningful
+hypotheses about the unobserved comparisons of potential outcomes that we call
+``causal effects?''
+
+\citealp[Chap 2]{rosenbaum2010design}
+
+How can we produce  confidence intervals for an estimate of an average
+treatment effect?
+
+DUNNING BOOK APPENDIX (Chapter 6.1 and Appendix 6.1)
+
+\citealp[Chap 17]{imbens2009causal}
+
+\subsection{Extra:}
+
+\citealp[Chap 4]{berk04} on general requirements for statistical
 inference
 
-\citet[Chap 2]{rosenbaum2010design}
+%\citet[Appendix A-32 and 33]{fpp07} which summarizes \cite{neyman:1923}
 
-\citet[Chap 17]{imbens2009causal}
-
-\cite[Appendix A-32 and 33]{fpp07} which summarizes \cite{neyman:1923}
+\citealp{miratrix2012adjusting}
 
 \cite{freedman2008randomization,freedman2008rae,freedman2007rae,Free:2006:On-t}
 Suggesting that even the large sample statistical inference from using
@@ -368,17 +398,19 @@ inference (and thus can be unproblematic after matching).
 
 \cite{schochet2009regression,green2009ec} Suggesting that in large
 samples these biases worried about by Freedman ought not to worry
-us. \cite{linlr:2011} provides some useful proofs supporting the idea
+us. 
+
+\cite{linlr:2011} provides some useful proofs supporting the idea
 that linear regression with ``robust'' standard errors provides a
 useful large-sample way to do statistical inference about average
 treatment effects.
 
-\citet[Chap 6--8]{imbens2009causal} Suggesting, similarly to Green and
+\citealp[Chap 6--8]{imbens2009causal} Suggesting, similarly to Green and
 Schochet, that regression is fine for statistical inference in
 experiments (and further suggesting the use of the Huber-White robust
 standard errors).
 
-\citet{AbadImbe:2004:On-t} suggesting that the bootstrap is not a good
+\citealp{AbadImbe:2004:On-t} suggesting that the bootstrap is not a good
 approach with matched designs.
 
 For advanced reading on the latest in statistical theory for
@@ -389,15 +421,6 @@ are not restricted to post-stratified studies) see:
 
 \cite{abadie2009matching} for a large-sample, Normal theory approach.
 
-\cite{hosman2010}
-
-\citet[Chap 14]{rosenbaum2010design}
-
-
-\citet[Chap 4]{rosenbaum:2002}
-
-\cite{imbens2003sea}
-
 
 \AdvanceDate[1]
 \section{4---\themonth~\the\day--- Sensitivity Analysis }
@@ -406,20 +429,23 @@ An observational study is not a randomized experiment, regardless of the
 research design and balance achieved. How can we address arguments that we did
 not adjust for variables that create confounding but which we do not observe?
 
-\subsection{Reading:}
+\subsection{Questions and Reading:}
 
 \cite{cornfield:1959}
 
 \cite{hosman2010}
 
-\citet[Chap 14]{rosenbaum2010design}
 
-\citet[Chap 4]{rosenbaum:2002}
+\subsection{Extra:}
+
+\citealp[Chap 4]{rosenbaum:2002}
+
+\citealp[Chap 3, 14]{rosenbaum2010design}
 
 \cite{imbens2003sea}
 
 
-\section{Other Topics}
+\section{*---Other Topics}
 
 If we move quickly, or if the class has some organized preferences, we could
 change the syllabus to discussion some of these ideas.

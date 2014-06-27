@@ -1,0 +1,79 @@
+
+
+# Day 1
+
+## Hour 1---Causal Inference
+
+Introduction to the course. Just scratching the surface. But hopefully enables an entry to the literature. 
+
+Introductions in general: what research problems have brought people to the
+course? Or what research problems are absorbing the attention of the students?
+
+Introduce a data problem: The effects of the London Bombing on Civic
+Engagement OR effects of the LA riots on political behavior (LA County Social
+Survey).
+
+How can we use potential outcomes to clarify what it is that we hope to learn
+about?
+
+What do we mean by ``causal inference''?
+
+## Hour 2
+
+What if the intervention were randomly assigned? Let's show ourselves that we
+can make unconfounded or clearly interpretable causal inference if we have randomization.
+
+## Hour 3
+
+Unbiasedness.
+
+## Hour 4
+
+Bias: What if we had treatment as a function of covariates that we do not
+observe? What happens when we compare means?
+
+# Day 2 --- Matching
+
+## Hour 1
+
+Review.
+
+Show ourselves some of the problems with common use of the linear model. Most importantly transparency.
+Secondarily, extrapolation and functional form dependence.
+
+
+## Hour 2
+
+Post-stratification and the idea of balance.
+
+## Hour 3
+
+Full-matching and balance testing.
+
+## Hour 4
+
+Practice making matching and assessing balance (given ingredients can you get
+good balance, how to interpret and inspect a matched set).
+
+# Day 3 --- Statistical Inference
+
+## Hour 1
+
+## Hour 2
+
+## Hour 3
+
+## Hour 4
+
+
+# Day 4 --- Sensitivity Analysis
+
+## Hour 1
+
+## Hour 2
+
+## Hour 3
+
+
+
+
