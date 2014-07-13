@@ -1,0 +1,198 @@
+
+% For LaTeX-Box: root = exploration10.tex
+% search and replace keep.comment=FALSE to TRUE for commented version
+\documentclass[10pt,letterpaper]{article}
+\usepackage{fontspec}
+
+\title{Session 2---Experimentos de Campo}
+
+\author{Jake Bowers}
+
+\usepackage{../Styles/ps531}
+
+
+\includeversion{comment}
+\markversion{comment}
+%\excludeversion{comment}
+
+\begin{document}
+
+<<include=FALSE,cache=FALSE>>=
+opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='figs/fig',cache=FALSE,highlight=TRUE,width.cutoff=132,size='footnotesize',out.width='1.2\\textwidth',message=FALSE,comment=NA)
+@
+
+\maketitle
+
+Profesor Costas Panagopoulos montó un experimento de campo con el intento de
+saber si anuncios en la prensa podrían aumentar la proporción votando en
+elecciones de concejales municipales en los EE.UU.
+
+\begin{enumerate}
+    \setcounter{enumi}{-1}
+  \item Pueden cargar los datos del Newspapers Experiment en R asi:
+
+<<>>=
+newsdat<-read.csv(url("http://jakebowers.org/Data/newsdat.csv"))
+@
+
+\item Que cifra seria un buen estimado del efecto promedio de tratamiento? Aqui
+  tienes algunos ingredientes:
+
+<<results="hide">>=
+
+estmeany1<-with(newsdat,mean(turnout[treat==1]))
+estmeany0<-with(newsdat,mean(turnout[treat==0]))
+
+print(estmeany1)
+print(estmeany0)
+
+@
+
+\begin{comment}
+
+<<>>=
+estmeany1-estmeany0
+@
+
+\end{comment}
+
+\item Que relacion tiene este cifra con el efecto promedio de tratamiento
+  definado en terminos de respuestas potenciales, ($\bar{y}_1 - \bar{y}_0$)?
+  Vamos a armar algunos experimentos hipotéticos para intender.
+
+  Primero vamos a hacer respuestas potenciales por los cuales sabemos todos los
+  valores:
+
+<<>>=
+
+## Pongamos que el turnout que observamos es lo que hubieramos observado sin anuncios
+newsdat$y0<-newsdat$turnout
+
+## Hacemos un efecto causal verdadero de 10
+newsdat$y1<-with(newsdat,y0+10)
+
+## Ver el conjunto de datos
+print(newsdat)
+
+@
+
+Aqui pueden ver la relación causal que imaginamos/hagamos para hacer este
+prueba de sesgo:
+
+{\centering
+<<out.width=".3\\textwidth">>=
+with(newsdat,boxplot(list(y1=y1,y0=y0)))
+@
+}
+
+Pueden verificar que el promedio de $y_1$ menos el promedio de $y_0$ es 10?
+
+
+\begin{comment}
+
+<<>>=
+
+with(newsdat,mean(y1)-mean(y0))
+
+@
+\end{comment}
+
+\item Ahora vamos a asignar anuncios otra vez como imaginemos lo hizo
+  Panagopoulos y calcular un \emph{estimación} del efecto promedio de
+  tratamiento. Por favor usar estes linear 
+
+<<results="hide">>=
+
+set.seed(123456) ## para que podemos reproducir el proceso aleatorio
+newsdat$Z1<-sample(c(1,1,1,1,0,0,0,0))
+newsdat$Z1
+@
+
+Que hace la función \texttt{sample}? Pueden escribir el comando \texttt{
+sample(c(1,1,1,1,0,0,0,0)) } multiples veces para ver lo que hace (también,
+pueden leer el resultado de \texttt{help(sample)}).
+
+\begin{comment}
+Aqui sample() perturba el vector aleatoriamente para mantener siempre 4 en tratamiento y 4 en contro
+\end{comment}
+
+\item Ahora necesitamos hacer una respuesta observada un este simulación. Que
+  pasa aqui?
+
+<<>>=
+
+newsdat$Y<-with(newsdat,Z1*y1+(1-Z1)*y0)
+## newsdat$Y<-ifelse(newsdat$Z1==1,y1,y0)
+
+## Ver algunos columnas del conjunto de datos
+newsdat[,c("Z1","Y","y1","y0")]
+
+@
+
+
+\item Usando el $Y$ que has creado, estima el efecto promedio de tratamiento.
+  Recuerdas que estimabas el efecto promedio de tratamiento usando los datos
+  reales arriba, asi que pueden cambiar tales lineas de código para hacer lo
+  con los datos simulados.
+
+
+\begin{comment}
+
+<<>>=
+
+estpromedioy1<-with(newsdat,mean(Y[Z1==1]))
+estpromedioy0<-with(newsdat,mean(Y[Z1==0]))
+
+
+estept<-estpromedioy1-estpromedioy0
+print(estept)
+
+@
+
+\end{comment}
+
+\item Ahora, aunque el efecto estimado no es igual al efecto verdadero, hay
+  una manera en que es un estimado bueno. Es bueno en una manera porque
+  podemos demostrar que, a través de repeticiones del experimento el promedio
+  de los estimados es igual a la verdad. Podemos decir la misma cosa asi:
+  $E(\widehat{\text{EPT}})=\text{EPT}$. Vamos a ver si este propiedad de ser sin
+  sesgo funciona en este investigación pequeño.
+
+  Puedes explicar lo que esta pasando aqui?
+  
+<<results="hide">>=
+
+otraestimado<-function(){
+  ## Znew<-sample(rep(c(1,0),c(4,4)))
+  Znew<-sample(c(1,1,1,1,0,0,0,0))
+  Y<-Znew*newsdat$y1+(1-Znew)*newsdat$y0
+  epthat<-mean(Y[Znew==1] - mean(Y[Znew==0]))
+  return(epthat)
+}
+
+otraestimado()
+
+## set.seed(123456)
+randdist<-replicate(1000,otraestimado())
+
+@
+
+Aqui pueden ver una simulación de la distribución del estimado efecto promedio
+de tratamiento. Puedes calcular el promedio de tal distribucion? Es
+exactamente igual a 10? Si no, tienes algunos intuiciones porque?
+
+<<out.width=".6\\textwidth",results="hide",fig.keep="none">>=
+plot(density(randdist))
+rug(randdist)
+@
+
+\item Entonces, como debemos interpretar la cifra con que empezemos --- el
+  $\widehat{EPT}$ del investigación verdadero/no simulado? Como debe uno
+  interpretar algún estimado del efecto promedio de tratamiento? En cual
+  manera es ``buena''? En que otras maneras todavía nos mantiene la ansiedad
+  de estar lejos de la verdad?
+
+
+\end{enumerate}
+
+\end{document}
