@@ -334,6 +334,7 @@ oneSidedPRank
 
 @
 
+% Next: how to know if your test is a good test (analogy to bias)
 
 \end{enumerate}
 

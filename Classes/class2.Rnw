@@ -1,0 +1,170 @@
+
+% For LaTeX-Box: root = class1.tex 
+% search and replace keep.comment=FALSE to TRUE for commented version
+\documentclass[10pt,letterpaper]{article}
+\usepackage{fontspec}
+\usepackage{ulem}
+
+\title{Session 2 --- Matching Short Course}
+
+\author{Jake Bowers}
+
+\usepackage{../Styles/ps531}
+
+
+\includeversion{comment}
+\markversion{comment}
+%\excludeversion{comment}
+
+\begin{document}
+\normalem
+
+<<include=FALSE,cache=FALSE>>=
+opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='figs/fig',cache=FALSE,highlight=TRUE,width.cutoff=132,size='footnotesize',out.width='1.2\\textwidth',message=FALSE,comment=NA)
+@
+
+\maketitle
+
+\begin{enumerate}
+    \setcounter{enumi}{-1}
+  \item  We'll continue to work with the Cerd\'{a} et al data.
+    
+    
+<<>>=
+load(url("http://jakebowers.org/Matching/meddat.rda"))
+## or, if that doesn't work
+meddat<-read.csv(url("http://jakebowers.org/Matching/meddat.csv"))
+@
+
+I don't have a formal codebook but here are my guesses about the meanings of
+some of the variables:
+
+\begin{Verbatim}
+## Some Covariates
+nh03         Neighborhood id
+nhGroup      Treatment (T) or Control (C)
+nhTrt        Treatment (1) or Control (0)
+nhHom        Mean homicide rate per 100,000 population in 2003
+nhDistCenter Distance to city center (km)
+nhLogHom     Log Homicide (i.e. log(nhHom))
+
+## Outcomes (BE03,CE03,PV03,QP03,TP03 are baseline versions)
+BE      Neighborhood amenities Score 2008
+CE      Collective Efficacy Score 2008
+PV      Perceived Violence Score 2008
+QP      Trust in local agencies Score 2008
+TP      Reliance on police Score 2008
+hom     Homicide rate per 100,000 population Score 2008-2003 (in log odds)
+\end{Verbatim}
+
+\item Now, the Metrocable intervention was not a randomized experiment. And in
+  most social science papers, we would tend to see something like the
+  following:
+
+
+<<>>=
+
+newformula<-reformulate(c("nhTrt",names(meddat)[4:25]),response="PV")
+lm1<-lm(newformula,data=meddat)
+xtablm1<-xtable(lm1,digits=2)
+@
+
+<<results='asis'>>=
+print(xtablm1,floating=FALSE)
+@
+
+Why would someone report the effect shown in the table above instead of the
+simple effect that we calculated before? What are some of the strengths and
+weaknesses of this approach to \emph{statistical adjustment}?
+
+
+\item If we have extra time, we can explore the testing approach to
+  statistical inference for causal effects. Rather than change the quantity of
+  interest, \citet[Chap 2]{fisher:1935} showed us how to assess hypotheses
+  about the individual level causal effects. Specifically, that, even if one
+  cannot know how $y_{i,1}$ and $y_{i,0}$ relate for any given individual, one
+  can ask questions (or make claims) about this relationship and then use the
+  data to assess the evidence against the such hypotheses. His idea was that
+  we could use $p$-values to summarize the evidence against a hypothesis of
+  this sort. Now, what do you think it would mean for us to write a null
+  hypothesis about unobserved potential outcomes  $H_0: y_{i,1}=y_{i,0}$ and
+  then to say, $p=.01$? What would it mean for us to say $p=.3$? That is,
+  imagine that someone said, "Given this experiment, how plausible would it be
+  to observe this particular value if, in fact, there were no effect on any of
+  the neighborhoods in the study?" And that the answer was $p=.01$?
+
+\item A $p$-value is a probability and thus requires a probability
+  distribution --- and specifically requires a probability
+  distribution to characterize the situation posited by the null
+  hypothesis. Here, the null hypothesis is $H_0: y_{i,1}=y_{i,0}$ for
+  all $i$, although other null hypotheses will be useful in other
+  circumstances.  In frequentist statistics a probability distribution
+  requires that some physical act has been repeated: for example, the
+  probability that a flipped coin is heads can be defined as the long-run
+  proportion of heads across repeated flips. So, what repetition does the $p$
+  refer to in an experiment?
+  
+\item  We want to
+  generate a distribution that tells us all of the ways the experiment could
+  have turned out under the null hypothesis. We have a sense that we are
+  talking about repeating the experiment.   \citet[Chap
+  2]{rosenbaum2010design} explains that we can generate this distribution
+  because we know that $Y_i$ is a function of what we do not observe:
+   
+  \begin{equation}
+    Y_i=Z_i y_{i,1} + (1-Z_i) y_{i,0} \label{eq:obsandpot}
+  \end{equation}
+ 
+  So, if $y_{i,0}=y_{i,0}$ then $Y_i=y_{i,0}=y_{i,1}$.
+
+  Now, what does it mean to repeat the experiment? What is happening below?
+
+<<>>=
+
+newTestStat<-function(Y,Z){
+  Znew<-sample(Z)
+  mean(Y[Znew==1])-mean(Y[Znew==0])
+}
+
+nullDist<-replicate(1000,newTestStat(Y=meddat$PV,Z=meddat$nhTrt))
+
+obsTestStat<-with(meddat,mean(PV[nhTrt==1])-mean(PV[nhTrt==0]))
+
+oneSidedP<-mean(nullDist<=obsTestStat)
+
+oneSidedP
+
+newTestStatRank<-function(Y,Z){
+  Znew<-sample(Z)
+  rankY<-rank(Y)
+  mean(rankY[Znew==1])-mean(rankY[Znew==0])
+}
+
+nullDistRank<-replicate(1000,newTestStatRank(Y=meddat$PV,Z=meddat$nhTrt))
+
+obsTestStatRank<-with(meddat,{rankPV<-rank(PV);
+		      mean(rankPV[nhTrt==1])-mean(rankPV[nhTrt==0])})
+
+nullDistRank<-replicate(1000,newTestStatRank(Y=meddat$PV,Z=meddat$nhTrt))
+
+oneSidedPRank<-mean(nullDistRank<=obsTestStatRank)
+
+oneSidedPRank
+
+@
+
+% Next: how to know if your test is a good test (analogy to bias)
+
+\end{enumerate}
+
+
+
+
+
+\bibliographystyle{apalike}
+\bibliography{/Users/jwbowers/Documents/PROJECTS/BIB/big}
+
+
+
+
+\end{document}
