@@ -29,11 +29,10 @@ opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='f
     intervention. In 2004 the municipality of Medell\'{i}n, Columbia built
     built the first line of the Metrocable --- a set of cable cars that
     connected poor neighborhoods on the edges of the city to the center of the
-    city. Professor Magdalena Cerd\'{a} and her collaborators asked whether
+    city \citep{cerda2012reducing}. Professor Magdalena Cerd\'{a} and her collaborators asked whether
     this kind of integration could have an effect on violence in these poor
     (and heretofore violent) neighborhoods. We have some of the data from this
-    project to use here.\footnote{The article was published in the American
-    Journal of Epidemiology in 2012.}
+    project to use here.
 
     The data Cerd\'{a} collected tell us about the roughly 50 neighborhoods in
     the study, about half of which had access to the Metrocable line and half
@@ -52,40 +51,21 @@ I don't have a formal codebook but here are my guesses about the meanings of
 some of the variables:
 
 \begin{Verbatim}
-  ## Covariates
+## Some Covariates
 nh03         Neighborhood id
 nhGroup      Treatment (T) or Control (C)
 nhTrt        Treatment (1) or Control (0)
 nhHom        Mean homicide rate per 100,000 population in 2003
-nhClass      __
-nhSisben     __
-nhPopD       __
 nhDistCenter Distance to city center (km)
-nhQP03       __
-nhPV03       __
-nhTP03       __
-nhBI03       __
-nhCE03       __
-nhNB03       __
-nhMale       __
-nhAgeYoung   __
-nhAgeMid     __
-nhMarDom     __
-nhSepDiv     __
-nhOwn        __
-nhRent       __
-nhEmp        __
-nhAboveHS    __
-nhHS         __
 nhLogHom     Log Homicide (i.e. log(nhHom))
 
-## Outcomes
-BE      Neighborhood amenities Score 2008-2003
-CE      Collective Efficacy Score 2008-2003
-PV      Perceived Violence Score 2008-2003
-QP      Trust in local agencies Score 2008-2003
-TP      Reliance on police Score 2008-2003
-hom     Homicide rate per 100,000 population Score 2008-2003 (in differences in log odds)
+## Outcomes (BE03,CE03,PV03,QP03,TP03 are baseline versions)
+BE      Neighborhood amenities Score 2008
+CE      Collective Efficacy Score 2008
+PV      Perceived Violence Score 2008
+QP      Trust in local agencies Score 2008
+TP      Reliance on police Score 2008
+hom     Homicide rate per 100,000 population Score 2008-2003 (in log odds)
 \end{Verbatim}
 
 Let us first do a very simple analysis to get concepts clear. 
@@ -108,7 +88,7 @@ problem of causal inference" \citep{holland:1986a,brady2008cae}.
 
 First, and simplest, we can say, "We do not know the true relationship between
 potential outcomes, but we can articulate a hypothesis about that relationship
-and then test this hypothesis." \cite{fisher:1935, rosenbaum2010}. This is
+and then test this hypothesis." \cite{fisher:1935, rosenbaum2010design}. This is
 what I call the "testing approach."
 
 Second, and perhaps most commonly, we can say, "We do not know the true
@@ -143,13 +123,13 @@ atePV
  
     \citet{neyman:1923} proposed (1) that we decide to stop focusing on the
     individual level causal effects and instead be interested in $\bar{\tau}=
-    (1/n) (\sum_{i=1}^n r_{1i}) - (1/n) (\sum_{i=1}^n r_{0i}) = \bar{r}_{1} -
+    (1/n) (\sum_{i=1}^n y_{1i}) - (1/n) (\sum_{i=1}^n y_{0i}) = \bar{r}_{1} -
     \bar{r}_{0}$ (i.e. he suggested we choose to care about mean differences
     of the counterfactuals rather than any individual counterfactuals
     themselves) and (2) he claimed that $\hat{\bar{\tau}}=(1/m)\sum_{i=1}^n
-    Z_i R_i - (1/(n-m))\sum_{i=1}^n (1-Z_i) R_i$ was a good \textbf{estimator}
-    of $\bar{\tau}$ (where $R_i$ is observed outcomes and relates to potential
-    outcomes via $R_i=Z_i r_{1i}+(1-Z_i) r_{0i}$, $m$ is number of treated
+    Z_i Y_i - (1/(n-m))\sum_{i=1}^n (1-Z_i) Y_i$ was a good \textbf{estimator}
+    of $\bar{\tau}$ (where $Y_i$ is observed outcomes and relates to potential
+    outcomes via $Y_i=Z_i y_{1i}+(1-Z_i) y_{0i}$, $m$ is number of treated
     observations and $n$ is total number of observations). We are going to
     prove this is the case, for a specific understanding of ``good''.   
  
@@ -164,8 +144,8 @@ atePV
     treatments. For us, it is these 48 neighborhoods. We can think of
     experimental pools as ``finite populations.'' We can write this
     overly wordy definition concisely like this:
-  $$E_{R}[\hat{\bar{\tau}}]=\bar{\tau},$$
-  where $E_{R}$ (the ``expected value'') is ``the average across all
+  $$E_{Y}[\hat{\bar{\tau}}]=\bar{\tau},$$
+  where $E_{Y}$ (the ``expected value'') is ``the average across all
   ways to draw assignments, $Z$, from the urn.'' You'll mostly just
   see something like $E[\hat{\beta}]=\beta$ as a statement that
   whatever formula is giving you $\hat{\beta}$ is, on average across
@@ -182,8 +162,8 @@ atePV
   of means: i.e. that the sample difference of means is an unbiased
   estimator of the population difference of means. 
   
-  We want to show that $E_{R}[\hat{\bar{\tau}}]=\bar{\tau}$. Here only
-  $Z_i$ is random. And, I can tell you that $E_{R}[Z_i]=m/n$ (what
+  We want to show that $E_{Y}[\hat{\bar{\tau}}]=\bar{\tau}$. Here only
+  $Z_i$ is random. And, I can tell you that $E_{Y}[Z_i]=m/n$ (what
   does this mean?). I use $E_R$ at first just to be clear that we are
   taking expectations over the possible randomizations. Mostly you'll
   just see people use $E$ without a discussion of the space over which the expectations are to be taken.
@@ -191,13 +171,13 @@ atePV
   
      
   \begin{align}
-    E_{R}\left[ \hat{\tau} \right]&=E_{R}\left[ \sum_{i=1}^n Z_i \frac{R_{i}}{m}-\sum_{i=1}^n (1-Z_i) \frac{R_{i}}{n-m} \right] \\
-    \intertext{recall that $R_{i}=Z_i r_{1i} + (1-Z_i) r_{0i}$ or $R_i=r_{0i}$ when $Z_i=0$, etc.}
-    &=E \left[ \sum_{i=1}^n Z_i \frac{r_{1i}}{m} \right]-E \left[ \sum_{i=1}^n (1-Z_i) \frac{r_{0i}}{n-m} \right] \\
-    \intertext{recall that only $Z$ is random and that $E_R[Z_i]=m/n$ because no pairs for now}
-    &=\sum_{i=1}^n \frac{m}{n} \frac{r_{1i}}{m}-\sum_{i=1}^n (1-\frac{m}{n}) \frac{r_{0i}}{n-m} \\
-    \intertext{now $(1-(m/n)=(n-m)/n$ }
-    &=\sum_{i=1}^n \frac{r_{1i}}{n}-\sum_{i=1}^n \frac{r_{0i}}{n} \\
+    E_{Y}\left[ \hat{\tau} \right]&=E_{Y}\left[ \sum_{i=1}^n Z_i \frac{Y_{i}}{m}-\sum_{i=1}^n (1-Z_i) \frac{Y_{i}}{n-m} \right] \\
+    \intertext{recall that $Y_{i}=Z_i y_{1i} + (1-Z_i) y_{0i}$ or $Y_i=y_{0i}$ when $Z_i=0$, etc.}
+    &=E \left[ \sum_{i=1}^n Z_i \frac{y_{1i}}{m} \right]-E \left[ \sum_{i=1}^n (1-Z_i) \frac{y_{0i}}{n-m} \right] \\
+    \intertext{recall that only $Z$ is random and that $E_R[Z_i]=m/n$ in this simple design}
+    &=\sum_{i=1}^n \frac{m}{n} \frac{y_{1i}}{m}-\sum_{i=1}^n  \left( 1-\frac{m}{n} \right) \frac{y_{0i}}{n-m} \\
+    \intertext{since $(1-(m/n)=(n-m)/n$ }
+    &=\sum_{i=1}^n \frac{y_{1i}}{n}-\sum_{i=1}^n \frac{y_{0i}}{n} \\
     &=\bar{r}_{1i}-\bar{r}_{0i}=\bar{\tau}
   \end{align}
 
@@ -206,9 +186,10 @@ atePV
   
 
 \item Here is the same demonstration by simulation. Let's talk about what is
-  going on here. 
+  going on here. Why isn't the mean of the distribution of the means exactly
+  the same as the truth?
 
-<<>>=
+<<cache=TRUE>>=
 
 y0<-meddat$PV ## we could have also use y0<-rnorm(48) or something else
 y1<-y0+1
@@ -222,7 +203,8 @@ newexperiment<-function(origZ,y1,y0){
 }
 
 
-## set.seed(123456)
+## set.seed(123456) ## if we uncomment set.seed, everyone should have the
+## exact same answer
 randdist<-replicate(1000,newexperiment(origZ=meddat$nhTrt,y1=y1,y0=y0))
 
 summary(randdist)
@@ -240,13 +222,87 @@ rug(mean(randdist),ticksize=.3,lwd=2,col="red")
 @
 
 
-\item Now, let us explore the testing approach to statistical inference for
-  causal effects.
+\item Now, the Metrocable intervention was not a randomized experiment. And in
+  most social science papers, we would tend to see something like the
+  following:
+
 
 <<>>=
+
+newformula<-reformulate(c("nhTrt",names(meddat)[4:25]),response="PV")
+lm1<-lm(newformula,data=meddat)
+library(xtable)
+xtablm1<-xtable(lm1,digits=2)
 @
 
+<<results='asis'>>=
+print(xtablm1,floating=FALSE)
+@
 
+Why would someone report the effect shown in the table above instead of the
+simple effect that we calculated before? What are some of the strengths and
+weaknesses of this approach to \emph{statistical adjustment}?
+
+
+\item If we have extra time, we can explore the testing approach to
+  statistical inference for causal effects. Rather than change the quantity of
+  interest, \citet[Chap 2]{fisher:1935} showed us how to assess hypotheses
+  about the individual level causal effects. Specifically, that, even if one
+  cannot know how $y_{i,1}$ and $y_{i,0}$ relate for any given individual, one
+  can ask questions (or make claims) about this relationship and then use the
+  data to assess the evidence against the such hypotheses. His idea was that
+  we could use $p$-values to summarize the evidence against a hypothesis of
+  this sort. Now, what do you think it would mean for us to write a null
+  hypothesis about unobserved potential outcomes  $H_0: y_{i,1}=y_{i,0}$ and
+  then to say, $p=.01$? What would it mean for us to say $p=.3$? That is,
+  imagine that someone said, "Given this experiment, how plausible would it be
+  to observe this particular value if, in fact, there were no effect on any of
+  the neighborhoods in the study?" And that the answer was $p=.01$?
+
+\item A $p$-value is a probability and thus requires a probability
+  distribution --- and specifically requires a probability
+  distribution to characterize the situation posited by the null
+  hypothesis. Here, the null hypothesis is $H_0: y_{i,1}=y_{i,0}$ for
+  all $i$, although other null hypotheses will be useful in other
+  circumstances.  In frequentist statistics a probability distribution
+  requires that some physical act has been repeated: for example, the
+  probability that a flipped coin is heads can be defined as the long-run
+  proportion of heads across repeated flips. So, what repetition does the $p$
+  refer to in an experiment?
+  
+\item  We want to
+  generate a distribution that tells us all of the ways the experiment could
+  have turned out under the null hypothesis. We have a sense that we are
+  talking about repeating the experiment.   \citet[Chap
+  2]{rosenbaum2010design} explains that we can generate this distribution
+  because we know that $Y_i$ is a function of what we do not observe:
+   
+  \begin{equation}
+    Y_i=Z_i y_{i,1} + (1-Z_i) y_{i,0} \label{eq:obsandpot}
+  \end{equation}
+ 
+  So, if $y_{i,0}=y_{i,0}$ then $Y_i=y_{i,0}=y_{i,1}$.
+
+  Now, what does it mean to repeat the experiment? What is happening below?
+
+<<>>=
+##install.packages("mosaic")
+##library(mosaic)
+
+newteststat<-function(Y,Z){
+  Znew<-sample(Z)
+  mean(Y[Znew==1])-mean(Y[Znew==0])
+}
+
+nulldist<-replicate(1000,newteststat(Y=meddat$PV,Z=meddat$nhTrt))
+
+obsteststat<-with(meddat,mean(PV[Z==1])-mean(PV[Z==0]))
+
+mean(nulldist>=obstestsat)
+
+
+
+@
 
 
 \end{enumerate}
