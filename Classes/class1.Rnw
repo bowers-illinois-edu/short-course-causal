@@ -3,6 +3,7 @@
 % search and replace keep.comment=FALSE to TRUE for commented version
 \documentclass[10pt,letterpaper]{article}
 \usepackage{fontspec}
+\usepackage{ulem}
 
 \title{Session 1 --- Matching Short Course}
 
@@ -16,6 +17,7 @@
 %\excludeversion{comment}
 
 \begin{document}
+\normalem
 
 <<include=FALSE,cache=FALSE>>=
 opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='figs/fig',cache=FALSE,highlight=TRUE,width.cutoff=132,size='footnotesize',out.width='1.2\\textwidth',message=FALSE,comment=NA)
@@ -97,6 +99,30 @@ estimate the relationship between averages of them ($\bar{y}_{1}$ and
 $\bar{y}_{0}$) \cite{neyman:1923,angrist2009mostly}. I call this the
 "estimation approach."
 
+Just to be clear, here are the observed $Z_i$ and $Y_i$ for for a few of the
+Medell\'{i}n neighborhoods:
+
+<<>>=
+library(xtable)
+
+set.seed(20140714)
+tmp<-meddat[sample(1:nrow(meddat),10),c("nhTrt","PV")]
+y1<-with(tmp,ifelse(nhTrt==1,PV,NA))
+y0<-with(tmp,ifelse(nhTrt==0,PV,NA))
+theTab<-cbind(tmp,y1,y0)
+theXTab<-xtable(theTab,digits=2,display=c("d","d","f","f","f"))
+
+@
+
+This table shows that treatment assignment reveals one potential outcome per
+unit to us, but not both.
+
+<<results='asis'>>=
+print(theXTab,floating=FALSE)
+@
+
+
+
 Let us start with estimation.
 
 \item Estimate and interpret the average effect of the intervention on one of the outcomes
@@ -118,8 +144,10 @@ atePV
 \item What does this number have to do with $y_{i,1}$ and $y_{0,i}$? (Maybe we
   should discuss this as a group.) Here are some hints and ideas to help
   orient discussion. Below the math, I make the same demonstration by
-  simulation.
-
+  simulation. One guiding intuition is that the potential outcomes that we
+  observe can be thought of as a random sample of the finite population of
+  potential outcomes (i.e. the 25 $y_{i,1}$ revealed to us by randomized
+  treatment assignment are a random sample of the population of 48 $y_{i,1}$.)
  
     \citet{neyman:1923} proposed (1) that we decide to stop focusing on the
     individual level causal effects and instead be interested in $\bar{\tau}=
@@ -231,7 +259,6 @@ rug(mean(randdist),ticksize=.3,lwd=2,col="red")
 
 newformula<-reformulate(c("nhTrt",names(meddat)[4:25]),response="PV")
 lm1<-lm(newformula,data=meddat)
-library(xtable)
 xtablm1<-xtable(lm1,digits=2)
 @
 
@@ -286,21 +313,36 @@ weaknesses of this approach to \emph{statistical adjustment}?
   Now, what does it mean to repeat the experiment? What is happening below?
 
 <<>>=
-##install.packages("mosaic")
-##library(mosaic)
 
-newteststat<-function(Y,Z){
+newTestStat<-function(Y,Z){
   Znew<-sample(Z)
   mean(Y[Znew==1])-mean(Y[Znew==0])
 }
 
-nulldist<-replicate(1000,newteststat(Y=meddat$PV,Z=meddat$nhTrt))
+nullDist<-replicate(1000,newTestStat(Y=meddat$PV,Z=meddat$nhTrt))
 
-obsteststat<-with(meddat,mean(PV[Z==1])-mean(PV[Z==0]))
+obsTestStat<-with(meddat,mean(PV[nhTrt==1])-mean(PV[nhTrt==0]))
 
-mean(nulldist>=obstestsat)
+oneSidedP<-mean(nullDist<=obsTestStat)
 
+oneSidedP
 
+newTestStatRank<-function(Y,Z){
+  Znew<-sample(Z)
+  rankY<-rank(Y)
+  mean(rankY[Znew==1])-mean(rankY[Znew==0])
+}
+
+nullDistRank<-replicate(1000,newTestStatRank(Y=meddat$PV,Z=meddat$nhTrt))
+
+obsTestStatRank<-with(meddat,{rankPV<-rank(PV);
+		      mean(rankPV[nhTrt==1])-mean(rankPV[nhTrt==0])})
+
+nullDistRank<-replicate(1000,newTestStatRank(Y=meddat$PV,Z=meddat$nhTrt))
+
+oneSidedPRank<-mean(nullDistRank<=obsTestStatRank)
+
+oneSidedPRank
 
 @
 
