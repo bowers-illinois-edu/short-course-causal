@@ -125,21 +125,9 @@ print(theXTab,floating=FALSE)
 
 Let us start with estimation.
 
-\item Estimate and interpret the average effect of the intervention on one of the outcomes
-  of your choice. If you are using \texttt{hom}, I would advise using
+\item How would you estimate and interpret the average effect of the intervention on one of the outcomes
+  of your choice using R? If you are using \texttt{hom}, I would advise using
   \texttt{exp(hom)} to get back to the original scale.
-
-
-  \begin{comment}
-
-<<>>=
-
-atePV<-lm(PV~nhTrt,data=meddat)
-atePV
-
-@
-
-\end{comment}
 
 \item What does this number have to do with $y_{i,1}$ and $y_{0,i}$? (Maybe we
   should discuss this as a group.) Here are some hints and ideas to help
