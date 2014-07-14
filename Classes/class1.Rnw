@@ -1,10 +1,10 @@
 
-% For LaTeX-Box: root = exploration10.tex
+% For LaTeX-Box: root = class1.tex 
 % search and replace keep.comment=FALSE to TRUE for commented version
 \documentclass[10pt,letterpaper]{article}
 \usepackage{fontspec}
 
-\title{Session 2---Experimentos de Campo}
+\title{Session 1 --- Matching Short Course}
 
 \author{Jake Bowers}
 
@@ -23,176 +23,242 @@ opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='f
 
 \maketitle
 
-Profesor Costas Panagopoulos montó un experimento de campo con el intento de
-saber si anuncios en la prensa podrían aumentar la proporción votando en
-elecciones de concejales municipales en los EE.UU.
-
 \begin{enumerate}
     \setcounter{enumi}{-1}
-  \item Pueden cargar los datos del Newspapers Experiment en R asi:
+  \item Today we'll work with a dataset that documents a public policy
+    intervention. In 2004 the municipality of Medell\'{i}n, Columbia built
+    built the first line of the Metrocable --- a set of cable cars that
+    connected poor neighborhoods on the edges of the city to the center of the
+    city. Professor Magdalena Cerd\'{a} and her collaborators asked whether
+    this kind of integration could have an effect on violence in these poor
+    (and heretofore violent) neighborhoods. We have some of the data from this
+    project to use here.\footnote{The article was published in the American
+    Journal of Epidemiology in 2012.}
 
+    The data Cerd\'{a} collected tell us about the roughly 50 neighborhoods in
+    the study, about half of which had access to the Metrocable line and half
+    did not. You can load the data here:
+
+%    {\centering
+%    \includegraphics[width=.5\textwidth]{MedellinNeighborhoods.pdf}
+%    }
+
+    
 <<>>=
-newsdat<-read.csv(url("http://jakebowers.org/Data/newsdat.csv"))
+load("../Resources/Cerdaetal/meddat.rda")
 @
 
-\item Que cifra seria un buen estimado del efecto promedio de tratamiento? Aqui
-  tienes algunos ingredientes:
+I don't have a formal codebook but here are my guesses about the meanings of
+some of the variables:
 
-<<results="hide">>=
+\begin{Verbatim}
+  ## Covariates
+nh03         Neighborhood id
+nhGroup      Treatment (T) or Control (C)
+nhTrt        Treatment (1) or Control (0)
+nhHom        Mean homicide rate per 100,000 population in 2003
+nhClass      __
+nhSisben     __
+nhPopD       __
+nhDistCenter Distance to city center (km)
+nhQP03       __
+nhPV03       __
+nhTP03       __
+nhBI03       __
+nhCE03       __
+nhNB03       __
+nhMale       __
+nhAgeYoung   __
+nhAgeMid     __
+nhMarDom     __
+nhSepDiv     __
+nhOwn        __
+nhRent       __
+nhEmp        __
+nhAboveHS    __
+nhHS         __
+nhLogHom     Log Homicide (i.e. log(nhHom))
 
-estmeany1<-with(newsdat,mean(turnout[treat==1]))
-estmeany0<-with(newsdat,mean(turnout[treat==0]))
+## Outcomes
+BE      Neighborhood amenities Score 2008-2003
+CE      Collective Efficacy Score 2008-2003
+PV      Perceived Violence Score 2008-2003
+QP      Trust in local agencies Score 2008-2003
+TP      Reliance on police Score 2008-2003
+hom     Homicide rate per 100,000 population Score 2008-2003 (in differences in log odds)
+\end{Verbatim}
 
-print(estmeany1)
-print(estmeany0)
+Let us first do a very simple analysis to get concepts clear. 
 
-@
+I will write $Z_i=1$ to mean that a neighborhood $i$ was assigned
+intervention 1 (in this case, a Metrocable station), $y_{i,Z=1} \equiv y_{i,1}$
+to refer to the \emph{potential outcome} for a neighborhood assigned
+intervention and $y_{i,Z=0} \equiv y_{i,0}$ to refer to the counterfactual
+condition in which neighborhood $i$ did not receive the intervention.
 
-\begin{comment}
+I will also say that the Metrocable intervention had a \emph{causal effect} if
+$y_{i,1} \ne y_{0,i}$ (and no causal effect if $y_{i,1} = y_{i,0}$).
 
-<<>>=
-estmeany1-estmeany0
-@
+We tend to have two ways to use observed data ($Z$, the observed assignment of
+the intervention), and $Y$ (the observed outcome), to give us a hint about the
+relationship between $y_{i,1}$ and $y_{i,0}$ (and thus to give us a hint about
+causal effects. I say, "hint", because, the fact that \emph{we cannot know the true
+relationship between potential outcomes} is often called the "Fundamental
+problem of causal inference" \citep{holland:1986a,brady2008cae}.
 
-\end{comment}
+First, and simplest, we can say, "We do not know the true relationship between
+potential outcomes, but we can articulate a hypothesis about that relationship
+and then test this hypothesis." \cite{fisher:1935, rosenbaum2010}. This is
+what I call the "testing approach."
 
-\item Que relacion tiene este cifra con el efecto promedio de tratamiento
-  definado en terminos de respuestas potenciales, ($\bar{y}_1 - \bar{y}_0$)?
-  Vamos a armar algunos experimentos hipotéticos para intender.
+Second, and perhaps most commonly, we can say, "We do not know the true
+relationship at the individual level of $y_{i,1}$ and $y_{i,0}$, but we can
+estimate the relationship between averages of them ($\bar{y}_{1}$ and
+$\bar{y}_{0}$) \cite{neyman:1923,angrist2009mostly}. I call this the
+"estimation approach."
 
-  Primero vamos a hacer respuestas potenciales por los cuales sabemos todos los
-  valores:
+Let us start with estimation.
 
-<<>>=
-
-## Pongamos que el turnout que observamos es lo que hubieramos observado sin anuncios
-newsdat$y0<-newsdat$turnout
-
-## Hacemos un efecto causal verdadero de 10
-newsdat$y1<-with(newsdat,y0+10)
-
-## Ver el conjunto de datos
-print(newsdat)
-
-@
-
-Aqui pueden ver la relación causal que imaginamos/hagamos para hacer este
-prueba de sesgo:
-
-{\centering
-<<out.width=".3\\textwidth">>=
-with(newsdat,boxplot(list(y1=y1,y0=y0)))
-@
-}
-
-Pueden verificar que el promedio de $y_1$ menos el promedio de $y_0$ es 10?
-
-
-\begin{comment}
-
-<<>>=
-
-with(newsdat,mean(y1)-mean(y0))
-
-@
-\end{comment}
-
-\item Ahora vamos a asignar anuncios otra vez como imaginemos lo hizo
-  Panagopoulos y calcular un \emph{estimación} del efecto promedio de
-  tratamiento. Por favor usar estes linear 
-
-<<results="hide">>=
-
-set.seed(123456) ## para que podemos reproducir el proceso aleatorio
-newsdat$Z1<-sample(c(1,1,1,1,0,0,0,0))
-newsdat$Z1
-@
-
-Que hace la función \texttt{sample}? Pueden escribir el comando \texttt{
-sample(c(1,1,1,1,0,0,0,0)) } multiples veces para ver lo que hace (también,
-pueden leer el resultado de \texttt{help(sample)}).
-
-\begin{comment}
-Aqui sample() perturba el vector aleatoriamente para mantener siempre 4 en tratamiento y 4 en contro
-\end{comment}
-
-\item Ahora necesitamos hacer una respuesta observada un este simulación. Que
-  pasa aqui?
-
-<<>>=
-
-newsdat$Y<-with(newsdat,Z1*y1+(1-Z1)*y0)
-## newsdat$Y<-ifelse(newsdat$Z1==1,y1,y0)
-
-## Ver algunos columnas del conjunto de datos
-newsdat[,c("Z1","Y","y1","y0")]
-
-@
+\item Estimate and interpret the average effect of the intervention on one of the outcomes
+  of your choice. If you are using \texttt{hom}, I would advise using
+  \texttt{exp(hom)} to get back to the original scale.
 
 
-\item Usando el $Y$ que has creado, estima el efecto promedio de tratamiento.
-  Recuerdas que estimabas el efecto promedio de tratamiento usando los datos
-  reales arriba, asi que pueden cambiar tales lineas de código para hacer lo
-  con los datos simulados.
-
-
-\begin{comment}
+  \begin{comment}
 
 <<>>=
 
-estpromedioy1<-with(newsdat,mean(Y[Z1==1]))
-estpromedioy0<-with(newsdat,mean(Y[Z1==0]))
-
-
-estept<-estpromedioy1-estpromedioy0
-print(estept)
+atePV<-lm(PV~nhTrt,data=meddat)
+atePV
 
 @
 
 \end{comment}
 
-\item Ahora, aunque el efecto estimado no es igual al efecto verdadero, hay
-  una manera en que es un estimado bueno. Es bueno en una manera porque
-  podemos demostrar que, a través de repeticiones del experimento el promedio
-  de los estimados es igual a la verdad. Podemos decir la misma cosa asi:
-  $E(\widehat{\text{EPT}})=\text{EPT}$. Vamos a ver si este propiedad de ser sin
-  sesgo funciona en este investigación pequeño.
+\item What does this number have to do with $y_{i,1}$ and $y_{0,i}$? (Maybe we
+  should discuss this as a group.) Here are some hints and ideas to help
+  orient discussion. Below the math, I make the same demonstration by
+  simulation.
 
-  Puedes explicar lo que esta pasando aqui?
+ 
+    \citet{neyman:1923} proposed (1) that we decide to stop focusing on the
+    individual level causal effects and instead be interested in $\bar{\tau}=
+    (1/n) (\sum_{i=1}^n r_{1i}) - (1/n) (\sum_{i=1}^n r_{0i}) = \bar{r}_{1} -
+    \bar{r}_{0}$ (i.e. he suggested we choose to care about mean differences
+    of the counterfactuals rather than any individual counterfactuals
+    themselves) and (2) he claimed that $\hat{\bar{\tau}}=(1/m)\sum_{i=1}^n
+    Z_i R_i - (1/(n-m))\sum_{i=1}^n (1-Z_i) R_i$ was a good \textbf{estimator}
+    of $\bar{\tau}$ (where $R_i$ is observed outcomes and relates to potential
+    outcomes via $R_i=Z_i r_{1i}+(1-Z_i) r_{0i}$, $m$ is number of treated
+    observations and $n$ is total number of observations). We are going to
+    prove this is the case, for a specific understanding of ``good''.   
+ 
+    Neyman, chose the idea of ``unbiasedness'' for ``good''.
+    An unbiased estimator is an estimator (i.e. a formula that when
+    repeatedly applied to the data (across samples, across
+    assignments, etc..) produces a distribution --- a sampling
+    distribution, a randomization distribution), where the mean of
+    this distribution is the ``true'' value in the ``population'' (or
+    the experimental pool). In Neyman's example, the population is the
+    set of agricultural fields to which he wants to assign fertilizer
+    treatments. For us, it is these 48 neighborhoods. We can think of
+    experimental pools as ``finite populations.'' We can write this
+    overly wordy definition concisely like this:
+  $$E_{R}[\hat{\bar{\tau}}]=\bar{\tau},$$
+  where $E_{R}$ (the ``expected value'') is ``the average across all
+  ways to draw assignments, $Z$, from the urn.'' You'll mostly just
+  see something like $E[\hat{\beta}]=\beta$ as a statement that
+  whatever formula is giving you $\hat{\beta}$ is, on average across
+  imaginary replications, equal to $\beta$ --- is unbiased. Now, the
+  expectation operator, $E$ has a kind of algebra associated with it
+  such that $E[aX]=aE[X]$ if $X$ is something that can vary and $a$ is
+  some constant, or $E[X+Y]=E[X]+E[Y]$ if $X$ and $Y$ both vary
+  independently (or $E[aX_1+aX_2+\ldots]=a(E[X_1]+E[X_2]+\ldots)$).
   
-<<results="hide">>=
+  Here is an incomplete version of the derivation that shows that, in
+  fact, the observed sample difference of means can tell us something
+  about the unobserved population difference of means, and, in fact,
+  will be, on average, equal to the unobserved population difference
+  of means: i.e. that the sample difference of means is an unbiased
+  estimator of the population difference of means. 
+  
+  We want to show that $E_{R}[\hat{\bar{\tau}}]=\bar{\tau}$. Here only
+  $Z_i$ is random. And, I can tell you that $E_{R}[Z_i]=m/n$ (what
+  does this mean?). I use $E_R$ at first just to be clear that we are
+  taking expectations over the possible randomizations. Mostly you'll
+  just see people use $E$ without a discussion of the space over which the expectations are to be taken.
+  
+  
+     
+  \begin{align}
+    E_{R}\left[ \hat{\tau} \right]&=E_{R}\left[ \sum_{i=1}^n Z_i \frac{R_{i}}{m}-\sum_{i=1}^n (1-Z_i) \frac{R_{i}}{n-m} \right] \\
+    \intertext{recall that $R_{i}=Z_i r_{1i} + (1-Z_i) r_{0i}$ or $R_i=r_{0i}$ when $Z_i=0$, etc.}
+    &=E \left[ \sum_{i=1}^n Z_i \frac{r_{1i}}{m} \right]-E \left[ \sum_{i=1}^n (1-Z_i) \frac{r_{0i}}{n-m} \right] \\
+    \intertext{recall that only $Z$ is random and that $E_R[Z_i]=m/n$ because no pairs for now}
+    &=\sum_{i=1}^n \frac{m}{n} \frac{r_{1i}}{m}-\sum_{i=1}^n (1-\frac{m}{n}) \frac{r_{0i}}{n-m} \\
+    \intertext{now $(1-(m/n)=(n-m)/n$ }
+    &=\sum_{i=1}^n \frac{r_{1i}}{n}-\sum_{i=1}^n \frac{r_{0i}}{n} \\
+    &=\bar{r}_{1i}-\bar{r}_{0i}=\bar{\tau}
+  \end{align}
 
-otraestimado<-function(){
-  ## Znew<-sample(rep(c(1,0),c(4,4)))
-  Znew<-sample(c(1,1,1,1,0,0,0,0))
-  Y<-Znew*newsdat$y1+(1-Znew)*newsdat$y0
+  
+
+  
+
+\item Here is the same demonstration by simulation. Let's talk about what is
+  going on here. 
+
+<<>>=
+
+y0<-meddat$PV ## we could have also use y0<-rnorm(48) or something else
+y1<-y0+1
+
+
+newexperiment<-function(origZ,y1,y0){
+  Znew<-sample(origZ)
+  Y<-Znew*y1+(1-Znew)*y0
   epthat<-mean(Y[Znew==1] - mean(Y[Znew==0]))
   return(epthat)
 }
 
-otraestimado()
 
 ## set.seed(123456)
-randdist<-replicate(1000,otraestimado())
+randdist<-replicate(1000,newexperiment(origZ=meddat$nhTrt,y1=y1,y0=y0))
+
+summary(randdist)
 
 @
 
-Aqui pueden ver una simulación de la distribución del estimado efecto promedio
-de tratamiento. Puedes calcular el promedio de tal distribucion? Es
-exactamente igual a 10? Si no, tienes algunos intuiciones porque?
+What is this a plot of?
 
-<<out.width=".6\\textwidth",results="hide",fig.keep="none">>=
+<<out.width='.5\\textwidth'>>=
 plot(density(randdist))
 rug(randdist)
+rug(1,ticksize=.3,lwd=2,col="blue")
+rug(mean(randdist),ticksize=.3,lwd=2,col="red")
+
 @
 
-\item Entonces, como debemos interpretar la cifra con que empezemos --- el
-  $\widehat{EPT}$ del investigación verdadero/no simulado? Como debe uno
-  interpretar algún estimado del efecto promedio de tratamiento? En cual
-  manera es ``buena''? En que otras maneras todavía nos mantiene la ansiedad
-  de estar lejos de la verdad?
+
+\item Now, let us explore the testing approach to statistical inference for
+  causal effects.
+
+<<>>=
+@
+
+
 
 
 \end{enumerate}
+
+
+
+
+
+\bibliographystyle{apalike}
+\bibliography{/Users/jwbowers/Documents/PROJECTS/BIB/big}
+
+
+
 
 \end{document}
