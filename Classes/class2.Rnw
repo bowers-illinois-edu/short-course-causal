@@ -46,15 +46,10 @@ nhGroup      Treatment (T) or Control (C)
 nhTrt        Treatment (1) or Control (0)
 nhHom        Mean homicide rate per 100,000 population in 2003
 nhDistCenter Distance to city center (km)
-nhLogHom     Log Homicide (i.e. log(nhHom))
-
-## Outcomes (BE03,CE03,PV03,QP03,TP03 are baseline versions)
-BE      Neighborhood amenities Score 2008
-CE      Collective Efficacy Score 2008
-PV      Perceived Violence Score 2008
-QP      Trust in local agencies Score 2008
-TP      Reliance on police Score 2008
-hom     Homicide rate per 100,000 population Score 2008-2003 (in log odds)
+HomCount2003 Number of homicides in 2003
+Pop2003      Population in 2003
+HomCount2008 Number of homicides in 2008
+Pop2008      Population in 2008
 \end{Verbatim}
 
 \item Now, the Metrocable intervention was not a randomized experiment. And in
@@ -63,8 +58,13 @@ hom     Homicide rate per 100,000 population Score 2008-2003 (in log odds)
 
 
 <<>>=
+library(xtable)
 
-newformula<-reformulate(c("nhTrt",names(meddat)[4:25]),response="PV")
+## Convert counts to rates per 1000 people (to adjust for population)
+meddat$HomRate03<-with(meddat, (HomCount2003/Pop2003)*1000)
+meddat$HomRate08<-with(meddat, (HomCount2008/Pop2008)*1000)
+
+newformula<-reformulate(c("nhTrt",names(meddat)[5:24],"HomRate03"),response="HomRate08")
 lm1<-lm(newformula,data=meddat)
 xtablm1<-xtable(lm1,digits=2)
 @
@@ -78,86 +78,119 @@ simple effect that we calculated before? What are some of the strengths and
 weaknesses of this approach to \emph{statistical adjustment}?
 
 
-\item If we have extra time, we can explore the testing approach to
-  statistical inference for causal effects. Rather than change the quantity of
-  interest, \citet[Chap 2]{fisher:1935} showed us how to assess hypotheses
-  about the individual level causal effects. Specifically, that, even if one
-  cannot know how $y_{i,1}$ and $y_{i,0}$ relate for any given individual, one
-  can ask questions (or make claims) about this relationship and then use the
-  data to assess the evidence against the such hypotheses. His idea was that
-  we could use $p$-values to summarize the evidence against a hypothesis of
-  this sort. Now, what do you think it would mean for us to write a null
-  hypothesis about unobserved potential outcomes  $H_0: y_{i,1}=y_{i,0}$ and
-  then to say, $p=.01$? What would it mean for us to say $p=.3$? That is,
-  imagine that someone said, "Given this experiment, how plausible would it be
-  to observe this particular value if, in fact, there were no effect on any of
-  the neighborhoods in the study?" And that the answer was $p=.01$?
-
-\item A $p$-value is a probability and thus requires a probability
-  distribution --- and specifically requires a probability
-  distribution to characterize the situation posited by the null
-  hypothesis. Here, the null hypothesis is $H_0: y_{i,1}=y_{i,0}$ for
-  all $i$, although other null hypotheses will be useful in other
-  circumstances.  In frequentist statistics a probability distribution
-  requires that some physical act has been repeated: for example, the
-  probability that a flipped coin is heads can be defined as the long-run
-  proportion of heads across repeated flips. So, what repetition does the $p$
-  refer to in an experiment?
+\item Now, let's simplify this approach a bit. Let us choose one variable as a
+  "control", say, the baseline homicide rate as of 2003. Here is some code to
+  work with and understand.
   
-\item  We want to
-  generate a distribution that tells us all of the ways the experiment could
-  have turned out under the null hypothesis. We have a sense that we are
-  talking about repeating the experiment.   \citet[Chap
-  2]{rosenbaum2010design} explains that we can generate this distribution
-  because we know that $Y_i$ is a function of what we do not observe:
-   
-  \begin{equation}
-    Y_i=Z_i y_{i,1} + (1-Z_i) y_{i,0} \label{eq:obsandpot}
-  \end{equation}
- 
-  So, if $y_{i,0}=y_{i,0}$ then $Y_i=y_{i,0}=y_{i,1}$.
+<<results='hide'>>=
 
-  Now, what does it mean to repeat the experiment? What is happening below?
-
-<<>>=
-
-newTestStat<-function(Y,Z){
-  Znew<-sample(Z)
-  mean(Y[Znew==1])-mean(Y[Znew==0])
-}
-
-nullDist<-replicate(1000,newTestStat(Y=meddat$PV,Z=meddat$nhTrt))
-
-obsTestStat<-with(meddat,mean(PV[nhTrt==1])-mean(PV[nhTrt==0]))
-
-oneSidedP<-mean(nullDist<=obsTestStat)
-
-oneSidedP
-
-newTestStatRank<-function(Y,Z){
-  Znew<-sample(Z)
-  rankY<-rank(Y)
-  mean(rankY[Znew==1])-mean(rankY[Znew==0])
-}
-
-nullDistRank<-replicate(1000,newTestStatRank(Y=meddat$PV,Z=meddat$nhTrt))
-
-obsTestStatRank<-with(meddat,{rankPV<-rank(PV);
-		      mean(rankPV[nhTrt==1])-mean(rankPV[nhTrt==0])})
-
-nullDistRank<-replicate(1000,newTestStatRank(Y=meddat$PV,Z=meddat$nhTrt))
-
-oneSidedPRank<-mean(nullDistRank<=obsTestStatRank)
-
-oneSidedPRank
+lm2<-lm(HomRate08~nhTrt+HomRate03,data=meddat)
+summary(lm2)
 
 @
 
-% Next: how to know if your test is a good test (analogy to bias)
+<<out.width=".6\\textwidth">>=
+
+with(meddat, plot(HomRate03,HomRate08,pch=c(1,19)[nhTrt+1],
+		  xlab="Homicides/1000 (2003)",
+		  ylab="Homicides/1000 (2008)"))
+abline(coef(lm2)[1]+coef(lm2)[2]*0,coef(lm2)[3])
+abline(coef(lm2)[1]+coef(lm2)[2]*1,coef(lm2)[3],lwd=2)
+
+@
+
+So, what should we make of this attempt to adjust for baseline outcomes? Was
+it successful? How would we know? What is the problem that the graph suggests?
+
+
+\item How about adding another variable? 
+
+
+\item One idea, proposed by \citet{hansen:bowers:2008}, is to ask whether and
+  how neighborhoods might differ from one another on the different covariates
+  that we aim to adjust for. And, to compare those differences to the kinds of
+  differences that would be typical of a randomized experiment (with the same
+  size study and same randomization scheme). Here is one way to assess these
+  differences. \texttt{xBalance} compares the differences of means observed in
+  the data with the distributions of differences of means that we would see in
+  a randomized experiment with no effects. It also reports a hypothesis test
+  for the hypothesis that no linear combination of covariates differed
+  (the overall, or "omnibus", balance test).
+
+
+  Please interpret the following results.
+
+<<>>=
+library(RItools)
+
+balfmla<-update(newformula,nhTrt~.-nhTrt)
+xb1<-xBalance(balfmla,strata=list(raw=NULL),
+	      data=meddat,report="all")
+
+print(xb1)
+@
+
+
+<<out.width='.5\\textwidth'>>=
+plot(xb1,
+     which.vars=names(xb1$results[order(xb1$results[,"p","raw"]),"p",])
+     )
+
+@
+
+
+\item How to improve balance? Here is one idea, which I show with just a few
+  variables, but which I hope you improve. First, let's try to understand the
+  output and what optmatch is doing.
+
+<<results="hide">>=
+library(optmatch)
+##meddat$nhDistCenterF<-factor(meddat$nhDistCenter)
+##with(meddat,table(nhDistCenter,nhDistCenterF,exclude=c()))
+
+mahalDist<-match_on(nhTrt~HomRate03+nhDistCenter,data=meddat)
+
+fm1<-fullmatch(mahalDist,data=meddat)
+
+summary(fm1)
+
+xb2<-xBalance(balfmla,
+	      strata=list(raw=NULL,fm1=~fm1),
+	      data=meddat,report="all")
+
+@
+
+
+<<out.width='.5\\textwidth'>>=
+plot(xb2,
+     which.vars=dimnames(xb2$results[order(xb2$results[,"p","raw"]),"p",])[["vars"]]
+     )
+
+@
+
+Now trying a propensity score with a different variable:
+
+<<>>=
+
+glm1<-glm(nhTrt~HomRate03+nhPopD,data=meddat,family=binomial())
+## psDist<-match_on(glm1)
+meddat$pScore<-predict(glm1)
+psDist<-match_on(nhTrt~pScore,data=meddat)
+fm2<-fullmatch(psDist,data=meddat)
+summary(fm2,min.controls=0,max.controls=Inf)
+
+xb3<-xBalance(update(balfmla,.~.+pScore),
+	      strata=list(raw=NULL,fm1=~fm1,fm2=~fm2),
+	      data=meddat,report="all")
+
+
+@
+
 
 \end{enumerate}
 
 
+% Next: how to know if your test is a good test (analogy to bias)
 
 
 
