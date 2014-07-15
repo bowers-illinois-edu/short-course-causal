@@ -1,9 +1,9 @@
 
-% For LaTeX-Box: root = class1.tex 
+% For LaTeX-Box: root = class2.tex
 % search and replace keep.comment=FALSE to TRUE for commented version
 \documentclass[10pt,letterpaper]{article}
-\usepackage{fontspec}
-\usepackage{ulem}
+%\usepackage{fontspec}
+%\usepackage{ulem}
 
 \title{Session 2 --- Matching Short Course}
 
@@ -17,7 +17,7 @@
 %\excludeversion{comment}
 
 \begin{document}
-\normalem
+%\normalem
 
 <<include=FALSE,cache=FALSE>>=
 opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='figs/fig',cache=FALSE,highlight=TRUE,width.cutoff=132,size='footnotesize',out.width='1.2\\textwidth',message=FALSE,comment=NA)
@@ -27,9 +27,12 @@ opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='f
 
 \begin{enumerate}
     \setcounter{enumi}{-1}
-  \item  We'll continue to work with the Cerd\'{a} et al data.
-    
-    
+  \item  We'll continue to work with the Cerd\'{a} et al data. We completed
+    some statistical and conceptual preliminaries yesterday. Today we have two
+    goals (1) convince ourselves that, while linear models may be excellent
+    at estimating effects, they are not well suited for transparent
+    adjustment and (2) create a matched design for the Cerd\'{a} et al study.
+
 <<>>=
 load(url("http://jakebowers.org/Matching/meddat.rda"))
 ## or, if that doesn't work
@@ -54,8 +57,11 @@ Pop2008      Population in 2008
 
 \item Now, the Metrocable intervention was not a randomized experiment. And in
   most social science papers, we would tend to see something like the
-  following:
-
+  following table. What does the treatment effect mean in this table?  Why
+  would someone report the effect shown in the table instead of the simple
+  estimate of the average treatment effect that we calculated before? What are
+  some of the strengths and weaknesses of this approach to \emph{statistical
+  adjustment}?
 
 <<>>=
 library(xtable)
@@ -73,90 +79,185 @@ xtablm1<-xtable(lm1,digits=2)
 print(xtablm1,floating=FALSE)
 @
 
-Why would someone report the effect shown in the table above instead of the
-simple effect that we calculated before? What are some of the strengths and
-weaknesses of this approach to \emph{statistical adjustment}?
+\item Now, let's simplify this approach a bit so that we can understand what
+  is happening. Let us choose one variable as a "control", say, the baseline
+  homicide rate as of 2003. Here is some code to work with and understand.
 
-
-\item Now, let's simplify this approach a bit. Let us choose one variable as a
-  "control", say, the baseline homicide rate as of 2003. Here is some code to
-  work with and understand.
-  
 <<results='hide'>>=
-
 lm2<-lm(HomRate08~nhTrt+HomRate03,data=meddat)
 summary(lm2)
-
 @
 
-<<out.width=".6\\textwidth">>=
+Here is one bit of evidence showing how a linear model "controls for" the effects of
+background covariates:
 
+<<results="hide">>=
+e.outcome<-resid(lm(HomRate08~HomRate03,data=meddat))
+e.treatment<-resid(lm(nhTrt~HomRate03,data=meddat))
+lm2a<-lm(e.outcome~e.treatment)
+coef(lm2a)[[2]]
+all.equal(coef(lm2a)[[2]],coef(lm2)[["nhTrt"]])
+@
+
+And, here is another view of this small bit of adjustment (thick black line is
+the predicted line for the treatment group, thin line is for the control
+group):
+
+\begin{minipage}{.5\textwidth}
+<<fig1,fig.keep='none',echo=TRUE,tidy=FALSE>>=
 with(meddat, plot(HomRate03,HomRate08,pch=c(1,19)[nhTrt+1],
 		  xlab="Homicides/1000 (2003)",
 		  ylab="Homicides/1000 (2008)"))
 abline(coef(lm2)[1]+coef(lm2)[2]*0,coef(lm2)[3])
 abline(coef(lm2)[1]+coef(lm2)[2]*1,coef(lm2)[3],lwd=2)
-
 @
+\end{minipage}
+\begin{minipage}{.5\textwidth}
+<<printfig1,echo=FALSE,out.width='.80\\textwidth'>>=
+<<fig1>>
+@
+\end{minipage}
 
 So, what should we make of this attempt to adjust for baseline outcomes? Was
 it successful? How would we know? What is the problem that the graph suggests?
 
 
-\item How about adding another variable? 
+\item How about adding another variable? Here, I add population density to the
+  model for adjustment.
 
 
-\item One idea, proposed by \citet{hansen:bowers:2008}, is to ask whether and
-  how neighborhoods might differ from one another on the different covariates
-  that we aim to adjust for. And, to compare those differences to the kinds of
-  differences that would be typical of a randomized experiment (with the same
-  size study and same randomization scheme). Here is one way to assess these
-  differences. \texttt{xBalance} compares the differences of means observed in
-  the data with the distributions of differences of means that we would see in
-  a randomized experiment with no effects. It also reports a hypothesis test
-  for the hypothesis that no linear combination of covariates differed
-  (the overall, or "omnibus", balance test).
+<<results="hide">>=
 
+lm3<-lm(HomRate08~nhTrt+HomRate03+nhPopD,data=meddat)
+summary(lm3)
+
+@
+
+What does this plot suggest about extrapolation and functional form dependence
+if we were to try to do linear model based adjustment for these two variables?
+
+{\centering
+<<out.width='.4\\textwidth'>>=
+with(meddat,plot(HomRate03, nhPopD,pch=c(1,19)[nhTrt+1],
+		  xlab="Homicides/1000 (2003)",
+		  ylab="Population Density"))
+
+@
+}
+
+\item One idea, proposed by \citet{hansen:bowers:2008}, is to test whether
+  neighborhoods might differ from one another on the different covariates that
+  we aim to adjust for. Because we out hypothesis refers to an experiment, we
+  compare the differences in standardized means that we observe to the
+  distribution of differences we would observe in a large randomized
+  experiment with the same design. A well run and large experiment would
+  display very little differences between treated and control groups in terms
+  the distributions of the covariates.
+
+  The \texttt{xBalance} function in the \texttt{RItools} package  It also
+  reports a hypothesis test for an omnibus or overall hypothesis: that, across
+  all of the covariates, the configuration of mean differences is equivalent
+  to that we would see in a randomized experiment.
 
   Please interpret the following results.
 
-<<>>=
+<<results='hide'>>=
 library(RItools)
-
+options(digits=3,scipen=5)
 balfmla<-update(newformula,nhTrt~.-nhTrt)
 xb1<-xBalance(balfmla,strata=list(raw=NULL),
 	      data=meddat,report="all")
+#print(xb1)
 
-print(xb1)
+round(xb1$results,3)
+xb1$overall
+
+thextab<-xtable(xb1,digits=3)
 @
 
+<<eval=FALSE,results='asis'>>=
+## Not run
+print(thextab,floating=FALSE)
+@
 
 <<out.width='.5\\textwidth'>>=
 plot(xb1,
-     which.vars=names(xb1$results[order(xb1$results[,"p","raw"]),"p",])
-     )
-
+     which.vars=names(xb1$results[order(xb1$results[,"p","raw"]),"p",]))
 @
 
 
-\item How to improve balance? Here is one idea, which I show with just a few
-  variables, but which I hope you improve. First, let's try to understand the
-  output and what optmatch is doing.
+\item What kinds of strengths and weaknesses do you see in this balance
+  assessment method? How might we overcome them?
+
+\item How to improve balance? One idea is to make groups of neighborhoods
+  which are similar on important background variables. \citet{hansen:2004}
+  demonstrated one method for making such sets. Here, we will try it with just
+  one background variable, the baseline outcome, because we  imagine that it
+  is the most important one.
+
+  The input to the matching algorithm is a distance matrix.
+
+<<>>=
+library(optmatch)
+
+tmp <- meddat$HomRate03
+names(tmp) <- rownames(meddat)
+
+absdist <- match_on(tmp, z = meddat$nhTrt)
+
+str(absdist)
+absdist[1:5,1:5]
+@
+
+And the call to full matching is like this:
+
+<<>>=
+
+fm0<-fullmatch(absdist,data=meddat)
+summary(fm0)
+
+@
+
+Let's interpret this output and then we can talk a bit about what fullmatch is
+doing.
+
+
+\item The \texttt{optmatch} package produces optimal full matched designs. The
+  designs are "full" because, by default, no observations are deleted (we will
+  delete observations later). The designs are "optimal"  (the final design
+  minimizes the average weighted distance across all matched sets) rather than
+  "greedy" (the final design minimizes the distances between units in order).
+  Let's get clear about how greedy algorithms work. And get some intuition for
+  optimal algorithms.
+
+
+\item When we have more than one variable to match on, current approaches try
+  to produce a score that simplifies the problem without losing too much
+  information. In the Rosenbaum book, for example, he uses the Mahalnobis
+  distance:
 
 <<results="hide">>=
 library(optmatch)
-##meddat$nhDistCenterF<-factor(meddat$nhDistCenter)
-##with(meddat,table(nhDistCenter,nhDistCenterF,exclude=c()))
 
-mahalDist<-match_on(nhTrt~HomRate03+nhDistCenter,data=meddat)
+mahalDist<-match_on(nhTrt~HomRate03+nhPopD,data=meddat)
+str(mahalDist)
+mahalDist[1:5,1:5]
 
 fm1<-fullmatch(mahalDist,data=meddat)
 
 summary(fm1)
 
+
+@
+
+
+And now to assess balance
+<<assessbalance>>=
 xb2<-xBalance(balfmla,
 	      strata=list(raw=NULL,fm1=~fm1),
 	      data=meddat,report="all")
+
+xb2$overall
 
 @
 
@@ -168,7 +269,12 @@ plot(xb2,
 
 @
 
-Now trying a propensity score with a different variable:
+\item Now, above we used a Mahalanobis Distance to (1) reduce the dimension of
+  the covariate space (i.e. from 2 covariates to 1 score) and (2) to represent
+  the distance or relationships between the treated and control units.
+  Another common dimension reduction metric is the propensity score. Here is
+  how one might calculate a propensity score, match on it, and assess balance.
+
 
 <<>>=
 
@@ -183,9 +289,15 @@ xb3<-xBalance(update(balfmla,.~.+pScore),
 	      strata=list(raw=NULL,fm1=~fm1,fm2=~fm2),
 	      data=meddat,report="all")
 
+xb3$overall
+
 
 @
 
+
+\item Now that we have some sense about how to interpret balance assessments
+  and make matched designs, can we make a better matched design? What is the
+  best you can create?
 
 \end{enumerate}
 
