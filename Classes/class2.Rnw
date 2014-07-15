@@ -1,9 +1,8 @@
-
 % For LaTeX-Box: root = class2.tex
 % search and replace keep.comment=FALSE to TRUE for commented version
 \documentclass[10pt,letterpaper]{article}
 %\usepackage{fontspec}
-%\usepackage{ulem}
+\usepackage{ulem}
 
 \title{Session 2 --- Matching Short Course}
 
@@ -17,7 +16,7 @@
 %\excludeversion{comment}
 
 \begin{document}
-%\normalem
+\normalem
 
 <<include=FALSE,cache=FALSE>>=
 opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='figs/fig',cache=FALSE,highlight=TRUE,width.cutoff=132,size='footnotesize',out.width='1.2\\textwidth',message=FALSE,comment=NA)
@@ -65,18 +64,16 @@ Pop2008      Population in 2008
 
 <<>>=
 library(xtable)
-
 ## Convert counts to rates per 1000 people (to adjust for population)
 meddat$HomRate03<-with(meddat, (HomCount2003/Pop2003)*1000)
 meddat$HomRate08<-with(meddat, (HomCount2008/Pop2008)*1000)
-
 newformula<-reformulate(c("nhTrt",names(meddat)[5:24],"HomRate03"),response="HomRate08")
 lm1<-lm(newformula,data=meddat)
 xtablm1<-xtable(lm1,digits=2)
 @
 
 <<results='asis'>>=
-print(xtablm1,floating=FALSE)
+print(xtablm1,floating=FALSE,size='footnotesize')
 @
 
 \item Now, let's simplify this approach a bit so that we can understand what
@@ -145,9 +142,21 @@ with(meddat,plot(HomRate03, nhPopD,pch=c(1,19)[nhTrt+1],
 @
 }
 
-\item One idea, proposed by \citet{hansen:bowers:2008}, is to test whether
-  neighborhoods might differ from one another on the different covariates that
-  we aim to adjust for. Because we out hypothesis refers to an experiment, we
+\item Now, we have been adjusting but really didn't know (without those
+  figures) if the intervention and control neighborhoods really differ enough
+  on those variables to make us worries that these variables might confuse or
+  confound our interpretations. How different should the intervention and
+  control groups be such that we begin to worry that we should engage with
+  the alternative explanations represented by those variables? How should we
+  measure "difference"? In theory we are talking about differences in
+  multivariate distribution, but could we get away with looking at other kinds of
+  differences? What standard should we use to assess these differences? (Often
+  called "balance")
+  
+  One idea, proposed by \citet{hansen:bowers:2008}, is to use the randomized
+  experiment as a standard. They propose to test whether the intervention
+  groups differ in terms of their means beyond that which we would expect from
+  a randomized experiment. Because  our hypothesis refers to an experiment, we
   compare the differences in standardized means that we observe to the
   distribution of differences we would observe in a large randomized
   experiment with the same design. A well run and large experiment would
@@ -180,9 +189,11 @@ thextab<-xtable(xb1,digits=3)
 print(thextab,floating=FALSE)
 @
 
-<<out.width='.5\\textwidth'>>=
-plot(xb1,
-     which.vars=names(xb1$results[order(xb1$results[,"p","raw"]),"p",]))
+The object created by xBalance has a plot method. Here we plot the
+standardized differences in order of the one-by-one balance test $p$-values.
+
+<<out.width='.5\\textwidth',tidy=FALSE>>=
+plot(xb1, which.vars=names(xb1$results[order(xb1$results[,"p","raw"]),"p",]))
 @
 
 
@@ -209,7 +220,8 @@ str(absdist)
 absdist[1:5,1:5]
 @
 
-And the call to full matching is like this:
+Below we can see the call to the \texttt{fullmatching} function and also see
+some of the default output. How do you think you should interpret this output?
 
 <<>>=
 
@@ -217,9 +229,6 @@ fm0<-fullmatch(absdist,data=meddat)
 summary(fm0)
 
 @
-
-Let's interpret this output and then we can talk a bit about what fullmatch is
-doing.
 
 
 \item The \texttt{optmatch} package produces optimal full matched designs. The
@@ -251,7 +260,8 @@ summary(fm1)
 @
 
 
-And now to assess balance
+And now to assess balance:
+
 <<assessbalance>>=
 xb2<-xBalance(balfmla,
 	      strata=list(raw=NULL,fm1=~fm1),
@@ -262,7 +272,7 @@ xb2$overall
 @
 
 
-<<out.width='.5\\textwidth'>>=
+<<out.width='.5\\textwidth',tidy=FALSE>>=
 plot(xb2,
      which.vars=dimnames(xb2$results[order(xb2$results[,"p","raw"]),"p",])[["vars"]]
      )
