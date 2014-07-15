@@ -1,0 +1,276 @@
+% For LaTeX-Box: root = class2.tex
+% search and replace keep.comment=FALSE to TRUE for commented version
+\documentclass[10pt,letterpaper]{article}
+%\usepackage{fontspec}
+\usepackage{ulem}
+
+\title{Session 3 --- Matching Short Course}
+
+\author{Jake Bowers}
+
+\usepackage{../Styles/ps531}
+
+
+\includeversion{comment}
+\markversion{comment}
+%\excludeversion{comment}
+
+\begin{document}
+\normalem
+
+<<include=FALSE,cache=FALSE>>=
+opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='figs/fig',cache=FALSE,highlight=TRUE,width.cutoff=132,size='footnotesize',out.width='1.2\\textwidth',message=FALSE,comment=NA)
+@
+
+\maketitle
+
+\begin{enumerate}
+    \setcounter{enumi}{-1}
+  \item  We'll continue to work with the Cerd\'{a} et al data. We completed
+    some statistical and conceptual preliminaries on Monday. Yesterday, we
+    started work on making simple matched designs after we confronted some of
+    the problems with the use of linear models for statistical adjustment.
+
+<<>>=
+load(url("http://jakebowers.org/Matching/meddat.rda"))
+## or, if that doesn't work
+## meddat<-read.csv(url("http://jakebowers.org/Matching/meddat.csv"))
+@
+
+
+Here setup variables and formulas
+<<>>=
+meddat$HomRate03<-with(meddat, (HomCount2003/Pop2003)*1000)
+meddat$HomRate08<-with(meddat, (HomCount2008/Pop2008)*1000)
+newformula<-reformulate(c("nhTrt",names(meddat)[5:24],"HomRate03"),response="HomRate08")
+balfmla<-update(newformula,nhTrt~.-nhTrt)
+
+
+@
+
+\item Last time you worked on understanding what optimal full-matching
+  (without replacement) was doing (the use of a distance matrix, the
+  difference between greedy and optimal matching, the difference between
+  matching with and without replacement). As a review, can you explain what is
+  going on here? What are your thoughts about the strengths and weakness of
+  the balance testing procedure?
+
+
+<<results="hide">>=
+# install.packages("optmatch",dependencies=TRUE)
+library(optmatch)
+tmp <- meddat$HomRate03
+names(tmp) <- rownames(meddat)
+absdist <- match_on(tmp, z = meddat$nhTrt)
+fm0<-fullmatch(absdist,data=meddat)
+summary(fm0)
+@
+
+<<assessbalance,results="hide">>=
+library(RItools)
+xb0<-xBalance(balfmla,
+	      strata=list(raw=NULL,fm0=~fm0),
+	      data=meddat,
+	      report=c("std.diffs","z.scores","adj.means",
+                    "adj.mean.diffs", "chisquare.test","p.values"))
+
+xb0$overall
+## xb0$results
+@
+
+\item I think that we should drop the distance to city center variable. What
+  do you think? Why would we drop it? Why would we keep it?
+
+<<>>=
+with(meddat,table(nhDistCenter,nhTrt,exclude=c()))
+@
+
+<<>>=
+balfmla<-update(balfmla,.~.-nhDistCenter)
+xb0a<-xBalance(balfmla,
+	      strata=list(raw=NULL,fm0=~fm0),
+	      data=meddat,
+	      report=c("std.diffs","z.scores","adj.means",
+                    "adj.mean.diffs", "chisquare.test","p.values"))
+
+xb0a$overall
+
+@
+
+\item Some might be concerned that we are not checking for balance on the
+  distributions of these variables and instead are focusing too much on means.
+  One way to answer those concerns is by breaking these variables into parts,
+  here is one approach. What is going on here? (you might google for "ns
+  splines" to see some pictures).
+
+<<>>=
+## How many variables have more than a few values and are numeric? 
+sapply(meddat[,all.vars(balfmla)],function(x){ length(unique(x)) })
+sapply(meddat[,all.vars(balfmla)],function(x){ class(x) })
+
+library(splines)
+toExpandNms<-all.vars(balfmla)[3:21]
+reformulate(toExpandNms)
+tmp<-paste("ns(",toExpandNms,",df=4)",sep="") ##,collapse="+")
+balfmlaBig<-reformulate(tmp,response="nhTrt")
+
+xb0b<-xBalance(balfmlaBig,
+	      strata=list(raw=NULL,fm0=~fm0),
+	      data=meddat,
+	      report=c("std.diffs","z.scores","adj.means",
+                    "adj.mean.diffs", "chisquare.test","p.values"))
+
+xb0b$overall
+
+@
+
+\item Although we have reasonable although not too strong balance across this
+  set of variables,  we would like to adjust for them all. The problem, of
+  course, is that we cannot matching on them all at once. As you saw in the
+  Rosenbaum reading, the current set of solutions involves adding a step to
+  the process: to first reduce the dimension of the covariate set while
+  preserving essential/important information about the relationships among the
+  covariates (ex. using Mahalanobis distance) or relationships between the
+  covariates and the treatment (ex. using a propensity score). Here we compare
+  the two approaches starting with Mahalanobis distance. Can you explain this
+  distance metric to yourself or others? (Perhaps
+  this discussion would be useful:
+  \url{http://stats.stackexchange.com/questions/62092/bottom-to-top-explanation-of-the-mahalanobis-distance})
+
+<<results="hide">>=
+
+mahalDist<-match_on(balfmla,data=meddat)
+str(mahalDist)
+mahalDist[1:5,1:5]
+
+fm1<-fullmatch(mahalDist,data=meddat)
+
+summary(fm1)
+
+xb2<-xBalance(balfmla,
+	      strata=list(raw=NULL,fm1=~fm1),
+	      data=meddat,report="all")
+
+xb2$overall
+
+@
+
+
+<<eval=FALSE,out.width='.5\\textwidth',tidy=FALSE>>=
+plot(xb2,
+     which.vars=dimnames(xb2$results[order(xb2$results[,"p","raw"]),"p",])[["vars"]]
+     )
+
+@
+
+\item Now, above we used a Mahalanobis Distance to (1) reduce the dimension of
+  the covariate space (i.e. from \Sexpr{length(all.vars(balfmla)-1)}
+  covariates to 1 score) and (2) to represent the distance or relationships
+  between the treated and control units.  Another common dimension reduction
+  metric is the propensity score. The intuition behind the propensity is that
+  we only care about covariate imbalance insofar as it relates to treatment
+  assignment (and the outcome, because only when a covariate relates to both
+  do we see confounding/"omitted variable bias").  Here is how one might
+  calculate a propensity score, match on it, and assess balance.
+
+
+<<results="hide">>=
+
+glm1<-glm(balfmla,data=meddat,family=binomial())
+
+## See fitted(glm1) for more signs that this is bad.
+
+@
+
+Notice that this is a terrible fitting model!! What to do?? (This phenomenon
+is known as "separation" often happens when the number of variables in the
+model is close to the number of units in the sample and/or if some of the
+variable predict the treatment assignment very well. Here, I propose to use a
+kind of modern version of ridge regression (the "elastic net" penalized linear
+model) to fit the model (alternatively, you could try to use "bias-reduced"
+logistic regression or Gelman's \texttt{bayesglm} version of a simple Bayesian
+logistic model).
+
+<<>>=
+install.packages("glmnet",dependencies=TRUE)
+library(glmnet) ## you may need to install this package plus dependencies
+
+X<-model.matrix(update(balfmla,.~.-1),data=meddat)
+y<-meddat$nhTrt
+ridge1cv<-cv.glmnet(X,y,family="binomial",alpha=0)
+pScore<-predict(ridge1cv,newx=X,s="lambda.min")[,1]
+all.equal(names(pScore),row.names(meddat))
+meddat$pScore<-pScore
+@
+
+<<eval=FALSE>>=
+plot(density(meddat$pScore[meddat$nhTrt==1]),xlim=range(meddat$pScore))
+lines(density(meddat$pScore[meddat$nhTrt==0]),col="blue")
+@
+
+<<>>=
+
+## psDist<-match_on(glm1) ## I want to see balance on the p-score itself.
+## meddat$pScore<-predict(glm1)
+psDist<-match_on(nhTrt~pScore,data=meddat)
+fm2<-fullmatch(psDist,data=meddat)
+summary(fm2,min.controls=0,max.controls=Inf)
+
+xb3<-xBalance(update(balfmla,.~.+pScore),
+	      strata=list(raw=NULL,fm1=~fm1,fm2=~fm2),
+	      data=meddat,report="all")
+
+xb3$overall
+
+@
+
+
+\item So far we have not deleted any observations. However, sometimes it makes
+  sense to reduce the sample size in order to improve our attempts to
+  eliminate alternative explanations. The way that we do this involves
+  stating that certain pairs of observations ought never to be included in the
+  same matched set, we make these statements with the \texttt{caliper}
+  function (the idea is that we set a range outside of which we declare a
+  match to be bad). Here is an example. Can you explain this? (perhaps the
+  help page for \texttt{caliper} will be useful?)
+
+<<>>=
+## Notice that we have some very large distances in the psDist matrix (6sds!!)
+summary(as.vector(psDist))
+
+## Also, require that neighborhoods be relatively close in terms of baseline
+## homicide rates
+summary(as.vector(absdist))
+
+## Make a new mahalanobis distance matrix including a caliper based on the
+## propensity score and another caliper based on the baseline outcome.
+mhWithPsCaliper<-mahalDist+caliper(psDist,1)+caliper(absdist,1)
+as.matrix(mhWithPsCaliper)[1:5,1:10]
+
+@
+
+What kind of balance do we see with this match? How many observations do we
+lose?
+
+\item Now that we have some sense about how to interpret balance assessments
+  and make matched designs, can we make a better matched design? What is the
+  best you can create?
+
+
+\item Once we have matched design that we can defend, we want to estimate a
+  causal effect and/or test a hypothesis about a causal effect.
+
+\end{enumerate}
+
+
+% Next: how to know if your test is a good test (analogy to bias)
+
+
+
+\bibliographystyle{apalike}
+\bibliography{/Users/jwbowers/Documents/PROJECTS/BIB/big}
+
+
+
+
+\end{document}

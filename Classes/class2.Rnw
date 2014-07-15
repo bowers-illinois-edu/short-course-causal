@@ -209,6 +209,7 @@ plot(xb1, which.vars=names(xb1$results[order(xb1$results[,"p","raw"]),"p",]))
   The input to the matching algorithm is a distance matrix.
 
 <<>>=
+# install.packages("optmatch",dependencies=TRUE)
 library(optmatch)
 
 tmp <- meddat$HomRate03
@@ -255,7 +256,6 @@ mahalDist[1:5,1:5]
 fm1<-fullmatch(mahalDist,data=meddat)
 
 summary(fm1)
-
 
 @
 

@@ -1,0 +1,89 @@
+
+
+Bienvenidos al segundo semana de la Escuela de Invierno de Metodos. Soy Jake
+Bowers y estoy aqui para ayudar a Uds. empezar de trabajar con los metodos de
+Matching (uno podia decir "emparjeamiento", pero, como van a ver, no siempre
+debemos trabajar con pares.)
+
+Introduzo el curso en español para que sepan que pueden hacer preguntas en
+español. Pero, mas que nada pienso hablar en Ingles por (1) evitar hacer lo
+que digo mas claro en sentido y (2) porque el Ingles es, en este decada, el
+lenguage de ciencia --- asi que es buena practica para Uds.
+
+Ok. Let me introduce myself: I teach at the University of Illinois at
+Urbana-Champaign, and before that taught at the University of Michigan. My
+PhD. is from the University of California, Berkeley. As a methodologist,
+started studying time series and multilevel models; moved to what we tend to
+call "design-based" and "nonparametric" and/or "randomization-based"
+approaches. As a social scientist very interested in political behavior,
+especially political action (voting, protest, etc..). And I have long been
+interested in violence and its effects on political behavior. These days, I am
+working on a number of projects: one of them has to do with combining machine
+learning/statistical learning based procedures with procedures like matching
+and randomization inference. Another involves a field experiment in which we
+are planing to randomly assign television access to villages in northwestern Nigeria in an
+effort to change village norms related to violence.
+
+Now, would you mind introducing yourselves? In addition to your names, I'd be
+interested to hear about your own substantive interests. What papers are you
+writing? What questions worry you?
+
+
+Ok. In this first session of the day, I wanted to make sure that we are
+clear about certain concepts. The main concepts are: "Experiment",
+"Causality" and the subsidiary terms of art are "Confounding", "Alternative
+Explanations", "Adjustment". So, I thought that we would proceed like a
+graduate discussion seminar. Then, I thought that for the second session of
+the day, we'd work with R. 
+
+The reason I want to talk about these research design concepts is that,
+matching is, in essence, a kind of modern and algorithmic approach to
+research design more than it is a statistical procedure. In fact, as we'll
+see, matching itself merely creates matches --- the statistical inference part
+(confidence intervals, etc..) is separate although we will have to respect the
+design imposed by the matching when we do hypothesis tests, etc.. 
+
+And I wanted to start by talking about experiments because experiments
+(especially randomized experiments) are a kind of standard or useful mental
+model for the kind research design that we tend to desire when we create a
+matched design. This is not to say that matching is a substitute for real
+experiments, but to say experiments are an archetype toward which we ought to
+strive in many (although not all) research situations.
+
+So, let's start with some questions that seem almost overly simple but I am
+happy for you to jump in to direct the conversation about the first set of
+readings in directions that are most useful to you.
+
+What is an experiment? Say you told your grandparents that you were doing an
+experiment and they said, "What is an experiment?" what would you say? What is
+the minimal example of an experiment?
+
+What are characteristics of a good experiment?
+
+What are some of the strengths and weakness of experiments? 
+
+Kinder and Palfrey talk about "interpretable comparisons", and Rosenbaum talks about "Eliminating plausible alternatives to treatment effects". What are they talking about?
+
+
+# Kinder and Palfrey
+
+- Experiment defined: intervention, control
+- Main goal: interpretable comparisons
+- Value of methodological diversity
+- Unexpected and "unguided" experiments? the importance of discoveries?
+
+## Limitations of experiments
+
+- meaning of treatments (concepts and measurement)
+- history/social structure
+- generalizability (subjects know they are in an experiments, settings of
+experiments, samples of convenience) (narrowly defined and improperly understood)
+
+
+So, what we would like from an observational study is the ability to eliminate plausible alternative explanations of treatment effects, for example. We would also like some clear standards so that we can know whether and how we have eliminated those explanations. This is what we'll try to work on later today and this week. 
+
+Break Time.
+
+
+
+
