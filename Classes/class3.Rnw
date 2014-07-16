@@ -1,4 +1,6 @@
-% For LaTeX-Box: root = class2.tex
+
+
+% For LaTeX-Box: root = class3.tex
 % search and replace keep.comment=FALSE to TRUE for commented version
 \documentclass[10pt,letterpaper]{article}
 %\usepackage{fontspec}
@@ -20,6 +22,8 @@
 
 <<include=FALSE,cache=FALSE>>=
 opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='figs/fig',cache=FALSE,highlight=TRUE,width.cutoff=132,size='footnotesize',out.width='1.2\\textwidth',message=FALSE,comment=NA)
+
+options(width=110,digits=3)
 @
 
 \maketitle
@@ -72,7 +76,7 @@ xb0<-xBalance(balfmla,
 	      strata=list(raw=NULL,fm0=~fm0),
 	      data=meddat,
 	      report=c("std.diffs","z.scores","adj.means",
-                    "adj.mean.diffs", "chisquare.test","p.values"))
+		       "adj.mean.diffs", "chisquare.test","p.values"))
 
 xb0$overall
 ## xb0$results
@@ -88,10 +92,10 @@ with(meddat,table(nhDistCenter,nhTrt,exclude=c()))
 <<>>=
 balfmla<-update(balfmla,.~.-nhDistCenter)
 xb0a<-xBalance(balfmla,
-	      strata=list(raw=NULL,fm0=~fm0),
-	      data=meddat,
-	      report=c("std.diffs","z.scores","adj.means",
-                    "adj.mean.diffs", "chisquare.test","p.values"))
+	       strata=list(raw=NULL,fm0=~fm0),
+	       data=meddat,
+	       report=c("std.diffs","z.scores","adj.means",
+			"adj.mean.diffs", "chisquare.test","p.values"))
 
 xb0a$overall
 
@@ -115,10 +119,10 @@ tmp<-paste("ns(",toExpandNms,",df=4)",sep="") ##,collapse="+")
 balfmlaBig<-reformulate(tmp,response="nhTrt")
 
 xb0b<-xBalance(balfmlaBig,
-	      strata=list(raw=NULL,fm0=~fm0),
-	      data=meddat,
-	      report=c("std.diffs","z.scores","adj.means",
-                    "adj.mean.diffs", "chisquare.test","p.values"))
+	       strata=list(raw=NULL,fm0=~fm0),
+	       data=meddat,
+	       report=c("std.diffs","z.scores","adj.means",
+			"adj.mean.diffs", "chisquare.test","p.values"))
 
 xb0b$overall
 
@@ -149,7 +153,9 @@ summary(fm1)
 
 xb2<-xBalance(balfmla,
 	      strata=list(raw=NULL,fm1=~fm1),
-	      data=meddat,report="all")
+	      data=meddat,
+	      report=c("std.diffs","z.scores","adj.means",
+		       "adj.mean.diffs", "chisquare.test","p.values"))
 
 xb2$overall
 
@@ -161,17 +167,17 @@ plot(xb2,
      which.vars=dimnames(xb2$results[order(xb2$results[,"p","raw"]),"p",])[["vars"]]
      )
 
-@
+     @
 
-\item Now, above we used a Mahalanobis Distance to (1) reduce the dimension of
-  the covariate space (i.e. from \Sexpr{length(all.vars(balfmla)-1)}
-  covariates to 1 score) and (2) to represent the distance or relationships
-  between the treated and control units.  Another common dimension reduction
-  metric is the propensity score. The intuition behind the propensity is that
-  we only care about covariate imbalance insofar as it relates to treatment
-  assignment (and the outcome, because only when a covariate relates to both
-  do we see confounding/"omitted variable bias").  Here is how one might
-  calculate a propensity score, match on it, and assess balance.
+     \item Now, above we used a Mahalanobis Distance to (1) reduce the dimension of
+     the covariate space (i.e. from \Sexpr{length(all.vars(balfmla))-1}
+			  covariates to 1 score) and (2) to represent the distance or relationships
+     between the treated and control units.  Another common dimension reduction
+     metric is the propensity score. The intuition behind the propensity is that
+     we only care about covariate imbalance insofar as it relates to treatment
+     assignment (and the outcome, because only when a covariate relates to both
+		 do we see confounding/"omitted variable bias").  Here is how one might
+     calculate a propensity score, match on it, and assess balance.
 
 
 <<results="hide">>=
@@ -192,7 +198,7 @@ logistic regression or Gelman's \texttt{bayesglm} version of a simple Bayesian
 logistic model).
 
 <<>>=
-install.packages("glmnet",dependencies=TRUE)
+## install.packages("glmnet",dependencies=TRUE)
 library(glmnet) ## you may need to install this package plus dependencies
 
 X<-model.matrix(update(balfmla,.~.-1),data=meddat)
@@ -218,7 +224,9 @@ summary(fm2,min.controls=0,max.controls=Inf)
 
 xb3<-xBalance(update(balfmla,.~.+pScore),
 	      strata=list(raw=NULL,fm1=~fm1,fm2=~fm2),
-	      data=meddat,report="all")
+	      data=meddat,
+	      report=c("std.diffs","z.scores","adj.means",
+		       "adj.mean.diffs", "chisquare.test","p.values"))
 
 xb3$overall
 
@@ -250,7 +258,31 @@ as.matrix(mhWithPsCaliper)[1:5,1:10]
 @
 
 What kind of balance do we see with this match? How many observations do we
-lose?
+lose? Which observations did we lose? How are they different from the others?
+(i.e. What kind of neighborhoods are we limiting our inferences to?)
+
+<<>>=
+
+fm3<-fullmatch(mhWithPsCaliper,data=meddat)
+summary(fm3,min.controls=0,max.controls=Inf)
+
+all.equal(names(fm3),row.names(meddat))
+
+meddat$fm3<-fm3
+@
+
+
+<<results="hide">>=
+
+## These next lines print out too much. How could we limit what we look at? Or
+## look at the difference between these neighorhoods more succinctly?
+
+meddat[unmatched(meddat$fm3),]
+summary(meddat[unmatched(meddat$fm3),all.vars(balfmla)])
+summary(meddat[matched(meddat$fm3),all.vars(balfmla)])
+
+@
+
 
 \item Now that we have some sense about how to interpret balance assessments
   and make matched designs, can we make a better matched design? What is the
@@ -258,7 +290,142 @@ lose?
 
 
 \item Once we have matched design that we can defend, we want to estimate a
-  causal effect and/or test a hypothesis about a causal effect.
+  causal effect and/or test a hypothesis about a causal effect. Let us focus
+  for the moment on estimation. Here are three proposals that arise from ideas
+  I've read in \cite{freedman2008rae}, \citep{freedman2008rdn}, and
+  \citep{linlr:2011}, and \citet{miratrix2012adjusting}. 
+
+<<>>=
+
+lmAte1<-lm(HomRate08~nhTrt+fm3,data=meddat)
+lmAte2<-lm(HomRate08~nhTrt*fm3,data=meddat)
+lmAte3<-lm(HomRate08~nhTrt,data=meddat,subset=matched(fm3))
+
+Ate1<-coef(lmAte1)[["nhTrt"]]
+Ate3<-coef(lmAte3)[["nhTrt"]]
+
+makeAte2<-function(thelm){
+  preddat<-na.omit(data.frame(nhTrt=rep(c(0,1),nrow(meddat)),fm3=rep(meddat$fm3,each=2)))
+  haty1<-predict(thelm,newdata=subset(preddat,subset=nhTrt==1))
+  haty0<-predict(thelm,newdata=subset(preddat,subset=nhTrt==0))
+  mean(haty1)-mean(haty0)
+}
+
+## Another version:
+options(show.signif.stars=FALSE)
+
+xbAte4<-xBalance(nhTrt~HomRate08,
+		 strata=list(fm3=~fm3),
+		 data=meddat[!is.na(meddat$fm3),],
+		 report=c("std.diffs","z.scores","adj.means",
+			  "adj.mean.diffs", "chisquare.test","p.values"))
+
+Ate4<-xbAte4$results[,"adj.diff",]
+
+@
+
+So,  which do we prefer? I setup this simulation to assess them. What is going
+on here? 
+<<cache=TRUE>>=
+## define a function that re-assigns treatment with equal probability within 
+## matched set or experimental block
+set.assignment<-function(set,z){ 
+  ## library(mosaic);  shuffle(z,within=pair) is more elegant but harder to understand as code
+  unsplit(lapply(split(z,set),sample),set)
+}
+
+
+## define a function which reveals a difference in observed outcome and calculates
+## a different mean difference given a different treatment vector
+newExperimentAndATE<-function(thez,y1,y0,thedata){
+  message(".",appendLF=FALSE) ## To see how fast this is running
+
+  newobsy<-thez*y1+(1-thez)*y0 
+  lmAte1<-lm(newobsy~thez+fm3,data=thedata)
+  lmAte2<-lm(newobsy~thez*fm3,data=thedata)
+  lmAte3<-lm(newobsy~thez,data=thedata,subset=matched(fm3))
+
+  Ate1<-coef(lmAte1)[["thez"]]
+  Ate3<-coef(lmAte3)[["thez"]]
+
+  makeAte2<-function(thelm){
+    preddat<-na.omit(data.frame(thez=rep(c(0,1),nrow(thedata)),fm3=rep(thedata$fm3,each=2)))
+    haty1<-predict(thelm,newdata=subset(preddat,subset=thez==1))
+    haty0<-predict(thelm,newdata=subset(preddat,subset=thez==0))
+    mean(haty1)-mean(haty0)
+  }
+
+  Ate2<-makeAte2(lmAte2)
+
+  ## Another version:
+  options(show.signif.stars=FALSE)
+
+  xbAte4<-xBalance(thez~newobsy,
+		   strata=list(fm3=~fm3),
+		   data=thedata[!is.na(thedata$fm3),],
+		   report=c("std.diffs","z.scores","adj.means",
+			    "adj.mean.diffs", "chisquare.test","p.values"))
+  Ate4<-xbAte4$results[,"adj.diff",]
+  return(c(Ate1=Ate1,Ate2=Ate2,Ate3=Ate3,Ate4=Ate4))
+}
+
+
+
+y0<-meddat$HomRate08[matched(meddat$fm3)]
+y1<-y0-.3 ## for now presume the same effect for all neighborhoods
+
+newExperimentAndATE(thez=with(meddat[matched(meddat$fm3),],set.assignment(fm3,nhTrt)),
+		    y1=y1,y0=y0,
+		    thedata=meddat[matched(meddat$fm3),])
+
+set.seed(20140715)
+
+library(parallel)
+##ateDists<-replicate(1000,
+ateDists<-mclapply(1:10000,function(i){
+		   newExperimentAndATE(thez=with(meddat[matched(meddat$fm3),],
+						 set.assignment(fm3,nhTrt)),
+				       y1=y1,y0=y0,
+				       thedata=meddat[matched(meddat$fm3),])},
+		   mc.cores=detectCores()
+		   )
+
+
+ateDistsArr<-simplify2array(ateDists)
+
+apply(ateDistsArr,1,summary)
+apply(ateDistsArr,1,sd)
+
+@
+
+\item Notice that I set the true relationship to be constant across matched
+  sets. I wonder what would happen if some sets had one relationship and other
+  sets had another? Here is some initial evidence about the way that the effect
+  might vary across sets.
+
+
+<<results="hide">>=
+
+makeAteBySet<-function(thelm){
+  preddat<-expand.grid(nhTrt=c(0,1),fm3=levels(fm3))
+  haty1<-predict(thelm,newdata=subset(preddat,subset=nhTrt==1))
+  haty0<-predict(thelm,newdata=subset(preddat,subset=nhTrt==0)) 
+  return(haty1-haty0)
+}
+
+ateBySet<-makeAteBySet(lmAte2)
+
+ateBySet2<-sapply(split(meddat,meddat$fm3),function(dat){
+		  with(dat,mean(HomRate08[nhTrt==1])-mean(HomRate08[nhTrt==0]))
+		   })
+
+ateBySet
+
+ateBySet2
+
+@
+
+
 
 \end{enumerate}
 
