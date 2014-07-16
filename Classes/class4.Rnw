@@ -75,31 +75,89 @@ library(optmatch)
 tmp <- meddat$HomRate03
 names(tmp) <- rownames(meddat)
 absdist <- match_on(tmp, z = meddat$nhTrt)
-
-## Propensity score distance
 X<-model.matrix(update(balfmla,.~.-1),data=meddat)
 y<-meddat$nhTrt
+set.seed(12345)
 ridge1cv<-cv.glmnet(X,y,family="binomial",alpha=0,type.measure="class")
-pScore<-predict(ridge1cv,newx=X,s="lambda.min")[,1]
+pScore<-predict(ridge1cv,newx=X,s="lambda.1se")[,1]
 stopifnot(all.equal(names(pScore),row.names(meddat)))
 meddat$pScore<-pScore
 psDist<-match_on(nhTrt~pScore,data=meddat)
 
+##Other pscores (may be faster and easier)
+## install.packages("brglm",dependencies=TRUE)
+library(brglm)
+brglm1<-brglm(balfmla,data=meddat,family=binomial)
+pScore2<-predict(brglm1)
+meddat$pScore2<-pScore2
+psDist2<-match_on(nhTrt~pScore2,data=meddat)
+
+## Overlapping propensity score plot
+## par(mfrow=c(1,2))
+## with(meddat,boxplot(split(pScore2,nhTrt)))
+## with(meddat,boxplot(split(pScore,nhTrt)))
+
 ## Mahalanobis distance
+meddatRanks<-as.data.frame(sapply(meddat[,all.vars(balfmla)],rank))
+row.names(meddatRanks)<-row.names(meddat)
+meddatRanks$nhTrt<-meddat$nhTrt
+
 mahalDist<-match_on(balfmla,data=meddat)
 
 ## Match on mahalanobis distance plus two calipers
-mhWithPsCaliper<-mahalDist+caliper(psDist,1)+caliper(absdist,1)
+### Use the calipers to exclude really bad matches.
+quantile(as.vector(mahalDist),seq(0,1,.1))
+quantile(as.vector(psDist),seq(0,1,.1))
+quantile(as.vector(psDist2),seq(0,1,.1))
+quantile(as.vector(absdist),seq(0,1,.1))
 
-fm1<-fullmatch(mhWithPsCaliper,data=meddat)
-summary(fm1,min.controls=0,max.controls=Inf)
-xb1<-xBalance(update(balfmla,.~.+pScore),
-	      strata=list(raw=NULL,fm1=~fm1),
+fm1<-fullmatch(mahalDist+caliper(psDist2,3),data=meddatRanks,tol=.00001)
+fm2<-fullmatch(psDist2+caliper(psDist2,3),data=meddat,tol=.00001,min.controls=.25,max.controls=4)
+pm2<-pairmatch(psDist2,data=meddat,tol=.00001,remove.unmatchables=TRUE)
+## pm2<-pairmatch(mahalDist+caliper(psDist2,4),data=meddat,tol=.00001,
+##		remove.unmatchables=TRUE)
+## fm2a<-fullmatch(psDist+caliper(psDist,3),data=meddat,tol=.00001)
+##fm2a<-fullmatch(absdist+caliper(psDist2,3),data=meddat,tol=.00001)
+
+xb1<-xBalance(update(balfmla,.~.+pScore2),
+	      strata=list(raw=NULL,fm1=~fm1,fm2=~fm2,pm2=~pm2),
 	      data=meddat,
 	      report=c("std.diffs","z.scores","adj.means",
 		       "adj.mean.diffs", "chisquare.test","p.values"))
 xb1$overall
+
+summary(fm1,min.controls=0,max.controls=Inf)
+table(matched(fm1))
+summary(fm2,min.controls=0,max.controls=Inf)
+table(matched(fm2))
+
+
 @
+
+\item Here are two treatment effects estimated using the harmonic mean
+  weighting that I like (plus the unadjusted effect):
+
+<<>>=
+
+lmRaw<-lm(HomRate08~nhTrt,data=meddat)
+lmFm1<-lm(HomRate08~nhTrt+fm1,data=meddat)
+lmFm2<-lm(HomRate08~nhTrt+fm2,data=meddat)
+
+ateRaw<-coef(lmRaw)[["nhTrt"]]
+ateFm1<-coef(lmFm1)[["nhTrt"]]
+ateFm2<-coef(lmFm2)[["nhTrt"]]
+
+c(ateRaw,ateFm1,ateFm2)
+
+@
+
+If we tested a hypothesis about one of these effects, what would it mean?
+(i.e. Imagine that we said, $H_0: \tau=0$ and got $p=.02$, how would you
+explain this to an educated person who is not a statistician?)
+
+\item 
+
+
 
 
 \end{enumerate}

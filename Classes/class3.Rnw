@@ -60,7 +60,7 @@ balfmla<-update(newformula,nhTrt~.-nhTrt)
   strengths and weakness of the balance testing procedure?
 
 
-<<results="hide">>=
+<<results="markup">>=
 # install.packages("optmatch",dependencies=TRUE)
 library(optmatch)
 tmp <- meddat$HomRate03
@@ -70,7 +70,7 @@ fm0<-fullmatch(absdist,data=meddat)
 summary(fm0)
 @
 
-<<assessbalance,results="hide">>=
+<<assessbalance,results="markup">>=
 library(RItools)
 xb0<-xBalance(balfmla,
 	      strata=list(raw=NULL,fm0=~fm0),
@@ -86,7 +86,7 @@ xb0$overall
   do you think? Why would we drop it? Why would we keep it? Maybe this table
   helps.
 
-<<results="hide">>=
+<<results="markup">>=
 with(meddat,table(nhDistCenter,nhTrt,exclude=c()))
 @
 
@@ -110,7 +110,7 @@ xb0a$overall
   here is one approach. What is going on here? (you might google for "ns
   splines" to see some pictures).
 
-<<results="hide",tidy=FALSE>>=
+<<results="markup",tidy=FALSE>>=
 ## How many variables have more than a few values and are numeric?
 sapply(meddat[,all.vars(balfmla)],function(x){ length(unique(x)) })
 sapply(meddat[,all.vars(balfmla)],function(x){ class(x) })
@@ -143,7 +143,7 @@ xb0b$overall
   metric to yourself or others? (Perhaps this discussion would be useful:
   \url{http://stats.stackexchange.com/questions/62092/bottom-to-top-explanation-of-the-mahalanobis-distance})
 
-<<results="hide">>=
+<<results="markup">>=
 
 mahalDist<-match_on(balfmla,data=meddat)
 str(mahalDist)
@@ -182,7 +182,7 @@ plot(xb2,
   calculate a propensity score, match on it, and assess balance.
 
 
-<<results="hide">>=
+<<results="markup">>=
 
 glm1<-glm(balfmla,data=meddat,family=binomial(link="logit"))
 
@@ -263,7 +263,7 @@ plot(density(meddat$pScore[meddat$nhTrt==1]),xlim=range(meddat$pScore))
 lines(density(meddat$pScore[meddat$nhTrt==0]),col="blue")
 @
 
-<<results="hide">>=
+<<results="markup">>=
 
 ## psDist<-match_on(glm1) ## I want to see balance on the p-score itself.
 ## meddat$pScore<-predict(glm1)
@@ -321,7 +321,7 @@ meddat$fm3<-fm3
 @
 
 
-<<results="hide">>=
+<<results="markup">>=
 
 ## These next lines print out too much. How could we limit what we look at? Or
 ## look at the difference between these neighorhoods more succinctly?
@@ -454,7 +454,7 @@ apply(ateDistsArr,1,sd)
   might vary across sets.
 
 
-<<results="hide">>=
+<<results="markup">>=
 
 makeAteBySet<-function(thelm){
   preddat<-expand.grid(nhTrt=c(0,1),fm3=levels(fm3))
