@@ -240,6 +240,8 @@ summary(fm0)
   Let's get clear about how greedy algorithms work. And get some intuition for
   optimal algorithms.
 
+ %% Insert a demo of greedy versus optimal and with versus without
+ %replacement.  Perhaps see about another kind of optimal? 
 
 \item When we have more than one variable to match on, current approaches try
   to produce a score that simplifies the problem without losing too much

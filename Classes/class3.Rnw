@@ -42,7 +42,7 @@ load(url("http://jakebowers.org/Matching/meddat.rda"))
 @
 
 
-Here setup variables and formulas
+Before we begin you should create the outcome variables and useful formulas
 <<>>=
 meddat$HomRate03<-with(meddat, (HomCount2003/Pop2003)*1000)
 meddat$HomRate08<-with(meddat, (HomCount2008/Pop2008)*1000)
@@ -56,8 +56,8 @@ balfmla<-update(newformula,nhTrt~.-nhTrt)
   (without replacement) was doing (the use of a distance matrix, the
   difference between greedy and optimal matching, the difference between
   matching with and without replacement). As a review, can you explain what is
-  going on here? What are your thoughts about the strengths and weakness of
-  the balance testing procedure?
+  going on in this next bit of code? What are your thoughts about the
+  strengths and weakness of the balance testing procedure?
 
 
 <<results="hide">>=
@@ -82,12 +82,15 @@ xb0$overall
 ## xb0$results
 @
 
-\item I think that we should drop the distance to city center variable. What
-  do you think? Why would we drop it? Why would we keep it?
+\item Before we proceed, I think that we should drop the distance to city center variable. What
+  do you think? Why would we drop it? Why would we keep it? Maybe this table
+  helps.
 
-<<>>=
+<<results="hide">>=
 with(meddat,table(nhDistCenter,nhTrt,exclude=c()))
 @
+
+If we drop it, the unadjusted and simple baseline-matched balance changes.
 
 <<>>=
 balfmla<-update(balfmla,.~.-nhDistCenter)
@@ -98,7 +101,7 @@ xb0a<-xBalance(balfmla,
 			"adj.mean.diffs", "chisquare.test","p.values"))
 
 xb0a$overall
-
+## plot(xb0a)
 @
 
 \item Some might be concerned that we are not checking for balance on the
@@ -107,8 +110,8 @@ xb0a$overall
   here is one approach. What is going on here? (you might google for "ns
   splines" to see some pictures).
 
-<<>>=
-## How many variables have more than a few values and are numeric? 
+<<results="hide",tidy=FALSE>>=
+## How many variables have more than a few values and are numeric?
 sapply(meddat[,all.vars(balfmla)],function(x){ length(unique(x)) })
 sapply(meddat[,all.vars(balfmla)],function(x){ class(x) })
 
@@ -125,20 +128,19 @@ xb0b<-xBalance(balfmlaBig,
 			"adj.mean.diffs", "chisquare.test","p.values"))
 
 xb0b$overall
-
 @
 
-\item Although we have reasonable although not too strong balance across this
-  set of variables,  we would like to adjust for them all. The problem, of
-  course, is that we cannot matching on them all at once. As you saw in the
-  Rosenbaum reading, the current set of solutions involves adding a step to
-  the process: to first reduce the dimension of the covariate set while
-  preserving essential/important information about the relationships among the
-  covariates (ex. using Mahalanobis distance) or relationships between the
-  covariates and the treatment (ex. using a propensity score). Here we compare
-  the two approaches starting with Mahalanobis distance. Can you explain this
-  distance metric to yourself or others? (Perhaps
-  this discussion would be useful:
+\item We have moderate balance across this set of variables in this study, but
+  we would like better balance across more variables. The problem, of course,
+  is that we cannot match on them all at once. As you saw in the Rosenbaum
+  reading, the current set of solutions involves adding a step to the process:
+  to produce a one-dimensional score from the many-dimensional covariate
+  matrix. Common scores either focus on preserving
+  essential/important information about the relationships among the covariates
+  (ex. using Mahalanobis distance) or relationships between the covariates and
+  the treatment (ex. using a propensity score). Today we compare the two
+  approaches starting with Mahalanobis distance. Can you explain this distance
+  metric to yourself or others? (Perhaps this discussion would be useful:
   \url{http://stats.stackexchange.com/questions/62092/bottom-to-top-explanation-of-the-mahalanobis-distance})
 
 <<results="hide">>=
@@ -167,17 +169,17 @@ plot(xb2,
      which.vars=dimnames(xb2$results[order(xb2$results[,"p","raw"]),"p",])[["vars"]]
      )
 
-     @
+@
 
-     \item Now, above we used a Mahalanobis Distance to (1) reduce the dimension of
-     the covariate space (i.e. from \Sexpr{length(all.vars(balfmla))-1}
-			  covariates to 1 score) and (2) to represent the distance or relationships
-     between the treated and control units.  Another common dimension reduction
-     metric is the propensity score. The intuition behind the propensity is that
-     we only care about covariate imbalance insofar as it relates to treatment
-     assignment (and the outcome, because only when a covariate relates to both
-		 do we see confounding/"omitted variable bias").  Here is how one might
-     calculate a propensity score, match on it, and assess balance.
+\item Now, above we used a Mahalanobis Distance to (1) reduce the dimension of
+  the covariate space (i.e. from \Sexpr{length(all.vars(balfmla))-1}
+  covariates to 1 score) and (2) to represent the distance or relationships
+  between the treated and control units.  Another common dimension reduction
+  metric is the propensity score. The intuition behind the propensity is that
+  we only care about covariate imbalance insofar as it relates to treatment
+  assignment (and the outcome, because only when a covariate relates to both
+  do we see confounding/"omitted variable bias").  Here is how one might
+  calculate a propensity score, match on it, and assess balance.
 
 
 <<results="hide">>=
@@ -185,17 +187,22 @@ plot(xb2,
 glm1<-glm(balfmla,data=meddat,family=binomial())
 
 ## See fitted(glm1) for more signs that this is bad.
+## or you can look at some diagnostic plots:
+## par(mfrow=c(2,2))
+## plot(glm1)
 
 @
 
-Notice that this is a terrible fitting model!! What to do?? (This phenomenon
-is known as "separation" often happens when the number of variables in the
-model is close to the number of units in the sample and/or if some of the
-variable predict the treatment assignment very well. Here, I propose to use a
-kind of modern version of ridge regression (the "elastic net" penalized linear
-model) to fit the model (alternatively, you could try to use "bias-reduced"
-logistic regression or Gelman's \texttt{bayesglm} version of a simple Bayesian
-logistic model).
+Notice that this is a terrible fitting model!!(The warnings are not the reason
+it is bad. See \texttt{fitted(glm1)} or the coefficients themselves for a hint
+of what is going on.) What to do?? This phenomenon is known as "separation"
+often happens when the number of variables in the model is close to the number
+of units in the sample and/or if some of the variable predict the treatment
+assignment very well. Here, I propose to use a kind of modern version of ridge
+regression (the "elastic net" penalized linear model \citep{zou2004regression}) to fit the model
+(alternatively, you could try to use "bias-reduced" logistic regression in the
+package \texttt{brglm} or
+Gelman's \texttt{bayesglm} version of a simple Bayesian logistic model).
 
 <<>>=
 ## install.packages("glmnet",dependencies=TRUE)
@@ -203,18 +210,60 @@ library(glmnet) ## you may need to install this package plus dependencies
 
 X<-model.matrix(update(balfmla,.~.-1),data=meddat)
 y<-meddat$nhTrt
-ridge1cv<-cv.glmnet(X,y,family="binomial",alpha=0)
+ridge1cv<-cv.glmnet(X,y,family="binomial",alpha=0,type.measure="class")
+@
+
+The elastic net model finds the vector of $\beta$ that satisfied this
+objective function:
+
+\begin{equation*}
+  \hat{\bbeta}(\text{Elastic-Net}) = \text{arg min}_{\bbeta} %
+  \sum_{i=1}^n (y_i - \bX_i \bbeta)^2 + %
+  \lambda \sum_{j=1}^p (\gamma \beta_j^2 + (1-\gamma) |\beta_j|) %\label{eq:enet}
+\end{equation*}
+
+Here is a graphical demonstration of how the coefficients in the propensity
+model change depending on the penalty chosen. This is a ridge regression, also
+known as an $L_2$ penalized linear model, so the coefficients move smoothly
+toward zero. The model which minimizes misclassification error is shown with
+the vertical line.
+
+<<out.width='.5\\textwidth'>>=
+exenet1<-ridge1cv$glmnet.fit
+par(mgp=c(1.5,.3,0),oma=rep(0,4),mar=c(3,3,3,0))
+plot(exenet1,xvar="lambda",
+     label=FALSE,
+     axes=TRUE,
+     xlab=expression(paste(log(lambda)," given ",alpha==0)),cex.lab=1.5,
+     ylab=expression(beta[j]))
+labcoefs<-coef(exenet1)[-1,ncol(coef(exenet1))]
+text(log(exenet1$lambda)[ncol(coef(exenet1))],labcoefs ,names(labcoefs),
+     adj=c(0,.5),cex=.9)
+mtext(side=3, "# Non-Zero Coefs.",line=1.5,cex=1.5)
+abline(v=log(ridge1cv$lambda.min))
+@
+
+
+<<>>=
+## We tend to match on the linear predictor (XB) rather than on the inverse
+## link function transformed linear predictor inv.logit(XB).
+## pScore<-predict(ridge1cv,newx=X,s="lambda.min",type="response")[,1]
+
+## Compare the unpenalized model to the penalized model:
+## cbind(predict(glm1),pScore)
 pScore<-predict(ridge1cv,newx=X,s="lambda.min")[,1]
 all.equal(names(pScore),row.names(meddat))
 meddat$pScore<-pScore
 @
+
+
 
 <<eval=FALSE>>=
 plot(density(meddat$pScore[meddat$nhTrt==1]),xlim=range(meddat$pScore))
 lines(density(meddat$pScore[meddat$nhTrt==0]),col="blue")
 @
 
-<<>>=
+<<results="hide">>=
 
 ## psDist<-match_on(glm1) ## I want to see balance on the p-score itself.
 ## meddat$pScore<-predict(glm1)
@@ -293,7 +342,7 @@ summary(meddat[matched(meddat$fm3),all.vars(balfmla)])
   causal effect and/or test a hypothesis about a causal effect. Let us focus
   for the moment on estimation. Here are three proposals that arise from ideas
   I've read in \cite{freedman2008rae}, \citep{freedman2008rdn}, and
-  \citep{linlr:2011}, and \citet{miratrix2012adjusting}. 
+  \citep{linlr:2011}, and \citet{miratrix2012adjusting}.
 
 <<>>=
 
@@ -325,11 +374,11 @@ Ate4<-xbAte4$results[,"adj.diff",]
 @
 
 So,  which do we prefer? I setup this simulation to assess them. What is going
-on here? 
+on here?
 <<cache=TRUE>>=
-## define a function that re-assigns treatment with equal probability within 
+## define a function that re-assigns treatment with equal probability within
 ## matched set or experimental block
-set.assignment<-function(set,z){ 
+set.assignment<-function(set,z){
   ## library(mosaic);  shuffle(z,within=pair) is more elegant but harder to understand as code
   unsplit(lapply(split(z,set),sample),set)
 }
@@ -340,7 +389,7 @@ set.assignment<-function(set,z){
 newExperimentAndATE<-function(thez,y1,y0,thedata){
   message(".",appendLF=FALSE) ## To see how fast this is running
 
-  newobsy<-thez*y1+(1-thez)*y0 
+  newobsy<-thez*y1+(1-thez)*y0
   lmAte1<-lm(newobsy~thez+fm3,data=thedata)
   lmAte2<-lm(newobsy~thez*fm3,data=thedata)
   lmAte3<-lm(newobsy~thez,data=thedata,subset=matched(fm3))
@@ -409,7 +458,7 @@ apply(ateDistsArr,1,sd)
 makeAteBySet<-function(thelm){
   preddat<-expand.grid(nhTrt=c(0,1),fm3=levels(fm3))
   haty1<-predict(thelm,newdata=subset(preddat,subset=nhTrt==1))
-  haty0<-predict(thelm,newdata=subset(preddat,subset=nhTrt==0)) 
+  haty0<-predict(thelm,newdata=subset(preddat,subset=nhTrt==0))
   return(haty1-haty0)
 }
 
