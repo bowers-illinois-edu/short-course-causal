@@ -184,7 +184,7 @@ plot(xb2,
 
 <<results="hide">>=
 
-glm1<-glm(balfmla,data=meddat,family=binomial())
+glm1<-glm(balfmla,data=meddat,family=binomial(link="logit"))
 
 ## See fitted(glm1) for more signs that this is bad.
 ## or you can look at some diagnostic plots:
@@ -360,6 +360,7 @@ makeAte2<-function(thelm){
   mean(haty1)-mean(haty0)
 }
 
+Ate2<-makeAte2(lmAte2)
 ## Another version:
 options(show.signif.stars=FALSE)
 
