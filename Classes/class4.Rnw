@@ -1,0 +1,118 @@
+
+
+% For LaTeX-Box: root = class3.tex
+% search and replace keep.comment=FALSE to TRUE for commented version
+\documentclass[10pt,letterpaper]{article}
+%\usepackage{fontspec}
+\usepackage{ulem}
+
+\title{Session 4 --- Matching Short Course}
+
+\author{Jake Bowers}
+
+\usepackage{../Styles/ps531}
+
+
+\includeversion{comment}
+\markversion{comment}
+%\excludeversion{comment}
+
+\begin{document}
+\normalem
+
+<<include=FALSE,cache=FALSE>>=
+opts_chunk$set(tidy=TRUE,echo=TRUE,results='markup',strip.white=TRUE,fig.path='figs/fig',cache=FALSE,highlight=TRUE,width.cutoff=132,size='footnotesize',out.width='1.2\\textwidth',message=FALSE,comment=NA)
+
+options(width=110,digits=3)
+@
+
+\maketitle
+
+\begin{enumerate}
+    \setcounter{enumi}{-1}
+  \item  We'll continue to work with the Cerd\'{a} et al data. We completed
+    some statistical and conceptual preliminaries on Monday. On Tuesday, we
+    started work on making simple matched designs after we confronted some of
+    the problems with the use of linear models for statistical adjustment.
+    Yesterday, we matched on many variables at once using scores (like the
+    Mahalanobis distance score or the propensity score) and struggled with
+    some of the problems that score estimation raises, then we used calipers to
+    allow the matching algorithm to choose to delete some observations and
+    spent some time learning about the observations that the algorithm chose
+    to delete, and finally we learned how to estimate an average treatment
+    effect (and made some experiments to figure out which proposals for effect
+    estimation are unbiased). 
+
+    Today we will create confidence intervals and calculate $p$-values for our
+    estimates and also work on one approach to sensitivity analysis.
+
+<<>>=
+load(url("http://jakebowers.org/Matching/meddat.rda"))
+## or, if that doesn't work
+## meddat<-read.csv(url("http://jakebowers.org/Matching/meddat.csv"))
+@
+
+
+Before we begin you should create the outcome variables and useful formulas
+<<>>=
+meddat$HomRate03<-with(meddat, (HomCount2003/Pop2003)*1000)
+meddat$HomRate08<-with(meddat, (HomCount2008/Pop2008)*1000)
+newformula<-reformulate(c("nhTrt",names(meddat)[5:24],"HomRate03"),response="HomRate08")
+balfmla<-update(newformula,nhTrt~.-nhTrt-nhDistCenter)
+@
+
+\item Let's start with your favorite matched design from last time. Here is
+  mine (not really a favorite, but a matched design that I can use for
+  demonstration.)
+
+<<>>=
+## install.packages("glmnet",dependencies=TRUE)
+library(glmnet) 
+library(RItools)
+library(optmatch)
+
+## Scalar distance on baseline outcome
+tmp <- meddat$HomRate03
+names(tmp) <- rownames(meddat)
+absdist <- match_on(tmp, z = meddat$nhTrt)
+
+## Propensity score distance
+X<-model.matrix(update(balfmla,.~.-1),data=meddat)
+y<-meddat$nhTrt
+ridge1cv<-cv.glmnet(X,y,family="binomial",alpha=0,type.measure="class")
+pScore<-predict(ridge1cv,newx=X,s="lambda.min")[,1]
+stopifnot(all.equal(names(pScore),row.names(meddat)))
+meddat$pScore<-pScore
+psDist<-match_on(nhTrt~pScore,data=meddat)
+
+## Mahalanobis distance
+mahalDist<-match_on(balfmla,data=meddat)
+
+## Match on mahalanobis distance plus two calipers
+mhWithPsCaliper<-mahalDist+caliper(psDist,1)+caliper(absdist,1)
+
+fm1<-fullmatch(mhWithPsCaliper,data=meddat)
+summary(fm1,min.controls=0,max.controls=Inf)
+xb1<-xBalance(update(balfmla,.~.+pScore),
+	      strata=list(raw=NULL,fm1=~fm1),
+	      data=meddat,
+	      report=c("std.diffs","z.scores","adj.means",
+		       "adj.mean.diffs", "chisquare.test","p.values"))
+xb1$overall
+@
+
+
+\end{enumerate}
+
+
+% Next: how to know if your test is a good test (analogy to bias)
+
+
+
+\bibliographystyle{apalike}
+\bibliography{/Users/jwbowers/Documents/PROJECTS/BIB/big}
+
+
+
+
+\end{document}
