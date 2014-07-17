@@ -320,7 +320,7 @@ lm1<-lm(Y~Z)
 iidSElm1<- sqrt(diag(vcov(lm1)))[["Z"]]
 NeymanSElm1<-sqrt(diag(vcovHC(lm1,type="HC2")))[["Z"]]
 
-c(trueSE=sqrt(varestATE),feasible=sqrt(fvarestATE),iidSElm1,NeymanSElm1)
+c(trueSE=sqrt(varestATE),feasible=sqrt(fvarestATE),iid=iidSElm1,hc2=NeymanSElm1)
 
 ## And a new 95% CI
 aCI<-ateFm2 + c(-1,1) * qt((1-.05/2),6) * sqrt(fvarestATE)
@@ -358,7 +358,7 @@ simATE<-function(){
 }
 
 set.seed(12345)
-estAteDist<-replicate(1000,simATE())
+estAteDist<-replicate(10000,simATE())
 
 sd(estAteDist) ## Approximated SE from simulation
 @
@@ -446,15 +446,16 @@ adjcovs<-names(medadjdat)
 ## we created pScore2 via brglm and then matched with
 ## fm2<-fullmatch(psDist2+caliper(psDist2,3),data=meddat,tol=.00001,min.controls=.25,max.controls=4)
 
+meddat$HomChange<-with(meddat,HomRate08-HomRate03)
 
-specpars.ps(dat=meddat,covs=adjcovs,dropcov="HomRate03",
-	    type=1, outcome="HomRate08", treatment="nhTrt",
+specpars.ps(dat=meddat,covs=adjcovs,dropcov="nhPopD",
+	    type=1, outcome="HomChange", treatment="nhTrt",
 	    fitfunction=brglm,thecaliper=3,
 	    fmcontrol= list(tol=.00001,min.controls=.25,max.controls=4))
 
 
 specpars.ps(dat=meddat,covs=adjcovs,dropcov="nhClass",
-	    type=2, outcome="HomRate08", treatment="nhTrt",
+	    type=2, outcome="HomChange", treatment="nhTrt",
 	    fitfunction=brglm,thecaliper=3,
 	    fmcontrol= list(tol=.00001,min.controls=.25,max.controls=4))
 
@@ -464,7 +465,7 @@ specps.res<-sapply(adjcovs,function(thecov){
 		   message(thecov) ## just to see what it is doing
 		   specpars.ps(dat=meddat,covs=adjcovs,dropcov=thecov,
 			       type=is.factor(meddat[,thecov])+1,
-			       outcome="HomRate08", treatment="nhTrt",
+			       outcome="HomChange", treatment="nhTrt",
 			       fitfunction=brglm,thecaliper=3,
 			       fmcontrol= list(tol=.00001,min.controls=.25,max.controls=4))
 	    })
@@ -504,7 +505,7 @@ plot(specps.res["r.par",],abs(specps.res["t.w",]))
 ## I think a double click or an escape stops the identification process
 identify(specps.res["r.par",],abs(specps.res["t.w",]),
 	 labels=colnames(specps.res),cex=.6)
-	 @
+@
 
 What does this plot suggest about the potential influence of unobserved
 covariates which are like the ones that we have used in this dataset?
