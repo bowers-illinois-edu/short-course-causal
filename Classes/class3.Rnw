@@ -446,6 +446,8 @@ ateDistsArr<-simplify2array(ateDists)
 apply(ateDistsArr,1,summary)
 apply(ateDistsArr,1,sd)
 
+
+
 @
 
 \item Notice that I set the true relationship to be constant across matched
