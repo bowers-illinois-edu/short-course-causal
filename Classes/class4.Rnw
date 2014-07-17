@@ -42,13 +42,13 @@ options(width=110,digits=3)
     spent some time learning about the observations that the algorithm chose
     to delete, and finally we learned how to estimate an average treatment
     effect (and made some experiments to figure out which proposals for effect
-    estimation are unbiased). We even spoke a bit about M-bias and choice of
-    covariates for adjustment.
+    estimation are unbiased). We even confronted some of the deeper questions
+    about choice of covariates for adjustment and M-bias.
 
     Today we will create confidence intervals and calculate $p$-values for our
     estimates and also work on one approach to sensitivity analysis.
 
-<<>>=
+<<tidy=FALSE>>=
 load(url("http://jakebowers.org/Matching/meddat.rda"))
 ## or, if that doesn't work
 ## meddat<-read.csv(url("http://jakebowers.org/Matching/meddat.csv"))
@@ -63,11 +63,13 @@ newformula<-reformulate(c("nhTrt",names(meddat)[5:24],"HomRate03"),response="Hom
 balfmla<-update(newformula,nhTrt~.-nhTrt-nhDistCenter)
 @
 
-\item Let's start with your favorite matched design from last time. Here is
-  mine (not really a favorite, but a matched design that I can use for
-  demonstration.)
+\item Let's start with your favorite matched design from last time.
 
-<<>>=
+  Below I play around a bit with an alternate (and easier) penalized
+  propensity score model, and also show some of the other options to
+  \texttt{fullmatch}. 
+  
+<<results="hide">>=
 ## install.packages("glmnet",dependencies=TRUE)
 library(glmnet)
 library(RItools)
@@ -77,6 +79,9 @@ library(optmatch)
 tmp <- meddat$HomRate03
 names(tmp) <- rownames(meddat)
 absdist <- match_on(tmp, z = meddat$nhTrt)
+
+## Propensity score using ridge regression with tuning parameter chosen via 
+## cross-validation (10-fold) with correct classification as the criteria
 X<-model.matrix(update(balfmla,.~.-1),data=meddat)
 y<-meddat$nhTrt
 set.seed(12345)
@@ -86,7 +91,8 @@ stopifnot(all.equal(names(pScore),row.names(meddat)))
 meddat$pScore<-pScore
 psDist<-match_on(nhTrt~pScore,data=meddat)
 
-##Other pscores (may be faster and easier)
+## Propensity score using "bias-reduced" logistic regression (i.e. another
+## form of penalized logistic regression. 
 ## install.packages("brglm",dependencies=TRUE)
 library(brglm)
 brglm1<-brglm(balfmla,data=meddat,family=binomial)
@@ -103,8 +109,7 @@ psDist2<-match_on(nhTrt~pScore2,data=meddat)
 meddatRanks<-as.data.frame(sapply(meddat[,all.vars(balfmla)],rank))
 row.names(meddatRanks)<-row.names(meddat)
 meddatRanks$nhTrt<-meddat$nhTrt
-
-mahalDist<-match_on(balfmla,data=meddat)
+mahalDist<-match_on(balfmla,data=meddatRanks)
 
 ## Match on mahalanobis distance plus two calipers
 ### Use the calipers to exclude really bad matches.
@@ -116,10 +121,6 @@ quantile(as.vector(absdist),seq(0,1,.1))
 fm1<-fullmatch(mahalDist+caliper(psDist2,3),data=meddatRanks,tol=.00001)
 fm2<-fullmatch(psDist2+caliper(psDist2,3),data=meddat,tol=.00001,min.controls=.25,max.controls=4)
 pm2<-pairmatch(psDist2,data=meddat,tol=.00001,remove.unmatchables=TRUE)
-## pm2<-pairmatch(mahalDist+caliper(psDist2,4),data=meddat,tol=.00001,
-##		remove.unmatchables=TRUE)
-## fm2a<-fullmatch(psDist+caliper(psDist,3),data=meddat,tol=.00001)
-##fm2a<-fullmatch(absdist+caliper(psDist2,3),data=meddat,tol=.00001)
 
 xb1<-xBalance(update(balfmla,.~.+pScore2),
 	      strata=list(raw=NULL,fm1=~fm1,fm2=~fm2,pm2=~pm2),
@@ -133,11 +134,12 @@ table(matched(fm1))
 summary(fm2,min.controls=0,max.controls=Inf)
 table(matched(fm2))
 
-
 @
 
-\item Here are two treatment effects estimated using the harmonic mean
-  weighting that I like (plus the unadjusted effect):
+
+\item Here are some treatment effects estimated using the harmonic mean
+  weighting that I like (plus the unadjusted effect). Feel free to substitute
+  your own matched design.
 
 <<>>=
 
@@ -152,13 +154,14 @@ ateFm2<-coef(lmFm2)[["nhTrt"]]
 c(ateRaw,ateFm1,ateFm2)
 
 @
+What do these effect estimates mean?
 
-If we tested a hypothesis about one of these effects, what would it mean?
-(i.e. Imagine that we said, $H_0: \tau=0$ and got $p=.02$, how would you
-explain this to an educated person who is not a statistician? What about
-$p=.8$?) If we produced a confidence interval, and it did not contain 0 what
-would it mean? If we produced a confidence intervals and it did contain 0,
-what would it mean?
+\item Now, let's review statistical inference: If we tested a hypothesis about
+  one of these effects, what would it mean?  (i.e. Imagine that we said, $H_0:
+  \tau=0$ and got $p=.02$, how would you explain this to an educated person
+  who is not a statistician? What about $p=.8$?) If we produced a confidence
+  interval, and it did not contain 0 what would it mean? If we produced a
+  confidence intervals and it did contain 0, what would it mean?
 
 \item Let us start with a confidence interval. Recall the general definition
   for large samples (i.e. the Normal theory definition):
@@ -191,12 +194,14 @@ what would it mean?
   closely approximate a Normal distribution by the Central Limit Theorem (so
   we can use a Normal distribution for confidence intervals or hypothesis
   tests). But which Normal distribution? What is the variance of this
-  distribution?  \citep{linlr:2011}   suggests that the "iid" (independent and
-  identically distributed observations)-based OLS standard error is
-  incorrect and shows that the HC2 (heteroskedasticity consistent) standard
-  error can be derived from the same kind of reasoning that we used for
-  unbiasedness above (i.e. not considering sampling from some population, but
-  considering re-running the experiment on the same pool of subjects).
+  distribution  (Recall that
+  $\text{SE}(\hat{\tau})=\sqrt(\text{Var}(\hat{\tau}))$ ) ?
+  \citet{linlr:2011}   suggests that the "iid" (independent and identically
+  distributed observations)-based OLS standard error is incorrect and shows
+  that the HC2 (heteroskedasticity consistent) standard error can be derived
+  from the same kind of reasoning that we used for unbiasedness above (i.e.
+  not considering sampling from some population, but considering re-running
+  the experiment on the same pool of subjects).
 
   So, here is one approach. Explain what is going on.
 
@@ -204,7 +209,6 @@ what would it mean?
 ## You may need to install these packages
 library(sandwich)
 library(lmtest)
-
 
 ## Here is the estimated variance of the estimated ATE using the standard iid
 ## assumptions
@@ -216,8 +220,7 @@ vcovHC(lmFm2,type="HC2")
 cbind(iidSE=sqrt(diag(vcov(lmFm2))),
       NeymanSE=sqrt(diag(vcovHC(lmFm2,type="HC2")))
       )[2,]
-
-      @
+@
 
       Interpret those standard errors in substantive terms.
 
@@ -277,7 +280,7 @@ theiidci<-confint(lmFm2,level=.95,parm="nhTrt")
 \item But, do we trust these standard errors from the analytic results of the
   lienar model to really capture how our $\hat{\bar{\tau}}$ would vary across
   repetitions of the experiment with these same units (holding potential
-  outcomes fixed)? For example, the Freedman, Pisani and Purves variance
+  outcomes fixed)? For example, \citet{dunning2012natural}'s variance
   derivation involved finite population corrections for the idea that we are
   not sampling from an infinite population but have a fixed experimental pool
   from which we are ``sampling'' the control group (or treatment group). And
@@ -290,27 +293,42 @@ theiidci<-confint(lmFm2,level=.95,parm="nhTrt")
   the SEs arising above.
 
 <<>>=
-## First using the Freedman, Pisani and Purves derivation also discussed in
-## the Gerber and Green reading
+## First using the Dunning derivation also discussed in
 
 y0<-meddat$HomRate08
 y1<-y0-.3
-Y<-with(meddat, nhTrt*y1+(1-nhTrt)*y0)
+Z<-meddat$nhTrt
+Y<-Z*y1+(1-Z)*y0
 V<-var(cbind(y0,y1))
 varc<-V[1,1]
 vart<-V[2,2]
 covtc<-V[1,2]
 N<-length(y0)
-n<-sum(meddat$nhTrt)
+n<-sum(Z)
 m<-N-n
 
 varestATE<-((N-n)/(N-1))*(vart/n) + ((N-m)/(N-1))* (varc/m) + (2/(N-1)) * covtc
 
-## And the feasible version (where we do not observe the potential outcomes)
-varYc<-with(meddat,var(HomRate08[nhTrt==0]))
-varYt<-with(meddat,var(HomRate08[nhTrt==1]))
+## And the *feasible* version (where we do not observe the potential outcomes)
+## and so we do not have the covariance
+varYc<-var(Y[Z==0])
+varYt<-var(Y[Z==1])
 fvarestATE<-(N/(N-1)) * ( (varYt/n) + (varYc/m) )
+
+## Other SEs
+lm1<-lm(Y~Z)
+iidSElm1<- sqrt(diag(vcov(lm1)))[["Z"]]
+NeymanSElm1<-sqrt(diag(vcovHC(lm1,type="HC2")))[["Z"]]
+
+c(trueSE=sqrt(varestATE),feasible=sqrt(fvarestATE),iidSElm1,NeymanSElm1)
+
+## And a new 95% CI
 aCI<-ateFm2 + c(-1,1) * qt((1-.05/2),6) * sqrt(fvarestATE)
+
+rbind(aCI,
+      therandci,
+      theiidci)
+
 
 @
 
@@ -319,8 +337,7 @@ aCI<-ateFm2 + c(-1,1) * qt((1-.05/2),6) * sqrt(fvarestATE)
 Notice that different versions of the SE differ --- they differ because some
 ignore the finite "population" or the idea that we are re-assigning treatment
 without replacement. Others do not use the variance of each group separately,
-or they do not include the covariance (because it is never really observed if
-you remember the Freedman, Pisani and Purves reading).
+or they do not include the covariance.
 
 %%\end{comment}
 
@@ -332,10 +349,10 @@ you remember the Freedman, Pisani and Purves reading).
 
 
 
-<<>>=
+<<results="hide">>=
 
 simATE<-function(){
-  Znew<-sample(meddat$nhTrt)
+  Znew<-sample(Z)
   Y<-Znew*y1+(1-Znew)*y0
   coef(lm(Y~Znew))[["Znew"]]
 }
@@ -344,10 +361,6 @@ set.seed(12345)
 estAteDist<-replicate(1000,simATE())
 
 sd(estAteDist) ## Approximated SE from simulation
-sqrt(varestATE) ## true SE given a large sample and known potential outcomes
-sqrt(fvarestATE) ## finite sample adjusted estimate of the SE (like the sd() above)
-sqrt(diag(vcov(lmFm2)))[2] ## iid SE
-sqrt(diag(vcovHC(lmFm2,type="HC2")))[2] ## HC2 SE
 @
 
 
@@ -434,7 +447,7 @@ adjcovs<-names(medadjdat)
 ## fm2<-fullmatch(psDist2+caliper(psDist2,3),data=meddat,tol=.00001,min.controls=.25,max.controls=4)
 
 
-specpars.ps(dat=meddat,covs=adjcovs,dropcov="nhOwn",
+specpars.ps(dat=meddat,covs=adjcovs,dropcov="HomRate03",
 	    type=1, outcome="HomRate08", treatment="nhTrt",
 	    fitfunction=brglm,thecaliper=3,
 	    fmcontrol= list(tol=.00001,min.controls=.25,max.controls=4))
@@ -467,13 +480,12 @@ tmp<-round(specps.res[,"HomRate03"],4)
 
 \begin{comment}
 
-  So, let us consider the column for the baseline outcome: The row are, in
-  order from top to bottom, $\pcor$, $\teeW$, the treatment effect (i.e. coef
-  on nhTrt) when this variable is \emph{not} included in the propensity
-  model/matching; the finite-sample (HC2approx) standard error on this coef;
-  the df for that regression (mainly relevant for factor variables); and the
-  coef for nhTrt when this term is included in the matching/fixed-effects and
-  corresponding standard error.
+  So, let us consider the  baseline outcome: The results are, $\pcor$,
+  $\teeW$, the treatment effect (i.e. coef on nhTrt) when this variable is
+  \emph{not} included in the propensity model/matching; the finite-sample
+  (HC2approx) standard error on this coef; the df for that regression (mainly
+  relevant for factor variables); and the coef for nhTrt when this term is
+  included in the matching/fixed-effects and corresponding standard error.
 
   The most important pieces are the two sensitivity parameters. We can see that
   we decrease "unexplained" variation in 2008 Homicide Rate by about
@@ -486,9 +498,9 @@ tmp<-round(specps.res[,"HomRate03"],4)
 
 
 \item We can see the range of both sensitivity parameters in this plot.
-<<eval=FALSE>>=
+<<eval=FALSE,tidy=FALSE>>=
 plot(specps.res["r.par",],abs(specps.res["t.w",]))
-## this next command allows you to click on points and get a label
+## this next command allows you to click on points to get a label
 ## I think a double click or an escape stops the identification process
 identify(specps.res["r.par",],abs(specps.res["t.w",]),
 	 labels=colnames(specps.res),cex=.6)
@@ -531,11 +543,13 @@ theintervals[order(theintervals[,"t.w"],theintervals[,"r.par"],decreasing=TRUE),
   So, this is slightly different from \citet{hosman2010}: I don't have
   covariates which I excluded wholesale from the analysis to play the role of
   unobserved confounders. Rather, I use the variables that we had included.
-  So, we might read the following table as telling about the sensitivity of
+  So, we might read the that table as telling about the sensitivity of
   our treatment effect estimation to excluded variables with characteristics
   like those of the included variables.
 
-<<plotcis,fig.width=8,fig.height=8,out.width='.6\\textwidth',fig.keep='last'>>=
+  Here is a graphical version of that table:
+  
+<<plotcis,fig.width=8,fig.height=8,out.width='.5\\textwidth',fig.keep='last'>>=
 par(mfrow=c(1,1),mar=c(3,6,0,0),mgp=c(1.5,.5,0),oma=c(0,2,0,0))
 plot(range(theintervals[,3:4]),c(1,nrow(theintervals)),type="n",axes=FALSE,
      ylab="",
