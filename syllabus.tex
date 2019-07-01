@@ -1,0 +1,217 @@
+\documentclass[10pt]{article}
+\usepackage{bibentry,natbib,url,comment,amsmath}
+\usepackage{graphicx,parskip}
+\usepackage{Styles/sometexdefs}
+
+%\usepackage[spanish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage[utf8]{inputenc}
+\usepackage{tgtermes}
+%\usepackage{tgpagella}
+%\usepackage[sc]{mathpazo}
+
+\renewcommand*{\bfdefault}{bx}
+\renewcommand{\oldstylenums}[1]{%
+  {\fontfamily{pplj}\selectfont #1}}
+\usepackage{microtype}
+
+\hyphenation{Incomplete}
+
+\bibliographystyle{apalike}
+\usepackage[letterpaper,bottom=.75in,top=1in,right=1in,lmargin=1.15in]{geometry}
+
+\usepackage{advdate}
+
+%\titleformat{〈command〉}[〈shape〉]{〈format〉}{〈label〉}{〈sep〉}{〈before-code〉}[〈after-code〉
+\usepackage[compact,nobottomtitles*]{titlesec} %nobottomtitles
+\titleformat{\part}[hang]{\Large\scshape}{\thepart}{5em}{}{}
+\titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection}{.5em}{}{}
+\titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}
+\titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}
+\titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}
+
+\titlespacing{\part}{0ex}{.5ex plus .1ex minus .2ex}{-.25\parskip}
+\titlespacing{\section}{0ex}{1.5ex plus .1ex minus .2ex}{-.25\parskip}
+\titlespacing{\subsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
+\titlespacing{\subsubsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
+\titlespacing{\paragraph}{0em}{1ex}{.5ex plus .1ex minus .1ex}
+
+%%\newenvironment{introstuff} {\setcounter{secnumdepth}{0}%
+%%  \titlespacing*{\section}{-.75in}{1em}{0em}{}%
+%%  \titleformat{\subsection}[leftmargin]{\itshape\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
+%%  \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
+%%  \titleformat{\paragraph}[hang]{\bfseries}{\theparagraph}{0em}{}{}%
+%%  \titlespacing{\subsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+%%  \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
+%%  \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+%%} {\setcounter{secnumdepth}{1}%
+%%  \titleformat{\part}[hang]{\large\bfseries}{\hspace{-.75in}\thepart}{.5em}{}{}%
+%%  \titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection}{.5em}{}{}%
+%%  \titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
+%%  \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
+%%  \titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}%
+%%  % \titleformat{\subsection}[hang]{\itshape}{\thesubsection}{.5em}{}{}%
+%%  \titlespacing{\section}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+%%  \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
+%%  \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+%%}
+
+% Create new title appearance
+\makeatletter
+\def\maketitle{%
+  %\null
+  \thispagestyle{empty}%
+  \begin{center}\leavevmode
+    \normalfont
+    {\large \bfseries\@title\par}%
+    {\large \@author\par}%
+    {\large \@date\par}%
+  \end{center}%
+  \null }
+\makeatother
+
+\usepackage{fancyhdr}
+% \renewcommand{\sectionmark}[1]{\markright{#1}{}}
+
+\fancypagestyle{myfancy}{%
+  \fancyhf{}
+  % \fancyhead[R]{\small{Page~\thepage}}
+  \fancyhead[R]{\small{PS 531 -- Statistical Inference -- Spring 2018 -- \thepage}}
+  \fancyfoot[R]{\footnotesize{Version~of~\input{|"date"}}}
+  % \fancyfoot[R]{\small{\today -- Jake Bowers}}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0pt}}
+
+\pagestyle{myfancy}
+
+\newcommand{\entrylabel}[1]{\mbox{\textsf{#1:}}\hfil}
+
+%% These next lines tell latex that it is ok to have a single graphic
+%% taking up most of a page, and they also decrease the space arou
+%% figures and tables.
+\renewcommand\floatpagefraction{.9} \renewcommand\topfraction{.9}
+\renewcommand\bottomfraction{.9} \renewcommand\textfraction{.1}
+\setcounter{totalnumber}{50} \setcounter{topnumber}{50}
+\setcounter{bottomnumber}{50} \setlength{\intextsep}{2ex}
+\setlength{\floatsep}{2ex} \setlength{\textfloatsep}{2ex}
+
+\specialcomment{com} {\begingroup\sffamily\small\bfseries}{\endgroup}
+\excludecomment{com}
+
+\title{Causal Inference: Beyond the Basics}
+
+\author{Jake Bowers \\
+  \small{jwbowers@illinois.edu \\
+    Online:
+    \url{http://jakebowers.org/}}
+}
+
+\date{\today}
+
+%\usepackage[pdftex,colorlinks=TRUE,citecolor=blue]{hyperref}
+\usepackage[colorlinks=TRUE,citecolor=blue]{hyperref}
+
+\renewcommand{\bibname}{ }
+% \renewcommand{\refname}{\normalsize{Required:}}
+\renewcommand{\refname}{\vspace{-2em}}
+
+\def\themonth{\ifcase\month\or
+  January\or February\or March\or April\or May\or June\or
+  July\or August\or September\or October\or November\or December\fi}
+
+
+%
+%	\DayOfWeek	expands to the day of the week ("Sunday", etc.)
+%	\PhaseOfMoon	expands to the phase of the moon
+%
+%	Written by Martin Minow of DEC (minow%bolt.dec@decwrl.dec.com).
+%
+\def\DayOfWeek{%
+  %
+  % 	Calculate day of the week, return "Sunday", etc.
+  %
+  \newcount\dow				% Gets day of the week
+  \newcount\leap			% Leap year fingaler
+  \newcount\x				% Temp register
+  \newcount\y 				% Another temp register
+  %		leap = year + (month - 14)/12;
+  \leap=\month \advance\leap by -14 \divide\leap by 12
+  \advance\leap by \year
+  %		dow = (13 * (month + 10 - (month + 10)/13*12) - 1)/5
+  \dow=\month \advance\dow by 10
+  \y=\dow \divide\y by 13 \multiply\y by 12
+  \advance\dow by -\y \multiply\dow by 13 \advance\dow by -1 \divide\dow by 5
+  %		dow += day + 77 + 5 * (leap % 100)/4
+  \advance\dow by \day \advance\dow by 77
+  \x=\leap \y=\x \divide\y by 100 \multiply\y by 100 \advance\x by -\y
+  \multiply\x by 5 \divide\x by 4 \advance\dow by \x
+  %		dow += leap / 400
+  \x=\leap \divide\x by 400 \advance\dow by \x
+  %		dow -= leap / 100 * 2;
+  %		dow = (dow % 7)
+  \x=\leap \divide\x by 100 \multiply\x by 2 \advance\dow by -\x
+  \x=\dow \divide\x by 7 \multiply\x by 7 \advance\dow by -\x
+  \ifcase\dow Sunday\or Monday\or Tuesday\or Wednesday\or
+  Thursday\or Friday\or Saturday\fi
+}
+
+
+
+\begin{document}
+\maketitle
+
+%\begin{introstuff}
+
+
+  \part*{Overview}
+
+  \subsection*{Where/When}
+
+  We will meet Tuesday and Wednesday, July 16 and 17, 0900--1200.
+
+  \subsection*{Introduction}
+
+  This course builds on the Introduction to Causal Inference course given
+  earlier in the Institute of Political Methodology Summer School of 2019. We
+  will focus on deepening and applying the concepts introduced in that course,
+  especially with regards to the use and diagnosis of matching techniques for non-parametric
+  adjustment in non-randomized research designs and design-based statistical
+  inference based on the resulting matched research designs.
+
+  \part*{Schedule}
+
+%\end{introstuff}
+
+\section*{Class 1: Doing Matching, Assessing Matched Designs, Estimating Effects}
+
+\subsection*{Topics:}
+
+\begin{description}
+	\item[How to use optimal, full matching to produce a matched-research design?] Multivariate optimal matching review using \texttt{optmatch}  in R: producing matched research designs using matching on scalars, propensity scores, and Mahalanobis distances.
+	\item[How to reason about whether we have a good matched research design?] Multivariate balance assessment using null hypothesis testing using the \texttt{RItools} package for R (and perhaps also using equivalence testing).
+	\item[How to customize and focus the matched research design creation?] Multivariate optimal matching; calipers; penalties; combining scores
+	\item[How to estimate the ATE  and test hypotheses about causal effects given a matched research design?] Estimating ATE and Std Errors from Matched Designs using the Block Randomized Experiment as an Analogy.
+\end{description}
+
+\subsection*{Recommended Reading:}
+
+\section*{Class 2: Going Beyond Two Treatment Groups}
+
+\subsection*{Topics:}
+
+\begin{description}
+	\item[Matching with more than one treatment] Multivariate optimal \textbf{nonbipartite} matching review using the \texttt{nbpMatching} package for R: producing matched research designs using matching on scalars, propensity scores, and Mahalanobis distances.
+	\item[Balance assessment after non-bipartite matching.] Multivariate balance assessment using null hypothesis testing (and using equivalence testing).
+	\item[Focusing and customizing non-bipartite matched designs] Multivariate optimal matching; calipers; penalties; combining scores
+	\item[Statistical inference after non-bipartite matching] Estimating ATE and Std Errors from Matched Designs using the Block Randomized Experiment as an Analogy.
+\end{description}
+
+\subsection*{Recommended Reading:}
+
+
+\section*{References}
+\bibliography{/Users/jwbowers/Documents/PROJECTS/BIB/big}
+
+  \end{document}
+
