@@ -1,0 +1,10 @@
+
+\paragraph*{Matching with more than one treatment}  \vspace{-1.5em} Multivariate optimal \textbf{nonbipartite} matching review using the \texttt{nbpMatching} package for R: producing matched research designs using matching on scalars, propensity scores, and Mahalanobis distances.
+\paragraph*{Balance assessment after non-bipartite matching.} Multivariate balance assessment using null hypothesis testing (and using equivalence testing).
+\paragraph*{Focusing and customizing non-bipartite matched designs} Multivariate optimal matching; calipers; penalties; combining scores
+\paragraph*{Statistical inference after non-bipartite matching} Estimating ATE and Std Errors from Matched Designs using the Block Randomized Experiment as an Analogy.
+
+\subsection*{References:}
+
+\citealp[Chap 11 \& 12]{rosenbaum2010design}
+
