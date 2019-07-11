@@ -1,0 +1,42 @@
+%%% Common Definitions to be used by both paper and presentation %%%
+
+% this next line assumes we are working in the paper or presentation dirs
+\input{../vc.tex}
+
+%%% Title, dates, other metadata
+%%% Author is set in the paper.tex and presentation.tex because one uses
+%%% \thanks and the other uses \institute
+
+% we define a variable to hold the title so we can use it in the data appendix
+% (or other supplemental docs)
+\newcommand{\ourtitle}{Machine Learning and Causal Inference: \\ A Modular
+  Approach to Assessing the Effects of the London Bombings of 2005}
+
+\title{\ourtitle}
+
+\date{\today}
+
+%%% Packages %%%
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{booktabs}
+%\usepackage{listings}
+
+\usepackage{epigraph}
+\renewcommand{\epigraphsize}{\footnotesize}
+\setlength{\epigraphrule}{0pt}
+\setlength{\epigraphwidth}{4in}
+
+%%% Figures and Tables %%%
+\graphicspath{{.}{../figures/}} % again, path relative to paper/ and pres/
+%\usepackage[font=small]{caption}
+%\usepackage{subcaption}
+
+% Possessive citation
+% (http://www.economics.utoronto.ca/osborne/latex/BIBTEX.HTM):
+\def\citeapos#1{\citeauthor{#1}'s (\citeyear{#1})}
+
+%%% Convenient mathematical notation
+\usepackage{../styles/notation}

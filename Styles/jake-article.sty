@@ -1,0 +1,118 @@
+\usepackage[T1]{fontenc}
+\usepackage{qtxmath}\usepackage{tgtermes}
+%\usepackage{qpxmath}\usepackage{tgpagella}
+%\usepackage{tgpagella}
+%\usepackage{tgtermes}
+%\usepackage{helvet}
+\renewcommand{\sfdefault}{qhv}
+%\usepackage[sc]{mathpazo}
+%\usepackage{textcomp}
+
+\usepackage{graphicx,multirow,comment,amsmath,natbib,varioref,setspace,url,booktabs,svn,subfigure,float,array,dcolumn}
+
+%%FOR AJPS
+%\usepackage{parskip}
+%Don't automatically number any of the sectioning commands
+\setcounter{secnumdepth}{0}
+
+\let\myitsybitsyfontsize\footnotesize
+%\let\footnotesize\normalsize
+\let\footnotesize\small
+\renewcommand{\footnotesize}{\normalsize}
+
+\usepackage[letterpaper,bottom=1in,top=1in,right=1in,left=1in,includemp=FALSE]{geometry}
+%\usepackage[nolists,noheads,tablesfirst]{endfloat}
+
+\usepackage[small]{caption}
+
+\usepackage{microtype} %only useful with pdflatex
+
+\usepackage[compact,bottomtitles]{titlesec}
+%\titleformat{ ⟨command⟩}[⟨shape⟩]{⟨format⟩}{⟨label⟩}{⟨sep⟩}{⟨before⟩}[⟨after⟩]
+\titleformat{\section}[hang]{\large\bfseries}{\thesection}{.5em}{\hspace{0in}}[\vspace{-.2\baselineskip}]
+\titleformat{\subsection}[hang]{\bfseries}{\thesubsection}{.5em}{\hspace{0in}}[\vspace{-.2\baselineskip}]
+\titleformat{\subsubsection}[hang]{\itshape}{\thesubsubsection}{.5em}{\hspace{0in}}[\vspace{-.2\baselineskip}]
+\titleformat{\paragraph}[runin]{\itshape}{\theparagraph}{1ex}{}{\vspace{-.2\baselineskip}}
+
+%%\titleformat{\subsection}[hang]{\bfseries}{\thesubsection}{.5em}{\hspace{0in}}[\vspace{-.2\baselineskip}]
+%%%\titleformat*{\subsection}{\bfseries\scshape}
+%%%\titleformat{\subsubsection}[leftmargin]{\footnotesize\filleft}{\thesubsubsection}{.5em}{}{}
+%%\titleformat{\subsubsection}[hang]{\small\bfseries}{\thesubsubsection}{.5em}{\hspace{0in}}[\vspace{-.2\baselineskip}]
+%%\titleformat{\paragraph}[runin]{\itshape}{\theparagraph}{1ex}{}{\vspace{-.5\baselineskip}}
+
+%\titlespacing*{ ⟨command⟩}{⟨left⟩}{⟨beforesep⟩}{⟨aftersep⟩}[⟨right⟩]
+\titlespacing{\section}{0pc}{1.5ex plus .1ex minus .2ex}{.5ex plus .1ex minus .1ex}
+\titlespacing{\subsection}{0pc}{1.5ex plus .1ex minus .2ex}{.5ex plus .1ex minus .1ex}
+\titlespacing{\subsubsection}{0pc}{1.5ex plus .1ex minus .2ex}{.5ex plus .1ex minus .1ex}
+
+%\newcommand{\mymarginpar}[1]{%
+%  \vadjust{\smash{\llap{\parbox[t]{\marginparwidth}%
+%        {\raggedright \tiny \textsf{#1}}\kern\marginparsep}}}}
+
+
+%\usepackage{units}
+
+% The fancyvrb package lets us customize the formatting of verbatim
+% environments.  We use a slightly smaller font.
+\usepackage{fancyvrb}
+\fvset{fontsize=\normalsize}
+
+\usepackage{multicol}
+\usepackage[savepos]{zref}
+
+
+%%\renewcommand{\marginpar}[1]{}
+
+%\input{mymathdefs}
+\usepackage{./sometexdefs}
+
+
+%%These next lines tell latex that it is ok to have a single graphic
+%%taking up most of a page, and they also decrease the space arou
+%%figures and tables.
+\renewcommand\floatpagefraction{.9}
+\renewcommand\topfraction{.9}
+\renewcommand\bottomfraction{.9}
+\renewcommand\textfraction{.1}   
+\setcounter{totalnumber}{50}
+\setcounter{topnumber}{50}
+\setcounter{bottomnumber}{50}
+\setlength{\intextsep}{2ex}
+\setlength{\floatsep}{2ex}
+\setlength{\textfloatsep}{2ex}
+
+\usepackage{Sweave} %Declaring this explicitly so that I can modify the Sweave environment here rather in Sweave.sty which will be c
+\DefineVerbatimEnvironment{Sinput}{Verbatim} {xleftmargin=.5em,fontsize=\footnotesize} 
+\DefineVerbatimEnvironment{Soutput}{Verbatim}{xleftmargin=.5em,fontsize=\footnotesize} 
+\DefineVerbatimEnvironment{Scode}{Verbatim}{xleftmargin=.5em,fontsize=\footnotesize} 
+\fvset{listparameters={\setlength{\topsep}{0pt}}} 
+\renewenvironment{Schunk}{\vspace{\topsep}}{\vspace{\topsep}} 
+%\SweaveOpts{keep.source=TRUE}  %Show comments
+\fvset{fontsize=\normalsize} %slightly smaller verbatim font
+
+\usepackage{ifthen}
+\newcommand{\nostuff}[1]{%
+   \ifthenelse{\equal{#1}{}}%
+        {}%
+        {(#1\hspace{-.5ex})}%
+} 
+
+\newcolumntype{S}{@{}>{\scancell}l<{\endscan}}
+\def\scancell#1\ignorespaces#2\unskip\endscan{%
+  %($\mathsf{#2}$)%
+ \nostuff{#2}%
+}\ignorespacesafterend
+
+%\newcolumntype{S}{>{\hspace{-1em}(}l<{)}}
+%\newcolumntype{S}{@{}>{(}l<{)}}
+%\newcolumntype{.}{D{.}{.}{2.2}} 
+\newcolumntype{z}{@{}D{.}{.}{5.2}@{}} 
+\newcolumntype{d}{D{.}{.}{2.2}} 
+\newcolumntype{J}{@{}r@{}}
+\newcolumntype{.}{D{.}{.}{2.1}} 
+
+%Turn off for AJPS
+\usepackage[pdftex,colorlinks=true,citecolor=blue,raiselinks=false]{hyperref}
+%\usepackage[pdftex,colorlinks=true,citecolor=black,raiselinks=false,linkcolor=black]{hyperref}
+
+\bibpunct{(}{)}{;}{a}{}{,}

@@ -1,0 +1,87 @@
+%\usepackage{Sweave} %Declaring this explicitly so that I can modify the Sweave environment here rather in Sweave.sty which will be c
+%%\DefineVerbatimEnvironment{Sinput}{Verbatim} {xleftmargin=0em,fontsize=\scriptsize,baselinestretch=1} 
+%%\DefineVerbatimEnvironment{Soutput}{Verbatim}{xleftmargin=0em,fontsize=\scriptsize,baselinestretch=1} 
+%%\DefineVerbatimEnvironment{Scode}{Verbatim}  {xleftmargin=0em,fontsize=\scriptsize,baselinestretch=1} 
+%%\fvset{listparameters={\setlength{\topsep}{0pt}}} 
+%%%\renewenvironment{Schunk}{\vspace{\topsep}}{\vspace{\topsep}} 
+%%%\SweaveOpts{keep.source=TRUE}  %Show comments
+%%\fvset{fontsize=\normalsize} %slightly smaller verbatim font
+
+%% \usepackage{Sweavel} %Declaring this explicitly so that I can modify the Sweave environment here rather in Sweave.sty which will be c
+
+% FOR INCLUDING R CODE. 
+%%%\usepackage{listings}
+%%%%\lstset{language=R}
+%%%\lstloadlanguages{R}
+%%%\lstdefinelanguage{Renhanced}[]{R}{%
+%%%  morekeywords={colMeans,colSums,head,is.na,is.null,mapply,ms,na.rm,%
+%%%    nlmin,replicate,row.names,rowMeans,rowSums,sys.time,system.time,%
+%%%    tail,which.max,which.min,do,function},
+%%%  deletekeywords={c},
+%%%  alsoletter={.\%},%
+%%%  alsoother={:_\$}}
+%%%\lstset{language=Renhanced,
+%%%  extendedchars=true,
+%%%  inputencoding=latin1,
+%%%  basicstyle=\footnotesize,
+%%%  %basicstyle=\small\ttfamily,
+%%%  commentstyle=\textsl,
+%%%  keywordstyle=\mdseries,
+%%%  showstringspaces=false}%,
+%%%%  index=[1][keywords],
+%%%%  indexstyle=\indexfunction}
+%%%
+%%%  %%% Styles pour les noms de fonctions, code, etc.
+%%%  \newcommand{\code}[1]{\texttt{#1}}
+%%%
+%%%
+% \begin{frame}[fragile]
+% \frametitle{Some code}
+% \begin{lstlisting}
+% > plot(myobj)
+% > rm(myobj)
+% \end{lstlisting}  
+% \end{frame}
+
+
+\def\insertintermediateframenumber{\inserttotalframenumber}
+
+\renewcommand{\appendix}[1][0void0]
+{
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+  % This piece of code is supposed to introduce a bias in the
+  % number of slides
+  \makeatletter
+  \immediate\write\@auxout{\string\@writefile{nav}%
+    {\noexpand\headcommand{\noexpand\def\noexpand\insertintermediateframenumber{\the\c@framenumber}}}}
+  \renewcommand{\insertintermediateframenumber}{\inserttotalframenumber}
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+  
+  \def\tmparg{#1}
+  \def\tmpargref{0void0}
+  \ifx\tmparg\tmpargref\else
+  \begin{frame}[plain]
+    \vfill
+    \begin{center}
+      \usebeamerfont{title}\usebeamercolor{title}{\color{fg}\ #1\ }
+    \end{center}
+    \vfill
+  \end{frame}
+  \fi
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+  % We recompute the progressbar step and the current position
+
+  \progressbar@numer=1
+  \progressbar@denom=\insertintermediateframenumber
+  \advance\progressbar@denom by -1
+  \progressbar@tmpresult=\progressbar@barlength
+  \multiply\progressbar@tmpresult by \progressbar@numer
+  \ifnum\progressbar@denom=0\else\divide\progressbar@tmpresult by \progressbar@denom\fi
+  \global\progressbar@stepbar=\progressbar@tmpresult
+
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+  \makeatother
+}
+
