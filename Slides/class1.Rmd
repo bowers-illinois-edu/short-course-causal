@@ -23,6 +23,7 @@ output:
     includes:
         in_header:
            - defs-all.sty
+    md_extensions: +raw_attribute
 ---
 
 
@@ -83,10 +84,9 @@ library(optmatch)
 library(sandwich)
 library(lmtest)
 ```
+# Overview and Review
 
 ## Doing Matching, Assessing Designs, Estimating Effects
-
-### Topics
 
   1. **Review** Causal inference in randomized experiments; Statistical
      inference for causal effects in randomized experiments \textcite[Chap
@@ -124,6 +124,8 @@ library(lmtest)
 These words are used a lot in discussions of causal inference. Why are they important? What do they mean?
 
   - Potential Outcomes; Counterfactual Outcomes
+  - Causal Effect
+  - ATE 
   - Randomization
   - Balance
   - Propensity Score
@@ -131,6 +133,50 @@ These words are used a lot in discussions of causal inference. Why are they impo
   - Confounding; Selection Bias; Omitted Variable Bias
 
 What other words and/or phrases and/or concepts come to mind when you think about causal inference?
+
+Why is "randomization" listed here?
+
+## Randomized Research Designs As A Standard of Comparison
+
+From last week:
+  - *Treatment* $Z_i=1$ for treatment and $Z_i=0$ for control for units $i$
+  - Each unit has a pair of *potential outcomes* $(y_{i,Z_i=1},y_{i,Z_i=0})$ (given SUTVA).
+  - *Causal Effect*  when $y_{i,Z_i=1} \ne y_{i,Z_i=0}$ 
+
+## Approach 1: Test Hypotheses
+
+
+  \includegraphics[width=.9\textwidth]{images/cartoonFisher.pdf}
+
+
+## Approach 2: Estimate Averages
+
+
+  \includegraphics[width=.9\textwidth]{images/cartoonNeyman.pdf}
+
+
+
+## Approach 3: Predict Outcomes
+
+  \includegraphics[width=.9\textwidth]{images/cartoonBayes.pdf}
+
+
+## Approaches to creating interpretable comparisons:
+
+   - Randomized experiments (more precision from reducing heterogeneity in $Y$)
+   - Instrumental variables (with randomized $Z$ created $D$)
+   - Natural Experiments / Discontinuities (one $X$ creates $Z$)
+   - Difference-in-Differences (reduce bias *and* increase precision from reducing heterogeneity in $Y$)
+   - Semi-/Non-parametric Covariance Adjustment (i.e. matching)
+   - Parametric covariance adjustment
+
+
+# Doing Multivariate Matching
+
+## Do we need to match? Assessing balance.
+
+
+# End Matter
 
 ## References
 
