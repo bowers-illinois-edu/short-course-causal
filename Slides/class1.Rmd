@@ -45,23 +45,21 @@ knit_hooks$set(plotdefault = function(before, options, envir) {
 })
 
 opts_chunk$set(
-  tidy=TRUE,
-  echo=TRUE,
-  results='markup',
-  strip.white=TRUE,
-  fig.path='figs/fig',
-  cache=FALSE,
-  highlight=TRUE,
-  width.cutoff=132,
-  size='\\scriptsize',
-  out.width='.7\\textwidth',
-  fig.retina=FALSE,
-  message=FALSE,
-  comment=NA,
-  mysize=TRUE,
-  plotdefault=TRUE)
-
-if(!file.exists('figs')) dir.create('figs')
+	       tidy=TRUE,
+	       echo=TRUE,
+	       results='markup',
+	       strip.white=TRUE,
+	       fig.path='figs/fig',
+	       cache=FALSE,
+	       highlight=TRUE,
+	       width.cutoff=132,
+	       size='\\scriptsize',
+	       out.width='.7\\textwidth',
+	       fig.retina=FALSE,
+	       message=FALSE,
+	       comment=NA,
+	       mysize=TRUE,
+	       plotdefault=TRUE)
 
 options(digits=4,
 	scipen=8,
@@ -69,21 +67,34 @@ options(digits=4,
 	show.signif.stars=FALSE)
 ```
 
-```{r eval=FALSE, include=FALSE, echo=FALSE}
-## Run this only once and then not again until we want a new version from github
-library('devtools')
-library('withr')
-with_libpaths('./lib', install_github("markmfredrickson/RItools"), 'pre')
-```
-
-```{r echo=FALSE, warnings=FALSE}
+```{r loadlibs,include=FALSE, echo=FALSE}
 library(dplyr)
 library(ggplot2)
-library(RItools)
 library(optmatch)
 library(sandwich)
 library(lmtest)
+library(estimatr)
 ```
+
+```{r makedirs, echo=FALSE, include=FALSE}
+if(!dir.exists('figs')) dir.create('figs')
+
+## Make a local library directory
+if(!dir.exists(here::here('libraries'))){
+        dir.create(here::here('libraries'))
+}
+```
+
+
+```{r eval=TRUE, include=FALSE, echo=FALSE}
+## Run this only once and then not again until we want a new version from github
+library('devtools')
+library('withr')
+
+with_libpaths(here::here('libraries'), install_github("markmfredrickson/RItools"), 'pre')
+library('RItools',lib.loc = here::here('libraries'))
+```
+
 # Overview and Review
 
 ## Doing Matching, Assessing Designs, Estimating Effects
@@ -125,55 +136,179 @@ These words are used a lot in discussions of causal inference. Why are they impo
 
   - Potential Outcomes; Counterfactual Outcomes
   - Causal Effect
-  - ATE 
+  - ATE
   - Randomization
   - Balance
   - Propensity Score
   - Mahalanobis Distance Score
   - Confounding; Selection Bias; Omitted Variable Bias
+  - Covariates
 
 What other words and/or phrases and/or concepts come to mind when you think about causal inference?
 
 Why is "randomization" listed here?
 
-## Randomized Research Designs As A Standard of Comparison
+## Randomization and Causal Inference
 
 From last week:
+
   - *Treatment* $Z_i=1$ for treatment and $Z_i=0$ for control for units $i$
-  - Each unit has a pair of *potential outcomes* $(y_{i,Z_i=1},y_{i,Z_i=0})$ (given SUTVA).
-  - *Causal Effect*  when $y_{i,Z_i=1} \ne y_{i,Z_i=0}$ 
 
-## Approach 1: Test Hypotheses
+  - Each unit has a pair of *potential outcomes* $(y_{i,Z_i=1},y_{i,Z_i=0})$
+    (also written  $(y_{i,1},y_{i,0})$ ) (given SUTVA).
+
+  - *Causal Effect*  when $y_{i,1} \ne y_{i,0}$, $\tau_i   =
+    f(y_{i,1},y_{i,0})$ ex. $\tau_i =  y_{i,1} - y_{i,0}$.
+
+  - *Fundamental Problem of (Counterfactual) Causality* We only see one
+    potential outcome $Y_i = Z_i * y_{i,1} + (1-Z_i) y_{i,0}$
+
+  - *Covariates*,  $\bX=\begin{bmatrix} x_{11} & \ldots & x_{1k} \\ \vdots &
+    \vdots & \vdots \\  x_{n1} & \ldots & x_{nk} \end{bmatrix}$ is a matrix
+    containing  background information about the units that might predict
+    $(y_{i,1},y_{i,0})$ or $Z$ (except in an experiment).
+
+How does randomization help us solve this problem? Randomization makes $y_1,
+y_0, \bX \perp Z$. How to make use of this fact?
+
+## Benefits of Randomized Designs
+
+ 1. Interpretable comparisons (lack of omitted variable bias, confounding,
+    selection bias)
+      - Can I interpret differences in outcome as caused by $Z$ and not $X$? Or
+	is it easy to confuse the effect of $Z$  with the  effects of $X$?
+      - How does  randomization do  this? How  does randomization eliminate
+	**alternative explanations**?
+ 2. Reliable statistical inferences (estimators and tests)
+      - The idea of **design-based** versus **model-based** statistical inference
 
 
+## Design Based Approach 1: Test Hypotheses
+
+ 1. Make a guess about $\tau_i$.
+ 2. Then measure surprise or consistency of data with this guess given the
+    design. (Given all of the ways this experiment could have  occurred, how
+    many look more extreme than what we observe? Does our observation look
+    typical or rare?
+
+\centering
+  \includegraphics[width=.5\textwidth]{images/cartoonFisher.pdf}
+
+## Design Based Approach 1: Test Hypotheses
+
+\centering
   \includegraphics[width=.9\textwidth]{images/cartoonFisher.pdf}
 
 
-## Approach 2: Estimate Averages
+## Design Based Approach 2: Estimate Averages
 
+  1. Notice that the observed $Y_i$ are a sample from  the (small, finite) population of $(y_{i,1},y_{i,0})$.
+  2. Decide to focus on the average, $\bar{\tau}$, because sample averages, $\hat{\bar{\tau}}$ are unbiased and consistent estimators of population averages.
+  3. Estimate $\bar{\tau}$ with the observed difference in means.
 
+\centering
+  \includegraphics[width=.5\textwidth]{images/cartoonNeyman.pdf}
+
+## Design Based Approach 2: Estimate Averages
+
+\centering
   \includegraphics[width=.9\textwidth]{images/cartoonNeyman.pdf}
-
-
-
-## Approach 3: Predict Outcomes
-
-  \includegraphics[width=.9\textwidth]{images/cartoonBayes.pdf}
 
 
 ## Approaches to creating interpretable comparisons:
 
    - Randomized experiments (more precision from reducing heterogeneity in $Y$)
    - Instrumental variables (with randomized $Z$ created $D$)
-   - Natural Experiments / Discontinuities (one $X$ creates $Z$)
+   - Natural Experiments / Discontinuities (one $X$ creates $Z$) (includes RDD)
    - Difference-in-Differences (reduce bias *and* increase precision from reducing heterogeneity in $Y$)
-   - Semi-/Non-parametric Covariance Adjustment (i.e. matching)
+   - Semi-/Non-parametric Covariance Adjustment (ex. Matching)
    - Parametric covariance adjustment
+
+## Lingering Questions?
 
 
 # Doing Multivariate Matching
 
-## Do we need to match? Assessing balance.
+##  Did Transportation Reduce Crime?
+
+```{r loaddata, echo=FALSE, cache=TRUE}
+load(url("http://jakebowers.org/Data/meddat.rda"))
+```
+
+Cerdá et al. collected data on about roughly `r nrow(meddat)`
+neighborhoods in Medellin, Colombia. About  `r signif(sum(meddat$nhTrt),2)` of had
+access to the new Metrocable line and `r signif(sum(1-meddat$nhTrt),2)` did not.
+
+\centering
+\includegraphics[width=.7\textwidth]{medellin-gondola.jpg}
+
+See also <https://www.medellincolombia.co/where-to-stay-in-medellin/medellin-orientation/> and <https://archleague.org/article/connective-spaces-and-social-capital-in-medellin-by-jeff-geisinger/>
+
+##  Did Transportation Reduce Crime?
+
+Cerdá et al. collected data on about roughly `r nrow(meddat)`
+neighborhoods in Medellin, Colombia. About  `r signif(sum(meddat$nhTrt),2)` of had
+access to the new Metrocable line and `r signif(sum(1-meddat$nhTrt),2)` did not.
+
+\centering
+\includegraphics[width=.8\textwidth]{medellin-conc-pov.jpg}
+
+
+## Codebook/Covariates
+
+We don't have a formal codebook. Here are some guesses about the meanings of
+some of the variables. There are more variables in the data file than those
+listed here.
+
+\scriptsize
+```
+## The Intervention
+nhTrt        Intervention neighborhood (0=no Metrocable station, 1=Metrocable station)
+
+## Some Covariates (there are others, see the paper itself)
+nh03         Neighborhood id
+nhGroup      Treatment (T) or Control (C)
+nhTrt        Treatment (1) or Control (0)
+nhHom        Mean homicide rate per 100,000 population in 2003
+nhDistCenter Distance to city center (km)
+nhLogHom     Log Homicide (i.e. log(nhHom))
+
+## Outcomes (BE03,CE03,PV03,QP03,TP03 are baseline versions)
+BE      Neighborhood amenities Score 2008
+CE      Collective Efficacy Score 2008
+PV      Perceived Violence Score 2008
+QP      Trust in local agencies Score 2008
+TP      Reliance on police Score 2008
+hom     Homicide rate per 100,000 population Score 2008-2003 (in log odds)
+
+HomCount2003 Number of homicides in 2003
+Pop2003      Population in 2003
+HomCount2008 Number of homicides in 2008
+Pop2008      Population in 2008
+```
+
+Get rates from counts:
+
+```{r ratesfromcounts, echo=FALSE}
+meddat<- mutate(meddat, HomRate03=(HomCount2003/Pop2003)*1000,
+                HomRate08=(HomCount2008/Pop2008)*1000)
+```
+
+## How did the Metrocable effect Homicides?
+
+One approach:  Estimate the average treatment effect of Metrocable on
+Homicides after the stations were built.
+
+```{r threeestates}
+themeans<-group_by(meddat,nhTrt) %>% summarise(ybar=mean(HomRate08))
+themeans
+diff(themeans$ybar)
+lmOne <- lm(HomRate08~nhTrt,meddat)
+coef(lmOne)["nhTrt"]
+library(estimatr)
+difference_in_means(HomRate08~nhTrt,meddat)
+```
+
 
 
 # End Matter
