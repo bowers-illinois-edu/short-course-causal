@@ -749,7 +749,17 @@ ateEst2 <- lm_robust(HomRate08~nhTrt,fixed_effects=~fmMh,data=meddat)
 What is happening here? Why do they differ?
 
 
-# End Matter
+# Summary of the day
+
+## What have we done?
+
+ - Reviewed introductory material
+ - Discussed a method to compare observed data to a randomized design as a way to answer the question about "enough adjustment"
+ - Used simple stratification for adjustment, and assessed the performance of that approach.
+ - Created matched  designs using scalar as well as multivariate distances.
+ - Estimated the ATE and tested the hypothesis of no effects given the matched research designs that we created.
+
+# Supplementary Material
 
 ## One approach to this problem: model-based adjustment
 
