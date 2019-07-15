@@ -90,11 +90,14 @@ if(!dir.exists(here::here('libraries'))){
 ```
 
 
-```{r eval=TRUE, include=FALSE, echo=FALSE}
+```{r eval=FALSE, include=FALSE, echo=FALSE}
+## Run this next just once.
 library('devtools')
 library('withr')
-
 with_libpaths(here::here('libraries'), install_github("markmfredrickson/RItools"), 'pre')
+```
+
+```{r loadlibs2}
 library('RItools',lib.loc = here::here('libraries'))
 library(optmatch)
 ```
@@ -733,20 +736,189 @@ plot(xb4)
 
 # Estimating Treatment Effects and Testing Hypotheses About Causal Effects
 
-## The As-If-Randomized Approach to Estimating the ATE
+## What is the average treatment effect in a block randomized experiment?
 
-A simple approach:
+Recall Neyman's approach.
 
-```{r}
+\medskip
 
-meddat$fmMh <-  fmMh
+If we define the unit-level effect as $\tau_i = y_{i,1} -  y_{i,0}$ then we could write the average treatment effect  as  $\bar{\tau}=\bar{y}_1 - \bar{y}_0$.
 
-ateEst1 <- difference_in_means(HomRate08~nhTrt,blocks=fmMh,data=meddat)
-ateEst2 <- lm_robust(HomRate08~nhTrt,fixed_effects=~fmMh,data=meddat)
+\medskip
 
+Without blocks, and with randomization, we estimate $\bar{\tau}$ with $\hat{\bar{\tau}}=\hat{\bar{y}}_1 - \hat{\bar{y}}_0$. And with $m$ treated units, $\har{\bar{y}}_1  = (1/m) \sum_{i \in Z_i=1} Y_i$  and  $\har{\bar{y}}_0  = (1/(n-m)) \sum_{i \in Z_i=0} Y_i$
+
+\medskip
+
+In a simple randomized study we know that $E[\hat{\bar{\tau}}]=\bar{\tau}$.
+
+\medskip
+
+But this is **not**  the case in a block randomized  study, in general.
+
+## What is the average treatment effect in a block randomized experiment?
+
+A block-randomized experiment is a series of independent mini-experiments within block. So, for each block $b$ in the total of $B$ blocks, we can calculate $\hat{\bar{\tau}}_b$, and know that $E[\hat{\bar{\tau}}_b]=\bar{\tau}_b$.
+
+\smallskip
+
+How should we combine the $\hat{\bar{\tau}}_b$ to estimate $\bar{\tau}$?
+
+\smallskip
+
+Idea 1: weight by block-size such that $\hat{\bar{\tau}}_{blk}=\sum_{b=1}^B \hat{\bar{\tau}}_b (n_b/B)$. In a randomized experiment, we can show that $E[\hat{\bar{\tau}}_{blk}]=\bar{\tau}$.
+
+## "As-if block-randomized" analysis of a matched design
+
+Imagine that our matched-design was a randomized experiment. If so, we could do the following:
+
+```{r echo=TRUE}
+## Add the matched design factor to the data
+meddat[names(fmMh),"fmMh"] <- fmMh
+## Calculate the ATE within each set and also calculate some weights.
+setmeanDiffs <- meddat %>% filter(!is.na(fmMh)) %>% group_by(fmMh) %>%
+  summarise(ateb=mean(HomRate08[nhTrt==1])-mean(HomRate08[nhTrt==0]),
+            nb=n(),
+            nTb = sum(nhTrt),
+            nCb = sum(1-nhTrt),
+            hwt = ( 2*( nCb * nTb ) / (nTb + nCb)),
+	    nbwt = nb/nrow(meddat)
+            )
+setmeanDiffs
 ```
 
-What is happening here? Why do they differ?
+```{r}
+## The set-size weighted version
+atewnb<-with(setmeanDiffs, sum(ateb*nb/sum(nb)))
+atewnb
+with(setmeanDiffs,sum(ateb*nbwt))
+```
+
+
+## Using the weights to estimate the ATE: Set size weights
+
+Asking least squares to calculate weighted differences of means for us for easy
+standard errors and tests of $H_0: \bar{tau}=0$.
+
+```{r warnings=FALSE}
+## See Gerber and Green section 4.5 and also Chapter 3 on block randomized experiments. Also Hansen and Bowers 2008.
+wdat <- meddat %>% filter(!is.na(fmMh)) %>% group_by(fmMh) %>% mutate(trtprob=mean(nhTrt),
+                                               nbwt=nhTrt/trtprob + (1-nhTrt)/(1-trtprob),
+                                               gghbwt= 2*( n()/nrow(meddat) )*(trtprob*(1-trtprob)), ## GG version,
+                                               nb = n(),
+                                               nTb = sum(nhTrt),
+                                               nCb = nb - nTb,
+                                               hbwt = ( 2*( nCb * nTb ) / (nTb + nCb))
+                                               ) %>% ungroup()
+row.names(wdat) <- wdat$nh ## dplyr strips row.names
+ateblk1<-lm(HomRate08~nhTrt,data=wdat,weights=nbwt)
+coef(ateblk1)["nhTrt"]
+coeftest(ateblk1,vcov=vcovHC(ateblk1,type="HC2"))[1:2,]
+coefci(ateblk1,parm="nhTrt",vcov.=vcovHC(ateblk1,type="HC2"))
+## Easiest option
+ateblk2 <- lm_robust(HomRate08~nhTrt,data=wdat,weight=nbwt)
+ateblk2
+```
+
+```{r echo=FALSE, eval=FALSE}
+## Evaluating the different expressions for the harmonic mean weight
+wdat <- meddat %>% filter(!is.na(fmMh)) %>% group_by(fmMh) %>% mutate(trtprob=mean(nhTrt),
+                                               nbwt=nhTrt/trtprob + (1-nhTrt)/(1-trtprob),
+                                               gghbwt= 2*( n()/nrow(meddat) )*(trtprob*(1-trtprob)), ## GG version,
+                                               nb = n(),
+                                               nTb = sum(nhTrt),
+                                               nCb = nb - nTb,
+                                               hbwt = ( 2*( nCb * nTb ) / (nTb + nCb))
+					       hwt2 = nb * (trtprob * (1 - trtprob)),
+					       hwt3 = 2* sum((nhTrt-mean(nhTrt))^2)
+                                               )
+
+cor(wdat[,c("gghbwt","hbwt","hwt2","hwt3")])
+```
+
+
+## Testing the null of no effects
+
+Above we showed a test of $H_0: \bar{\tau}=0$ (the weak null of no effects). What about a test of the strong null? $H_0: \tau_i=0, \forall i$?
+
+
+## Easier permutation tests
+
+```{r coin1, cache=FALSE}
+library(coin)
+wdat$nhTrtF <- factor(wdat$nhTrt)
+testHwt <- oneway_test(HomRate08~nhTrtF | fmMh,data=wdat)
+pvalue(testHwt)
+```
+
+What if we worried about the asymptotic approximations to the randomization distribution above?
+
+```{r coin2, cache=TRUE}
+testHwtPerm <- oneway_test(HomRate08~nhTrtF | fmMh,data=wdat,
+		       distribution=approximate(nresample=10000))
+pvalue(testHwtPerm)
+```
+
+What if we worried about outliers reducing power?
+
+```{r coin3, cache=TRUE}
+testHwtPermRanks1 <- wilcox_test(HomRate08~nhTrtF | fmMh,data=wdat,
+		       distribution=approximate(nresample=10000))
+pvalue(testHwtPermRanks1)
+
+wdat <- wdat %>% group_by(fmMh) %>% mutate(rankHR08 = rank(HomRate08)) %>% ungroup()
+
+testHwtPermRanks2 <- oneway_test(rankHR08~nhTrtF | fmMh,data=wdat,
+		       distribution=approximate(nresample=10000))
+pvalue(testHwtPermRanks2)
+```
+
+# Difference in Differences for Matched Designs
+
+## Difference in Differences
+
+Although we have adjusted for contemporaneous differences between neighborhoods and also
+adjusted somewhat for time-varying differences within neighborhoods by
+matching on baseline outcome, we *might* increase precision and diminish bias by
+further adjusting after matching.
+
+Assess balance on baseline outcome:
+```{r}
+bal1 <- balanceTest(update(balfmla,.~.+strata(fmMh)),data=meddat,report="all")
+t(bal1$results["HomRate03",,])
+```
+
+Estimate ATE adjusting for baseline outcome.
+
+```{r}
+wdat$HDiff <- wdat$HomRate08 - wdat$HomRate03
+ddblk1 <- lm_robust(HDiff ~ nhTrt,data=wdat,weights=nbwt)
+ddblk1
+ateblk2
+```
+
+## Difference in Differences
+
+```{r echo=FALSE}
+newdat <- bind_rows(list(yr08=wdat[,c("nhTrt","fmMh","HomRate08","nbwt")],
+		    yr03=wdat[,c("nhTrt","fmMh","HomRate03","nbwt")]),
+		    .id="year")
+newdat$post <- as.numeric(newdat$year=="yr08")
+newdat$pre <- as.numeric(newdat$year!="yr08")
+newdat$Y <- ifelse(newdat$year=="yr08",newdat$HomRate08,newdat$HomRate03)
+newdat$Z <- factor(newdat$nhTrt)
+newdat$fm <- factor(newdat$fmMh)
+
+g <- ggplot(data=newdat,aes(x=post,y=Y,color=Z,shape=fm)) +
+	scale_shape_manual(values=1:14) +
+	#geom_point() +
+	geom_jitter(width=.1) +
+	geom_smooth(method="lm",aes(x=post,y=Y,group=fm,weight=nbwt),se=FALSE,size=.1,alpha=.1) +
+	geom_smooth(method="lm",aes(x=post,y=Y,group=Z,weight=nbwt),se=FALSE)
+
+print(g)
+
+```
 
 
 # Summary of the day
@@ -925,6 +1097,115 @@ But why those cuts? And why not 4? Why not...?
 One idea: collect observations into strata such that the sum of the
 differences in means of nhAboveHS within strata is smallest? This is the idea
 behind `optmatch` and other matching approaches.
+
+## Estimating the ATT
+
+We could also estimate the average effect on the treated (the ATT):
+
+\begin{equation}
+ATT=(\bar{\tau}|Z==1)=(\bar{y}_1|Z=1) - (\bar{y}_0|Z=1)
+\end{equation}
+
+```{r}
+with(setmeanDiffs,sum(ateb*(nTb)/sum(nTb)))
+```
+
+`balanceTest` reports the ATT (the set mean differences weighted by number of
+treated) but uses the precision-weighted mean for the $p$-value.  `xBalance`
+reports the same $p$-values but reports the harmonic mean weighted difference
+of means as the `adj.diff`.
+
+
+```{r echo=FALSE,eval=FALSE}
+## The descriptive adj.mean diff from balanceTest
+xbOutcome1 <- balanceTest(nhTrt~HomRate08+strata(fmMh),data=wdat,report="all")
+xbOutcome1$results[,,"fmMh"]
+```
+
+```{r}
+xbOutcome2 <- xBalance(nhTrt~HomRate08,strata=list(fmMh=~fmMh),data=wdat,report="all")
+xbOutcome2$results[,,"fmMh"]
+```
+
+
+## Demonstrating randomization inference for the sharp null by hand.
+
+```{r}
+library(randomizr)
+library(permute) ## for shuffle()
+
+newExp <- function(z,b){
+  n <- length(z)
+  h1 <- how(blocks=b)
+  z[shuffle(n,control=h1)]
+}
+
+newExp2 <- function(b,nT){
+	block_ra(blocks=b,block_m=nT)
+}
+
+newz2 <- newExp2(b=wdat$fmMh,nT=setmeanDiffs$nTb)
+testnewExp2 <- sapply(split(newz2,wdat$fmMh),function(x){ c(nb=length(x),nTb=sum(x)) })
+stopifnot(all.equal(testnewExp2["nb",],setmeanDiffs$nb,check.attributes=FALSE))
+stopifnot(all.equal(testnewExp2["nTb",],setmeanDiffs$nTb,check.attributes=FALSE))
+
+newz1 <- newExp(wdat$nhTrt,wdat$fmMh)
+testnewExp1 <- sapply(split(newz1,wdat$fmMh),function(x){ c(nb=length(x),nTb=sum(x)) })
+stopifnot(all.equal(testnewExp1["nb",],setmeanDiffs$nb,check.attributes=FALSE))
+stopifnot(all.equal(testnewExp1["nTb",],setmeanDiffs$nTb,check.attributes=FALSE))
+
+
+hwtfn <- function(data){
+  tapply(data$Tx.grp,data$stratum.code,function(x){ 2* sum((x-mean(x))^2) })
+}
+
+setsizewtfn<- function(data){
+  tapply(data$Tx.grp,data$stratum.code,function(x){ length(x) })
+}
+
+trtsizewtfn<- function(data){
+  ## Assumes Tx.grp \in \{0,1\} and 1=assigned to treatment
+  tapply(data$Tx.grp,data$stratum.code,function(x){ sum(x) })
+}
+
+wtMeanDiffTZ<-function(y,z,b,wtfn){
+  tzb <- mapply(function(yb,zb){ mean(yb[zb==1]) - mean(yb[zb==0]) },
+                yb=split(y,b),
+                zb=split(z,b))
+  wts <- wtfn(data.frame(Tx.grp=z,stratum.code=b))
+  sum(tzb*wts/sum(wts))
+}
+
+## Testing (compare to above)
+obsHTZ<-wtMeanDiffTZ(wdat$HomRate08,wdat$nhTrt,wdat$fmMh,hwtfn)
+obsNTZ<-wtMeanDiffTZ(wdat$HomRate08,wdat$nhTrt,wdat$fmMh,setsizewtfn)
+obsTTZ<-wtMeanDiffTZ(wdat$HomRate08,wdat$nhTrt,wdat$fmMh,trtsizewtfn)
+```
+
+Test the null hypothesis of no effects:
+
+```{r cache=TRUE}
+
+set.seed(12345)
+nulldistHwt <- replicate(10000,wtMeanDiffTZ(wdat$HomRate08,newExp(wdat$nhTrt,wdat$fmMh),wdat$fmMh,hwtfn))
+set.seed(12345)
+nulldistNwt <- replicate(10000,wtMeanDiffTZ(wdat$HomRate08,newExp(wdat$nhTrt,wdat$fmMh),wdat$fmMh,setsizewtfn))
+
+## Notice more precision with the Harmonic weight in thes p-values.
+2*min(mean(nulldistHwt>=obsHTZ),mean(nulldistHwt<=obsHTZ))
+2*min(mean(nulldistNwt>=obsNTZ),mean(nulldistNwt<=obsNTZ))
+
+```
+
+Comparing the reference distributions to each other and to their Normal approximations.
+
+```{r}
+plot(density(nulldistHwt),ylim=c(0,3))
+lines(density(nulldistNwt),lty=2)
+curve(dnorm(x,sd=sd(nulldistHwt)),from=-1,to=1,col="gray",add=TRUE)
+curve(dnorm(x,sd=sd(nulldistNwt)),from=-1,to=1,col="gray",lty=2,add=TRUE)
+abline(v=0)
+```
 
 ## References
 
