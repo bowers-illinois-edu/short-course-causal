@@ -97,7 +97,7 @@ library('withr')
 with_libpaths(here::here('libraries'), install_github("markmfredrickson/RItools"), 'pre')
 ```
 
-```{r loadlibs2}
+```{r loadlibs2, echo=FALSE}
 library('RItools',lib.loc = here::here('libraries'))
 library(optmatch)
 ```
@@ -362,6 +362,13 @@ So, part of the Metrocable effect might not reflect the causal effect of
 Metrocable per se, but rather the education of people in the
 neighborhood. How should we remove `nhAboveHS` from our estimate or test? What
 strategies can you think of?
+
+\medskip
+
+Features of a good adjustment process:
+   - Blind to outcome analysis (to preserve false positive rate and deter critics). Could be pre-registered.
+   - Easy to interpret ("controlling for"  versus "holding constant")
+   - Easy to diagnoses (Easy to answere the question "Did we adjust enough?")
 
 ## Stratification V 1.0
 
@@ -746,7 +753,7 @@ If we define the unit-level effect as $\tau_i = y_{i,1} -  y_{i,0}$ then we coul
 
 \medskip
 
-Without blocks, and with randomization, we estimate $\bar{\tau}$ with $\hat{\bar{\tau}}=\hat{\bar{y}}_1 - \hat{\bar{y}}_0$. And with $m$ treated units, $\har{\bar{y}}_1  = (1/m) \sum_{i \in Z_i=1} Y_i$  and  $\har{\bar{y}}_0  = (1/(n-m)) \sum_{i \in Z_i=0} Y_i$
+Without blocks, and with randomization, we estimate $\bar{\tau}$ with $\hat{\bar{\tau}}=\hat{\bar{y}}_1 - \hat{\bar{y}}_0$. And with $m$ treated units, $\hat{\bar{y}}_1  = (1/m) \sum_{i \in Z_i=1} Y_i$  and  $\hat{\bar{y}}_0  = (1/(n-m)) \sum_{i \in Z_i=0} Y_i$
 
 \medskip
 
