@@ -733,6 +733,25 @@ xb4 <- balanceTest(update(balfmla,.~.+strata(fmMh)+strata(fmPs)),
 xb4$overall[,]
 ```
 
+```{r}
+
+psmod2 <- glm(balfmla,data=meddat)
+psdist2 <- match_on(psmod2,data=meddat)
+
+mhdist2 <- match_on(balfmla,data=meddat,method = "rank_mahalanobis")
+
+fmMh2 <- fullmatch(mhdist2,data=meddat)
+summary(fmMh2,min.controls=0,max.controls=Inf)
+
+fmPs2 <- fullmatch(psdist2,data=meddat)
+summary(fmPs2,min.controls=0,max.controls=Inf)
+
+xb5 <- balanceTest(update(balfmla,.~.+strata(fmPs2)+strata(fmMh2)+strata(fmMh)+strata(fmPs)),
+                   data=meddat,report="all",p.adjust.method="none")
+xb5$overall[,]
+
+```
+
 ## Can you do better?
 
 Challenge: Improve the matched design. So far we have:
@@ -807,7 +826,7 @@ with(setmeanDiffs,sum(ateb*nbwt))
 Asking least squares to calculate weighted differences of means for us for easy
 standard errors and tests of $H_0: \bar{tau}=0$.
 
-```{r warnings=FALSE}
+```{r echo=FALSE, warnings=FALSE}
 ## See Gerber and Green section 4.5 and also Chapter 3 on block randomized experiments. Also Hansen and Bowers 2008.
 wdat <- meddat %>% filter(!is.na(fmMh)) %>% group_by(fmMh) %>% mutate(trtprob=mean(nhTrt),
                                                nbwt=nhTrt/trtprob + (1-nhTrt)/(1-trtprob),
