@@ -31,7 +31,7 @@ header-includes:
 <!-- To show notes  -->
 <!-- https://stackoverflow.com/questions/44906264/add-speaker-notes-to-beamer-presentations-using-rmarkdown -->
 
-```{r echo=FALSE, include=FALSE, cache=FALSE}
+```{r optionschunk, echo=FALSE, include=FALSE, cache=FALSE}
 # Some customization.  You can alter or delete as desired (if you know what you are doing).
 # knitr settings to control how R chunks work.
 rm(list=ls())
@@ -96,7 +96,7 @@ if(!dir.exists(here::here('libraries'))){
 ```
 
 
-```{r eval=FALSE, include=FALSE, echo=FALSE}
+```{r devlibs,  eval=FALSE, include=FALSE, echo=FALSE}
 ## Run this next just once.
 library('devtools')
 library('withr')
@@ -151,8 +151,85 @@ How to strengthen evidence about the claim that Metrocable caused a decrease in 
     on the set. The `optmatch` package for R finds sets that minimize the
     weighted sum of distances across the sets. (See also `rcbalance`, `DiPs`,
     `bigmatch`, `designmatch`, `quickmatch`).
+    1. Create distance matrices using `match_on` (and `caliper` and
+       `exactMatch`) (Scalar distances on  especially important variables like
+       baseline outcomes; Multivariate distances in terms of other covariates
+       via Mahalanobis or Propensity scores distances.)
+    2. Find stratifications using `fullmatch`.
+
+## Example: Setup the distance matrices
+
+```{r loadmeddat,  echo=FALSE}
+load(url("http://jakebowers.org/Data/meddat.rda"))
+meddat<- mutate(meddat,
+		HomRate03=(HomCount2003/Pop2003)*1000,
+		HomRate08=(HomCount2008/Pop2008)*1000)
+row.names(meddat) <- meddat$nh
+```
+
+```{r}
+## Make one of the covariates have missing data to demonstrate how to match on it
+set.seed(12345)
+whichmissing <- sample(1:45,5)
+meddat$nhPopD[whichmissing] <- NA
+thecovs <- unique(c(names(meddat)[c(5:7,9:24)],"HomRate03"))
+balfmla<-reformulate(thecovs,response="nhTrt")
+datNoNA <- fill.NAs(balfmla, data=meddat)
+stopifnot(all.equal(row.names(datNoNA),row.names(meddat)))
+datNoNA$id <- meddat$nh
+datNoNA$HomRate08 <- meddat$HomRate08
+covs <- c("nhPopD","nhPopD.NA","nhAboveHS","HomRate03")
+mhdist <- match_on(balfmla,data=datNoNA, method="rank_mahalanobis")
+psmod <- arm::bayesglm(balfmla,data=datNoNA,family=binomial(link="logit"))
+psmod2 <- glm(balfmla,data=datNoNA,family=binomial(link="logit"))
+stopifnot(any(abs(coef(psmod))<10))
+psdist <- match_on(psmod,data=datNoNA)
+## Make a scalar distance
+tmp <- datNoNA$HomRate03
+names(tmp) <- rownames(datNoNA)
+absdist <- match_on(tmp, z = datNoNA$nhTrt,data=datNoNA)
+```
+## Example: Create a stratification
+
+Using `calipers` and `min.controls` and `max.controls` to improve the design.
+
+```{r}
+## Inspect the distance matrices to choose calipers if desired
+quantile(as.vector(psdist),seq(0,1,.1))
+quantile(as.vector(mhdist),seq(0,1,.1))
+quantile(as.vector(absdist),seq(0,1,.1))
+fm1 <- fullmatch(psdist + caliper(psdist,8) + caliper(absdist,1)
+		  + caliper(mhdist,60),
+		  min.controls=1/3, #0 # default
+		  max.controls=5, #Inf # default
+		  data=datNoNA,tol=.00001)
+summary(fm1,min.controls=0,max.controls=Inf,propensity.model=psmod)
+```
+
+
+## An Adjustment Strategy to Address Alternative Explanations
+
  3. **Assess the stratification in substantive terms** If we look within the
     sets, are the differences we see substantively concerning or trivial?
+
+
+
+```{r echo=FALSE}
+datNoNA[names(fm1),"fm1"] <- fm1
+setmeanDiffs <- datNoNA %>% filter(!is.na(fm1)) %>% group_by(fm1) %>%
+  summarise(Y=mean(HomRate08[nhTrt==1])-mean(HomRate08[nhTrt==0]),
+            nb=n(),
+            nTb = sum(nhTrt),
+            nCb = sum(1-nhTrt),
+	    baselinediffs = mean(HomRate03[nhTrt==1])-mean(HomRate03[nhTrt==0]),
+	    minbaselines = min(HomRate03),
+	    maxbaseline = max(HomRate03)
+            ) %>% arrange(abs(baselinediffs))
+setmeanDiffs
+```
+
+## An Adjustment Strategy to Address Alternative Explanations
+
  4. **Assess the stratification by comparison to a model of a block-randomized
     experiment** Does our research design look like a block-randomized
     experiment in terms of covariate balance? If so, move onto step 4.
@@ -160,14 +237,36 @@ How to strengthen evidence about the claim that Metrocable caused a decrease in 
     combining scores (for example, using calipers); (c) excluding units (using
     calipers); (d) exact matching on subgroups; (e) reducing variation in
     set-size.
+
+## An Adjustment Strategy to Address Alternative Explanations
+
  5. **Estimate effects and test hypothesis as-if-block-randomized** Estimators
     and tests refer to the finite "population" of the study pool and the fixed
     stratification in the same way common in the analysis of block-randomized
     experiments.
+
+```{r  estandtest,  cache=TRUE}
+datNoNA <-  datNoNA %>%  filter(!is.na(fm1)) %>% group_by(fm1) %>%
+	mutate(trtprob=mean(nhTrt), nbwt=nhTrt/trtprob + (1-nhTrt)/(1-trtprob))
+
+estate <-  lm_robust(HomRate08~nhTrt,data=datNoNA,weights=nbwt)
+estate
+
+##  Check if preceding results robust
+datNoNA$nhTrtF  <- factor(datNoNA$nhTrt)
+ranktest1  <-  wilcox_test(HomRate08~nhTrtF|fm1,data=datNoNA,
+		       distribution=approximate(nresample=10000))
+ranktest1
+```
+
+## An Adjustment Strategy to Address Alternative Explanations
+
  6. **Assess the sensitivity of the analysis to the assumptions of
     as-if-randomized** The design is not a randomized design. Is this likely to
     cause small or large changes in the substantive interpretation of our
-    results?
+    results? (R packages `sensitivitymv`, `sensitivitymw`, `sensitivitymult`,
+    `rbounds`)
+
 
 # Non-Bipartite Matching for Multi-valued Treatments
 
@@ -178,7 +277,7 @@ internet survey of Canadians during 2012 which each respondent drew a free-hand
 map of their "local community" and then reported their understanding of the
 demographic breakdown of this place.
 
-```{r echo=FALSE, results='hide'}
+```{r echo=FALSE, results='hide', cache=TRUE}
 ## White English Speaking Canadians only
 load(url("http://jakebowers.org/ICPSR/canadamapdat.rda"))
 ## summary(canadamapdat)
@@ -206,8 +305,8 @@ And here is the question people were asked (groups in random order).
 White Canadian respondents' reports about "visible minorities" in their hand drawn "local communities".
 
 \centering
-```{r echo=FALSE}
-par(mfrow=c(1,2))
+```{r plotpercs, echo=FALSE}
+par(mfrow=c(1,2),pty="s")
 with(canadamapdat,scatter.smooth(vm.da,vm.community.norm2,col="gray",
                                  ylab="Perceptions",xlab="Census Neighborhood (DA)",
                                  xlim=c(0,1),ylim=c(0,1),lpars=list(lwd=2)))
@@ -230,10 +329,10 @@ context (and maybe same covariate values) who differ in perceptions.
 
 \medskip
 
-But objective context is continuous not binary: rather than matching $m$ "treated"
+But objective context is continuous: rather than matching $m$ "treated"
 to $n-m$ "controls", we want to compare all $n$ with all $n$ respondents.
 
-```{r echo=FALSE}
+```{r cleandat, echo=FALSE}
 ## Exclude people who did not offer a perception or an outcome
 wrkdat<-canadamapdat[!is.na(canadamapdat$vm.community.norm2) &
 		     !is.na(canadamapdat$social.capital01),]
@@ -244,7 +343,7 @@ wrkdat$vmdaPct <- wrkdat$vm.da * 100 ## express in pct
 
 Our main design here matches people with similar neighborhood proportions of visible minorities.
 
-```{r }
+```{r distmats}
 scalar.dist<-function(v){
   ## Utility function to make n x n abs dist matrices
   outer(v,v,FUN=function(x,y){ abs(x-y) })
@@ -273,12 +372,20 @@ table(is.na(wrkdat$nbp1)) ## recall the "ghost message"
 
 ## Inspect the solution
 
+Did  we "adjust for" `vmdaPct`?
 ```{r }
 wrkdat[order(wrkdat$nbp1),c("nbp1","vmdaPct","vm.community.norm2")][1:6,]
 ## table(wrkdat$nbp1)
 nbp1vmdiffs<-tapply(wrkdat$vmdaPct,wrkdat$nbp1,function(x){ abs(diff(x)) })
-nbp1percdiffs<-tapply(wrkdat$vm.community.norm2,wrkdat$nbp1,function(x){ abs(diff(x)) })
 summary(nbp1vmdiffs)
+```
+
+Is there any variability left in our explanatory variable? (Perceptions  or
+`vm.community.norm2`?)
+
+```{r}
+nbp1percdiffs<-tapply(wrkdat$vm.community.norm2,wrkdat$nbp1,function(x){ abs(diff(x)) })
+summary(nbp1percdiffs)
 ```
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
@@ -287,33 +394,41 @@ source(url("http://jakebowers.org/Matching/nonbimatchingfunctions.R"))
 
 ## Inspect the solution
 
+We want no variation within set in terms of `vmdaPct`; would prefer at least
+some variation in terms of `vm.community.norm2`.
+
 \centering
-```{r out.width=".8\\textwidth"}
+```{r echo=FALSE, out.width=".7\\textwidth"}
 nbmplot(wrkdat,yvar="vmdaPct",xvar="vm.community.norm2",strata="nbp1",points=FALSE,
         ylim=range(wrkdat$vmdaPct))
 ```
 
 ## Assess balance
 
-Now we cannot ask whether the treatment and control groups look appropriately similar, but we can still compare the **relationships** between the adjusted variable (`vmdaPct`) and other covariates.
+No treatment and control groups to compare. But we can still compare the **relationships** between the adjusted variable (`vmdaPct`) and other covariates conditional on pair.
 
 ```{r balnbp1, cache=TRUE }
 thecovs<-c("age","income.coded","education","x.years","sex",
            "csd.pop","vm.csd","community_area_km")
 balfmla<-reformulate(thecovs,response="vmdaPct")
 xb1<-xBalance(balfmla,strata=list(unstrat=NULL,nbp1=~nbp1), report="all",data=wrkdat)
-xb1$overall
+```
+
+## Assess balance
+
+No treatment and control groups to compare. But we can still compare the **relationships** between the adjusted variable (`vmdaPct`) and other covariates conditional on pair.
+
+```{r balnbp1a}
+xb1$overall[,]
 xb1$results[,c("z","p"),"nbp1"]
 ```
 
 ## Improve balance using penalties and dropping observations
 
-  For example, we might want to require matches within Province, to give
-  special attention to `csd.pop` (so that we are not comparing people in small
-  towns to people in large towns), and `community_area_km` (so that we are not
-  comparing people who drew big maps to people who drew small maps). And we
-  might also want to drop the 8 least well matched observations. (Choosing 8
-  here arbitrarily.)
+  For example, (a) require matches within Province, (b) do not compare people
+  in small towns to people in large towns, (c) do not compare people who drew
+  big maps to people who drew small maps, (d) drop the 8 least well matched
+  observations. (Choosing 8 here arbitrarily.)
 
 ```{r echo=FALSE}
 rescale01<-function(x){
@@ -363,7 +478,7 @@ vmdaPhPen<-make.phantoms(vmdaPen1,8,maxval = max(as.vector(vmdaPen1))*10)
 
 ## Improve balance using penalties and dropping observations
 
-```{r cache=TRUE}
+```{r penalties, cache=TRUE}
 vmdaPhPenMat <- distancematrix(vmdaPhPen)
 nbp2match<-nonbimatch(vmdaPhPenMat)
 nbp2<-get.sets(nbp2match$matches,remove.unpaired=TRUE)
@@ -387,47 +502,26 @@ xb2$results[,"p",c("nbp1","nbp2")]
 nbmplot(wrkdat,yvar="vmdaPct",xvar="vm.community.norm2",strata="nbp2",points=FALSE,ylim=range(wrkdat$vmdaPct))
 ```
 
-## Strengthening the treatment
+## Assess the new match
 
-The difference in "treatment" within sets varies:
 ```{r}
-summary(nbp1vmdiffs)
-summary(nbp1percdiffs)
-
-percDist <- scalar.dist(wrkdat$vm.community.norm2*100)
-
-da <- vmdaDist[1:5,1:5]
-perc <- percDist[1:5,1:5]
-
-da/perc
-
-da + 1000*(perc < 2)
-
+nbp2vmdiffs<-tapply(wrkdat$vmdaPct,wrkdat$nbp2,function(x){ abs(diff(x)) })
+nbp2percdiffs<-tapply(wrkdat$vm.community.norm2,wrkdat$nbp2,function(x){ abs(diff(x)) })
+summary(nbp2vmdiffs)
+summary(nbp2percdiffs)
 ```
 
-## Strengthening the treatment
-
-To prevent so many sets with no variation on "treatment" we could add a penalty
-for pairs that are too close on treatment: to maximize size of treatment (i.e.
-differences in perceptions) while minimizing differences on covariates. That
-is, we should be able to get more precision / power about the perceptions
-related differences if they are larger.
-
-\medskip
-
-Class challenge: How would you do this? (use the code from above to do this or at least sketch it)
-
-## Now assess hypotheses about effects
+## Evidence against the null of no effects?
 
 Now, test the hypothesis of no relationship between perceptions
 `vm.community.norm2` and `social capital`.
 
 ```{r eval=TRUE,echo=FALSE,results="hide"}
 ## These are the same test in this case
-test1<-independence_test(social.capital01~vm.community.norm2|nbp1,
-			 data=wrkdat[!is.na(wrkdat$nbp1),], teststat="quadratic")
+test1<-independence_test(social.capital01~vm.community.norm2|nbp2,
+			 data=wrkdat[!is.na(wrkdat$nbp2),], teststat="quadratic")
 test2<-xBalance(vm.community.norm2~social.capital01,
-		strata=list(nbp1=~nbp1), data=wrkdat, 
+		strata=list(nbp2=~nbp2), data=wrkdat,
 		report=c("adj.mean.diffs","chisquare.test","z.scores","p.values"))
 test1
 test2$overall
@@ -436,9 +530,8 @@ test2$overall
 
 ## Describe the differences within pairs
 
-One idea is to ask whether, within a pair, the person who perceives more
-visible minorities in their community tends to be higher (or lower) in
-`social.capital`. What do you think the following analysis shows?
+Does the person who perceives more visible minorities in their community tends
+to be higher (or lower) in `social.capital` than the other person in the pair?
 
 ```{r echo=FALSE}
 rank.pairs<-function (x, block) { ## Identify the low and high subj in each pair
@@ -448,18 +541,18 @@ rank.pairs<-function (x, block) { ## Identify the low and high subj in each pair
 }
 ```
 
-```{r}
-wrkdat$scRank<-with(wrkdat,rank.pairs(social.capital01,nbp1))
-wrkdat$vmCRank<-with(wrkdat,rank.pairs(vm.community.norm2,nbp1))
-wrkdat[order(wrkdat$nbp1),c("nbp1","social.capital01","scRank","vm.community.norm2","vmCRank")][1:6,]
+```{r rankwithinpairs}
+wrkdat$scRank<-with(wrkdat,rank.pairs(social.capital01,nbp2))
+wrkdat$vmCRank<-with(wrkdat,rank.pairs(vm.community.norm2,nbp2))
+wrkdat[order(wrkdat$nbp2),c("nbp2","social.capital01","scRank","vm.community.norm2","vmCRank")][1:6,]
 with(wrkdat,tapply(scRank,vmCRank,mean))
 ```
 
 ## Summarize mean differences within pairs
 
-If perceptions matters for social capital then we would expect pairs differing
-greatly in subjective context to display greater differences in social capital
-than pairs that differ a little.
+If perceptions matter for social capital above and beyond objective context
+then we would expect pairs differing greatly in subjective context to display
+greater differences in social capital than pairs that differ a little.
 
 
 ```{r echo=FALSE,results="hide"}
@@ -470,31 +563,45 @@ align.by.block<-function (x, block, fn = mean, thenames=NULL) { ## By default, t
   if(!is.null(names)){ names(newx)<-thenames }
   return(newx)
 }
-
-library(sandwich)
-library(lmtest)
-source(url("http://jakebowers.org/ICPSR/confintHC.R"))
 ```
 
 ```{r ates, cache=TRUE}
-wrkdat$scMD<-with(wrkdat,align.by.block(social.capital01,nbp1))
-wrkdat$vmcn2MD<-with(wrkdat,align.by.block(vm.community.norm2,nbp1))
-wrkdat[order(wrkdat$nbp1),c("social.capital01","scRank","scMD","vm.community.norm2","vmcn2MD","vmCRank","nbp1")][1:4,]
+wrkdat$scMD<-with(wrkdat,align.by.block(social.capital01,nbp2))
+wrkdat$vmcn2MD<-with(wrkdat,align.by.block(vm.community.norm2,nbp2))
+wrkdat[order(wrkdat$nbp2),c("social.capital01","scRank","scMD","vm.community.norm2","vmcn2MD","vmCRank","nbp2")][1:4,]
 ## notice that aligning or pair-mean-centering the data preserves the within
 ## set relationships
-## summary(tapply(wrkdat$scMD,wrkdat$nbp1,function(x){ abs(diff(x)) }))
-## summary(tapply(wrkdat$social.capital01,wrkdat$nbp1,function(x){ abs(diff(x)) }))
-lm1<-lm(scMD~vmcn2MD,data=wrkdat[!is.na(wrkdat$nbp1),])
-theHC2ci<-coefci(lm1,vcov=vcovHC(lm1,type="HC2"))
+## summary(tapply(wrkdat$scMD,wrkdat$nbp2,function(x){ abs(diff(x)) }))
+## summary(tapply(wrkdat$social.capital01,wrkdat$nbp2,function(x){ abs(diff(x)) }))
+lm1<-lm(scMD~vmcn2MD,data=wrkdat[!is.na(wrkdat$nbp2),])
+coefci(lm1,vcov=vcovHC(lm1,type="HC2"))
 coeftest(lm1,vcov.=vcovHC(lm1,type="HC2"))
-lm2 <- lm_robust(scMD~vmcn2MD,data=wrkdat[!is.na(wrkdat$nbp1),])
+lm2 <- lm_robust(scMD~vmcn2MD,data=wrkdat[!is.na(wrkdat$nbp2),])
 lm2
-lm3 <- lm_robust(social.capital01~vm.community.norm2,fixed_effects=~nbp1,data=wrkdat)
+lm3 <- lm_robust(social.capital01~vm.community.norm2,fixed_effects=~nbp2,data=wrkdat)
 lm3
-table(wrkdat$vmCRank)
-lm4 <- lm_robust(social.capital01~I(vmCRank-1),fixed_effects=~nbp1,data=wrkdat)
+table(wrkdat$vmCRank,exclude=c())
+lm4 <- lm_robust(social.capital01~I(vmCRank-1),fixed_effects=~nbp2,data=wrkdat)
 lm4
 ```
+## Summarize mean differences within pairs
+
+If perceptions matter for social capital above and beyond objective context
+then we would expect pairs differing greatly in subjective context to display
+greater differences in social capital than pairs that differ a little.
+
+```{r}
+coefci(lm1,vcov=vcovHC(lm1,type="HC2"))
+coeftest(lm1,vcov.=vcovHC(lm1,type="HC2"))
+lm2
+lm3
+pairdiffs <- wrkdat %>% filter(!is.na(vmCRank)&!is.na(social.capital01)&!is.na(nbp2)) %>%
+       group_by(vmCRank) %>% summarize(mnsc=mean(social.capital01))
+wrkdat[order(wrkdat$nbp2),c("social.capital01","scRank","scMD","vm.community.norm2","vmcn2MD","vmCRank","nbp2")][1:4,]
+lm4
+```
+
+
 
 ## Summarize mean differences within pairs
 
@@ -509,7 +616,7 @@ within set.
 
 \medskip
 
-The largest difference is about `r round(max(wrkdat$vmcn2MD,na.rm=TRUE),2)`. The model
+The largest difference is about `r round(max(wrkdat$vmcn2MD,na.rm=TRUE),2)`. A linear model
 predicts that social capital would differ by about `r coef(lm1)[[2]]*.48` for such a difference. This is about
 `r coef(lm1)[[2]]*.48/sd(wrkdat$scMD,na.rm=TRUE)` of a standard deviation
 of the social capital scale. Or about
@@ -525,10 +632,19 @@ with(wrkdat,scatter.smooth(vmcn2MD,scMD,span=.3,cex=.7,col="gray",pch=19,lpars=l
 abline(h=0,lwd=.5)
 ```
 
+## Summary of matching without groups
+
+ - Workflow in general is the same as matching with groups (covariates,
+   distance matrices, optimization to select a stratification, assessment of
+   the stratification by comparison to an experiment)
+ - Estimation is more flexible --- could look simply at "higher versus lower"
+   within  pair, or could average over scores.
+
 # Rosenbaum Style Sensitivity Analysis
 
 
-```{r loaddat, echo=FALSE}
+```{r loaddat, echo=FALSE, cache=TRUE}
+rm(list=ls())
 load(url("http://jakebowers.org/Data/meddat.rda"))
 meddat$id <- row.names(meddat)
 meddat<- mutate(meddat, HomRate03=(HomCount2003/Pop2003)*1000,
@@ -541,7 +657,9 @@ options(show.signif.stars=FALSE)
 
 ## Start with a matched design
 
-```{r echo=FALSE}
+Using a pairmatch here:
+
+```{r echo=TRUE}
 meddat <- transform(meddat, pairm = pairmatch(nhTrt~HomRate03, data=meddat))
 thecovs <- unique(c(names(meddat)[c(5:7,9:24)],"HomRate03"))
 balfmla<-reformulate(thecovs,response="nhTrt")
@@ -879,14 +997,14 @@ here?
 
 ```{r lmer, cache=TRUE, warning=FALSE}
 library(lme4)
-wrkdat$vmCbi<-ave(wrkdat$vm.community.norm2,wrkdat$nbp1)
+wrkdat$vmCbi<-ave(wrkdat$vm.community.norm2,wrkdat$nbp2)
 ## Following Bafumi and Gelman in using set means
-lmer1<-lmer(social.capital01~vm.community.norm2+vmCbi+(1|nbp1),data=wrkdat)
+lmer1<-lmer(social.capital01~vm.community.norm2+vmCbi+(1|nbp2),data=wrkdat)
 confint(lmer1)["vm.community.norm2",]
 ## Notice that we may have less information than we thought (some clustered of observation by DA).
 table(table(wrkdat$dauid))
 ## So maybe:
-lmer2<-lmer(social.capital01~vm.community.norm2+vmCbi+(1|nbp1)+(1|dauid),data=wrkdat)
+lmer2<-lmer(social.capital01~vm.community.norm2+vmCbi+(1|nbp2)+(1|dauid),data=wrkdat)
 confint(lmer2)["vm.community.norm2",]
 ```
 
