@@ -740,27 +740,35 @@ reshape_sensitivity<-function(y,z,fm){
 The workflow: First, reshape the matched design into the appropriate shape (one treated unit in column 1, controls in columns 2+).^[Notice that this software requires 1:K matches although K can vary.]
 
 ```{r}
+## The pairmatch
 respmat<-with(meddat[matched(meddat$pairm),],reshape_sensitivity(HomRate0803,nhTrt,pairm))
 respmat[1:4,]
+## The fullmatch version
 meddat <- transform(meddat,fm=fullmatch(nhTrt~HomRate03+nhAboveHS+nhPopD,data=meddat,min.controls=1))
 respmat2<-with(meddat[matched(meddat$fm),],reshape_sensitivity(HomRate0803,nhTrt,fm))
 respmat2[10:14,]
 ```
-
 
 ## An example of sensitivity analysis: the search for Gamma
 
 The workflow: Second, assess sensitivity of the test to different levels of
 $\Gamma$ (odds of treatment by the treated units). $\Gamma=1$ means that the
 treated and control units had equal odds of treatment within strata (i.e. a
-well randomized experiment).
+well randomized experiment) --- this is what we assume in our "as-if
+randomized" analysis above.
 
 ```{r}
 sensG1<-senmv(-respmat,method="t",gamma=1)
 sensG2<-senmv(-respmat,method="t",gamma=2)
 sensG1$pval
-2*sensG1$pval # notice
+2*sensG1$pval # notice this is same as original test
 pvalue(ow1)
+```
+
+But this is what we'd see if an unoberved covariate doubled odds of treatment
+within set (and very strongly predicted the outcome.)
+
+```{r}
 sensG2$pval
 ```
 
@@ -893,42 +901,20 @@ res2<-uniroot(f=findSensG,method="t",lower=1,upper=6,a=.05)
 res2$root
 ```
 
-## Confidence Intervals
-
-We can also look at an example involving point-estimates for bias of at most
-$\Gamma$ and confidence intervals assuming an additive effect of treatment.
-Notice also that that when $\Gamma$ is greater than 1, we have a range of
-point estimates consistent with that $\Gamma$.
-
-```{r cis}
-respmatPm<-with(droplevels(meddat[matched(meddat$pairm),]),reshape_sensitivity(HomRate0803,nhTrt,pairm))
-(sensCItwosidedG1<-senmwCI(-respmatPm,method="t",one.sided=FALSE))
-t.test(respmat[,2],respmat[,1],paired=TRUE)$conf.int
-(sensCIonesidedG1<-senmwCI(-respmatPm,method="t",one.sided=TRUE))
-(sensCItwosidedG2<-senmwCI(-respmatPm,method="t",one.sided=FALSE,gamma=2))
-(sensCIonesidedG2<-senmwCI(-respmatPm,method="t",one.sided=TRUE,gamma=2))
-```
-
-\note{
- Notice that the
-two-sided intervals have lower bounds that are lower than the one-sided
-intervals. }
-
-
-## Confidence Intervals
+## More ways to search for $\Gamma$
 
 Or with a pairmatch we could use the \texttt{rbounds} package:
 
 ```{r }
-hlsens(respmatPm[,2],respmatPm[,1])
+hlsens(respmat[,2],respmat[,1])
 ```
 
-## Confidence Intervals
+## More ways to search for $\Gamma$
 
 Or with a pairmatch we could use the \texttt{rbounds} package:
 
 ```{r}
-psens(respmatPm[,2],respmatPm[,1])
+psens(respmat[,2],respmat[,1])
 ```
 
 ## Interpreting sensitivity analyses
@@ -947,7 +933,7 @@ lambdas <- seq(round(res1$root,1)+.1,2*res1$root,length=100)
 ampres1<-amplify(round(res1$root,1), lambda=lambdas)
 ampres2<-amplify(2, lambda=lambdas)
 ```
-```{r echo=FALSE, out.width=".95\\textwidth"}
+```{r echo=FALSE, out.width=".8\\textwidth"}
 par(mar=c(3,3,1,1),mgp=c(1.5,.5,0))
 plot(as.numeric(names(ampres1)),ampres1,
      xlab=expression(paste(Lambda," (maximum selection effect of confounder)")),
@@ -957,18 +943,22 @@ plot(as.numeric(names(ampres1)),ampres1,
 ```
 
 
-## How sensitive to hidden biases was your design?
+## Summary of sensitivity analysis
 
-Time for practice: Take some minutes to do this. Report back to the class.
-
-## Summary
-
- - What questions are raised by this mode of sensitivity analysis?
+ - We know that our research designs involve some confounding from unobserved
+   covariates. The question is about how big of a problem these biases could
+   be. Sensitivity analysis formalizes this problem, and also formalizes a way
+   to reason about the impact of the unobserved biases on our results.
  - Notice what this approach offers: we might be able to talk about the
    sensitivity to hidden biases of research designs **before** we go into the
    field.
 
-## What have we done so far?
+ - What questions are raised by this mode of sensitivity analysis? What do you
+   wish it could do that it doesn't do?
+
+# Summary Overall
+
+## Summary
 
  1. Creating matched designs to enhance the interpretability of comparisons:
     a.  of two groups using stratification (optimal, full matching without replacement)
@@ -980,8 +970,25 @@ Time for practice: Take some minutes to do this. Report back to the class.
     c. Notice that non-bipartite matching is useful for research design ---
     for choosing what units you will want to compare (or assign, in the case
     of an experiment)
- 2. The "as-if randomized" approach to the statistical analysis of
+ 2. Applied the "as-if randomized" approach to the statistical analysis of
     observational studies.
+ 3. Interrogated the "as-if randomized" assumption.
+
+## Other resources
+
+ - \citealp{rosenbaum2010design}
+ - \citealp{rosenbaum2002observational}
+ - \citealp{rosenbaum2017}
+ - \citealp{gerbergreen2012}
+ - \citealp{dunning2012}
+ - \citealp{imbensrubin2015}
+ - \citealp{morwin:2007:coun}
+
+See also work by Pearl: \cite{pearl2018book}, \cite{pearl2016causal}
+
+Also: The Atlantic Causal Inference Conference (ACIC).
+
+## Open Discussion
 
 ## References
 
@@ -1007,4 +1014,27 @@ table(table(wrkdat$dauid))
 lmer2<-lmer(social.capital01~vm.community.norm2+vmCbi+(1|nbp2)+(1|dauid),data=wrkdat)
 confint(lmer2)["vm.community.norm2",]
 ```
+
+
+## Confidence Intervals
+
+We can also look at an example involving point-estimates for bias of at most
+$\Gamma$ and confidence intervals assuming an additive effect of treatment.
+Notice also that that when $\Gamma$ is greater than 1, we have a range of
+point estimates consistent with that $\Gamma$.
+
+```{r cis}
+respmatPm<-with(droplevels(meddat[matched(meddat$pairm),]),reshape_sensitivity(HomRate0803,nhTrt,pairm))
+(sensCItwosidedG1<-senmwCI(-respmatPm,method="t",one.sided=FALSE))
+t.test(respmat[,2],respmat[,1],paired=TRUE)$conf.int
+(sensCIonesidedG1<-senmwCI(-respmatPm,method="t",one.sided=TRUE))
+(sensCItwosidedG2<-senmwCI(-respmatPm,method="t",one.sided=FALSE,gamma=2))
+(sensCIonesidedG2<-senmwCI(-respmatPm,method="t",one.sided=TRUE,gamma=2))
+```
+
+\note{
+ Notice that the
+two-sided intervals have lower bounds that are lower than the one-sided
+intervals. }
+
 
