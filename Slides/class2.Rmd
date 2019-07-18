@@ -179,7 +179,9 @@ stopifnot(all.equal(row.names(datNoNA),row.names(meddat)))
 datNoNA$id <- meddat$nh
 datNoNA$HomRate08 <- meddat$HomRate08
 covs <- c("nhPopD","nhPopD.NA","nhAboveHS","HomRate03")
+balfmla <- update(balfmla,.~.+nhPopD.NA)
 mhdist <- match_on(balfmla,data=datNoNA, method="rank_mahalanobis")
+## See Gelman on Separation in Logistic Regression
 psmod <- arm::bayesglm(balfmla,data=datNoNA,family=binomial(link="logit"))
 psmod2 <- glm(balfmla,data=datNoNA,family=binomial(link="logit"))
 stopifnot(any(abs(coef(psmod))<10))
