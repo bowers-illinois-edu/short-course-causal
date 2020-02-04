@@ -379,6 +379,7 @@ Did  we "adjust for" `vmdaPct`?
 wrkdat[order(wrkdat$nbp1),c("nbp1","vmdaPct","vm.community.norm2")][1:6,]
 ## table(wrkdat$nbp1)
 nbp1vmdiffs<-tapply(wrkdat$vmdaPct,wrkdat$nbp1,function(x){ abs(diff(x)) })
+nbp1percdiffs<-tapply(wrkdat$vm.community.norm2,wrkdat$nbp1,function(x){ abs(diff(x)) })
 summary(nbp1vmdiffs)
 ```
 
@@ -532,7 +533,7 @@ test2$overall
 
 ## Describe the differences within pairs
 
-Does the person who perceives more visible minorities in their community tends
+Does the person who perceives more visible minorities in their community tend
 to be higher (or lower) in `social.capital` than the other person in the pair?
 
 ```{r echo=FALSE}
