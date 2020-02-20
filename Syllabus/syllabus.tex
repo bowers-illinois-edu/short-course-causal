@@ -15,44 +15,48 @@
 \usepackage{microtype}
 
 \bibliographystyle{apalike}
-\usepackage[letterpaper,bottom=.75in,top=1in,right=1in,lmargin=1.15in]{geometry}
+\usepackage[letterpaper,bottom=.75in,top=1in,right=1in,lmargin=1.5in]{geometry}
 
 \usepackage[mmddyyyy]{datetime}
 \usepackage{advdate}
 
+
 \usepackage[compact,nobottomtitles*]{titlesec} %nobottomtitles
-\titleformat{\part}[hang]{\large\scshape}{\hspace{-.75in}\thepart}{.5em}{}{}
-\titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection ---}{.25em}{}{}
-\titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}
+\titleformat{\part}[hang]{\bfseries\large\scshape}{\hspace{-.5in}\thepart}{.5em}{}{}
+\titleformat{\section}[hang]{\large\bfseries}{\hspace{-.5in}\thesection ---}{.25em}{}{}
+\titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.2em}{\hspace{-1in}}{}
 \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}
 \titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}
 
 %\titlespacing{\part}{0ex}{.5ex plus .1ex minus .2ex}{.25\parskip}
-\titlespacing{\section}{0ex}{1.5ex plus .1ex minus .2ex}{.25\parskip}
-\titlespacing{\subsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
+%\titlespacing{\section}{0ex}{1.5ex plus .1ex minus .2ex}{.25\parskip}
+\titlespacing*{\section}{-.5in}{1em}{0em}{}%
+%\titlespacing{\subsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
+\titlespacing{\subsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}
 \titlespacing{\subsubsection}{0ex}{.5ex plus .1ex minus .1ex}{1ex}
 \titlespacing{\paragraph}{0em}{1ex}{.5ex plus .1ex minus .1ex}
 
+
 \newenvironment{introstuff} {\setcounter{secnumdepth}{0}%
-\newgeometry{lmargin=1.5in}     % use whatever margins you want for left, right, top and bottom.
-  \titlespacing*{\section}{-.75in}{1em}{0em}{}%
-  \titleformat{\subsection}[leftmargin]{\itshape\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
-  \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
-  \titleformat{\paragraph}[hang]{\bfseries}{\theparagraph}{0em}{}{}%
-  \titlespacing{\subsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
-  \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
-  \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+%\newgeometry{lmargin=1.5in}     % use whatever margins you want for left, right, top and bottom.
+%   \titlespacing*{\section}{-.75in}{1em}{0em}{}%
+%   \titleformat{\subsection}[leftmargin]{\itshape\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
+%   \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
+%   \titleformat{\paragraph}[hang]{\bfseries}{\theparagraph}{0em}{}{}%
+%   \titlespacing{\subsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+%   \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
+%   \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
 } {\setcounter{secnumdepth}{1}%
 \restoregeometry
-  %\titleformat{\part}[hang]{\large\bfseries}{\hspace{-.75in}\thepart}{.5em}{}{}%
-  \titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection---}{.5em}{}{}%
-  \titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
-  \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
-  \titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}%
-  % \titleformat{\subsection}[hang]{\itshape}{\thesubsection}{.5em}{}{}%
-  \titlespacing{\section}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
-  \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
-  \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+%  %\titleformat{\part}[hang]{\large\bfseries}{\hspace{-.75in}\thepart}{.5em}{}{}%
+%  \titleformat{\section}[hang]{\large\bfseries}{\hspace{-.75in}\thesection---}{.5em}{}{}%
+%  \titleformat{\subsection}[leftmargin]{\small\bfseries\filleft}{\thesubsection}{.5em}{\hspace{-.75in}}{}%
+%  \titleformat{\subsubsection}[leftmargin]{\itshape\filleft}{\thesubsubsection}{.2em}{\hspace{-.75in}}{}%
+%  \titleformat{\paragraph}[runin]{\bfseries}{\theparagraph}{0em}{}{}%
+%  % \titleformat{\subsection}[hang]{\itshape}{\thesubsection}{.5em}{}{}%
+%  \titlespacing{\section}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
+%  \titlespacing{\paragraph}{0em}{1ex}{0ex plus .1ex minus .1ex}%
+%  \titlespacing{\subsubsection}{2pc}{1.5ex plus .1ex minus .2ex}{1pc}%
 }
 
 % Create new title appearance
@@ -73,15 +77,13 @@
 % \renewcommand{\sectionmark}[1]{\markright{#1}{}}
 
 \fancypagestyle{myfancy}{%
-  \fancyhf{}
-  % \fancyhead[R]{\small{Page~\thepage}}
-  \fancyhead[R]{\small{Matching for Adjustment -- Julio 2020 -- \thepage}}
-  \fancyfoot[R]{\footnotesize{Version~of~\input{|"date"}}}
-  % \fancyfoot[R]{\small{\today -- Jake Bowers}}
-  \renewcommand{\headrulewidth}{0pt}
-  \renewcommand{\footrulewidth}{0pt}}
-
-\pagestyle{myfancy}
+	\fancyhf{}
+	% \fancyhead[R]{\small{Page~\thepage}}
+	\fancyhead[R]{\small{Matching for Adjustment -- Julio 2020 -- \thepage}}
+	\fancyfoot[R]{\footnotesize{Version~of~\input{|"date"}}}
+	% \fancyfoot[R]{\small{\today -- Jake Bowers}}
+	\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}}
 
 \newcommand{\entrylabel}[1]{\mbox{\textsf{#1:}}\hfil}
 
@@ -121,27 +123,29 @@
 
 
 \begin{document}
+\pagestyle{myfancy}
 
 \begin{introstuff}
+
 \maketitle
 
-  \section{Overview}
+  \part{Overview}
 
-  This class is an introduction to statistical adjustment using matched stratification
-  in the style pioneered by Rubin and Rosenbaum
-  and currently in rapid development across
-  the social science and statistical disciplines. An important
-  motivation for matching is to approximate an experimental design. And,
-  since such a motivation arises from a desire to make transparent and
-  defensible statements about causal relations, we will introduce the
-  counterfactual conception of causal inference and the potential
-  outcome formalization of these ideas. We will also spend some time on
-  statistical inference (hypothesis testing, confidence interval
-  creation) after the creation of a matched design. Finally, we will
-  grapple with some of the questions that are current research topics in
-  this area: When and how one can claim to have adjusted ``enough''? How
-  can we engage with concerns about unobserved confounds even if we have
-  adjusted for what we observe?
+  This class is an introduction to statistical adjustment using matched
+  stratification in the style pioneered by Rubin and Rosenbaum and currently in
+  rapid development across the social science and statistical disciplines. An
+  important motivation for matching is to approximate an experimental design or
+  at least make an research design in a non-randomized context that can be
+  compared to some randomized benchmark. And, since such a motivation arises
+  from a desire to make transparent and defensible statements about causal
+  relations, we will introduce the counterfactual conception of causal
+  inference and the potential outcome formalization of these ideas. We will
+  also spend some time on statistical inference (hypothesis testing, confidence
+  interval creation) after the creation of a matched design. Finally, we will
+  grapple with some of the questions that are current research topics in this
+  area: When and how one can claim to have adjusted ``enough''? How can we
+  engage with concerns about unobserved confounds even if we have adjusted for
+  what we observe?
 
   Since methods of matching are rapidly developing in the methodology
   literature, we will here focus on the simplest and oldest form:
@@ -178,7 +182,7 @@
 
   \subsection{Participation}
 
-  We will be doing hands-on work. I plan to lecture very little and
+  We will be doing hands-on work. I plan to lecture relatively little and
   instead will hope to pose problems of statistical theory, research
   design, and data for you to solve at your computers. I anticipate that
   you'll work in small groups, asking me and/or the group questions as
@@ -213,10 +217,12 @@
   \bibentry{rosenbaum2010design} (pdf free to download from some
   university  ip addresses or via university library springerlink
   subscriptions:
-  \url{http://www.springerlink.com/content/978-1-4419-1212-1/contents/}
+  \url{https://link.springer.com/book/10.1007%2F978-1-4419-1213-8}
   )
 
   \subsection{Recommended:}
+
+  \bibentry{rosenbaum2017} (This book is particularly easy to read. Particularly Chapter 3 on Statistical Inference and Chapter 11 on Matching Techniques.)
 
   \bibentry{Beck:1986}
 
@@ -233,9 +239,10 @@
 
   \bibentry{Rub:2006:Matc}
 
+\end{introstuff}
 
 
-  \section{Schedule}
+  \part{Schedule}
 
   \textbf{Note: } This schedule is preliminary and subject to change. We will
   spend roughly 4 hours together for three of the days and 3 hours on one of
@@ -244,11 +251,7 @@
   school to get practice creating, analyzing, and assessing matched designs.
 
 
-\end{introstuff}
-
-
-\SetDate[14/07/2014]
-\section{1---\themonth~\the\day---Experiments, Potential Outcomes, and Treatment Effects}
+\section{Experiments, Potential Outcomes, and Treatment Effects}
 
 \subsection{Questions and Reading:}
 
@@ -281,13 +284,13 @@ inference)
 \citealp{holland:1986a} (on the Counterfactual/Manipulationist conception of
 causality)
 
-\citealp{brady02} (for a survey of other major conceptions of causality from
+\citealp{brady2008cae} (for a survey of other major conceptions of causality from
 the perspective of applied social science)
 
 
 
 \AdvanceDate[1]
-\section{2---\themonth~\the\day---Adjustment by Simple and Complex, Algorithmic Stratification }
+\section{Adjustment by Simple and Complex, Algorithmic Stratification }
 
 Given the problems that arise from the use of the linear model, how can we use
 research design to approximate the randomized experiment? How would we assess
@@ -317,7 +320,7 @@ Chap 9)
 
 \cite{hansen:2004a}
 
-\cite{hansen2011qy} for an example walk-through of a matched analysis
+\cite{hansen2011propensity} for an example walk-through of a matched analysis
 including a discussion of missing data on covariates.
 
 \cite{ho2007man} [esp. their discussion of model sensitivity, for
@@ -332,7 +335,7 @@ version of the same argument \cite[\S 3]{bowers2011mem}.
 
 
 \AdvanceDate[1]
-\section{3---\themonth~\the\day---Statistical Inference for Matched/Post-stratified Designs}
+\section{Statistical Inference for Matched/Post-stratified Designs}
 
 
 \subsection{Questions and Reading:}
@@ -398,7 +401,7 @@ are not restricted to post-stratified studies) see:
 
 
 \AdvanceDate[1]
-\section{4---\themonth~\the\day--- Sensitivity Analysis: An observational study is not a randomized experiment.}
+\section{Sensitivity Analysis: An observational study is not a randomized experiment.}
 
 \subsection{Questions and Reading:}
 
@@ -445,7 +448,7 @@ matching which we did not cover in our class.
 The class elected to focus on matching for longitudinal problems for
 the last class. We thus are unable to cover other approaches to
 matching that have been developed by political methodologists such as
-Genetic Matching \citep{diamond2006genetic, sekhon2007multivariate} or
+Genetic Matching \citep{diamond2013genetic, sekhon2007multivariate} or
 Coarsened Exact Matching \citep{iacus2009causal,
   iacus2011multivariate} or Balance Optimization Subset Selection
 \citep{Nikolaevetal:12} or more fine-tuned versions of the optimal
@@ -462,9 +465,9 @@ developed by Judea Pearl \citep{JudeaPearl2000a} or the work on
 estimation by Heckman or bounding causal inferences by Manski.
 
 
-\section{References}
+\part{References}
 
-\bibliography{/Users/jwbowers/Documents/PROJECTS/BIB/big}
+\bibliography{/Users/jwbowers/Documents/PROJECTS/Research-Group-Bibliography/big}
 
 \end{document}
 
