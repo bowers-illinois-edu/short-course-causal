@@ -1,8 +1,7 @@
 ---
 title: |
-  | Causal Inference for Observational Studies
-  | Beyond the Basics
-  | Class 1
+  | Matching for Adjustment and Causal Inference
+  | Class 1: Experiments, Potential Outcomes, and Treatment Effects
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 author: Jake Bowers
 bibliography:
@@ -19,11 +18,12 @@ output:
     keep_tex: true
     latex_engine: xelatex
     citation_package: biblatex
+    incremental: true
     template: icpsr.beamer
     includes:
         in_header:
            - defs-all.sty
-    md_extensions: +raw_attribute
+    md_extensions: +raw_attribute-tex_math_single_backslash+autolink_bare_uris+ascii_identifiers+tex_math_dollars
 header-includes:
   - \setbeameroption{hide notes}
 ---
@@ -32,156 +32,116 @@ header-includes:
 <!-- https://stackoverflow.com/questions/44906264/add-speaker-notes-to-beamer-presentations-using-rmarkdown -->
 
 ```{r echo=FALSE, include=FALSE, cache=FALSE}
-# Some customization.  You can alter or delete as desired (if you know what you are doing).
-# knitr settings to control how R chunks work.
-rm(list=ls())
-
-require(knitr)
-
-## This plus size="\\scriptsize" from https://stackoverflow.com/questions/26372138/beamer-presentation-rstudio-change-font-size-for-chunk
-knitr::knit_hooks$set(mysize = function(before, options, envir) {
-			      if (before)
-				      return(options$size)
-                              else return("\\normalsize")
-})
-
-knit_hooks$set(plotdefault = function(before, options, envir) {
-		       if (before) par(mar = c(3, 3, .1, .1),oma=rep(0,4),mgp=c(1.5,.5,0))
-})
-
-opts_chunk$set(
-	       tidy='styler',
-	       echo=TRUE,
-	       results='markup',
-	       strip.white=TRUE,
-	       fig.path='figs/fig',
-	       cache=FALSE,
-	       highlight=TRUE,
-	       width.cutoff=132,
-	       size='\\scriptsize',
-	       out.width='.7\\textwidth',
-	       fig.retina=FALSE,
-	       message=FALSE,
-	       comment=NA,
-	       mysize=TRUE,
-	       plotdefault=TRUE)
-
-options(digits=4,
-	scipen=8,
-	width=132,
-	show.signif.stars=FALSE)
-```
-
-```{r loadlibs,include=FALSE, echo=FALSE}
-library(dplyr)
-library(ggplot2)
-library(sandwich)
-library(lmtest)
-library(estimatr)
-```
-
-```{r makedirs, echo=FALSE, include=FALSE}
-if(!dir.exists('figs')) dir.create('figs')
-
-## Make a local library directory
-if(!dir.exists(here::here('libraries'))){
-        dir.create(here::here('libraries'))
-}
-```
-
-
-```{r eval=FALSE, include=FALSE, echo=FALSE}
-## Run this next just once.
-library('devtools')
-library('withr')
-with_libpaths(here::here('libraries'), install_github("markmfredrickson/RItools"), 'pre')
-```
-
-```{r loadlibs2, echo=FALSE}
-library('RItools',lib.loc = here::here('libraries'))
+library(here)
+source(here::here("Exercises/rmd_setup.R"))
+library(tidyverse)
 library(optmatch)
+library(RItools)
 ```
 
 # Overview and Review
 
-## Doing Matching, Assessing Designs, Estimating Effects
+## Experiments, Potential Outcomes, and Treatment Effects
 
-  1. **Review** Causal inference in randomized experiments; Statistical
-     inference for causal effects in randomized experiments \autocite[Chap
-     2]{rosenbaum2010}, \autocite[Chap 1-3]{gerbergreen2012}.
-
-  2. **How to use optimal, full matching to produce a matched research
-     design?**  Multivariate optimal matching review using `optmatch` in R:
-     producing matched research designs using matching on scalars, propensity
-     scores, and Mahalanobis distances \autocite{hansen2004}, \autocite[Chap
-     1,3,7,8,9,13]{rosenbaum2010}, \autocite[Chap 9.0--9.2]{gelman2007dau}.
-
-  3. **How to reason about whether we have a good matched research design?**
-     Multivariate balance assessment using null hypothesis testing using the
-     `RItools` package for R \autocite{hansenbowers2008} (and perhaps also
-     using equivalence testing \autocite{hartman2018equivalence}).
-
-  4. **How to customize and focus the matched research design creation?**
-     Multivariate optimal matching; calipers; penalties; combining scores
-
-  5. **How to estimate the ATE  and test hypotheses about causal effects given a
-     matched research design?** Estimating ATE and Std Errors from Matched
-     Designs using the Block Randomized Experiment as an Analogy.
+  1. Causal inference in randomized experiments and potential outcomes
+  2. Statistical inference for causal effects in randomized experiments via the
+     Fisher and Neyman approaches \autocite[Chap 2]{rosenbaum2010},
+     \autocite[Chap 1-3]{gerbergreen2012}.
+  3. Why are randomized experiments special? 
 
 ## Overly Ambitious Plan
 
-  - 09:00--09:30 ---  Introductions: Name, Affiliation/Organization, Interest (Substantive or Methodological)
-  - 09:30--10:15 ---  Lecture by Jake to introduce concepts and encourage questions and answers.
-  - 10:15--10:45 ---  Exercises by Class to raise even more questions.
-  - 10:45 -- 11:00 --- Break
-  - 11:00 -- 11:30 --- Lecture by Jake / question and answers about the previous lecture
-  - 11:30 -- 12:00 --- Open Discussion on any topic.
+  - 00:00 -- 00:30  ---  Introductions: Name, Affiliation/Organization, Interest
+    (Substantive or Methodological). Be thinking about (for later) a project
+    that you are working on that involves some form of comparison of
+    intervention with outcome, perhaps involving some causal inference.
+  - 00:30 -- 01:00 ---  Lecture by Jake to introduce concepts of potential outcomes, treatment effects, unbiased estimation, and encourage
+    questions and answers.
+  - 01:00 -- 01:10 --- Break
+  - 01:10 -- 01:30 --- Questions about the lecture and/or readings
+  - 01:30 -- 02:00 --- Tell us about a project and/or data set that you might want to use in this class to practice and learn.
+  - 02:00 -- 03:00 --- Exercise 1: Describe your data.
+  - 03:00 -- 03:30 --- Jake discuss the problem of adjustment in observational studies as compared to experiments
+  - 03:30 -- 04:00 --- Open Discussion on any topic.
 
-Materials for practice can be downloaded from <http://jakeboweers.org/IPM2019>.
+## Notation and Concepts for Counterfactual Causal Inference
 
-## What do you know about causal inference so far?
-
-These words are used a lot in discussions of causal inference. Why are they important? What do they mean?
-
-  - Potential Outcomes; Counterfactual Outcomes
-  - Causal Effect
-  - ATE
-  - Randomization
-  - Balance
-  - Propensity Score
-  - Mahalanobis Distance Score
-  - Confounding; Selection Bias; Omitted Variable Bias
-  - Covariates
-
-What other words and/or phrases and/or concepts come to mind when you think about causal inference?
-
-\medskip
-
-Why is "randomization" listed here if a lot of the discussion about causal inference focuses on observational studies?
-
-## Randomization and Causal Inference
-
-From last week:
-
-  - *Treatment* $Z_i=1$ for treatment and $Z_i=0$ for control for units $i$
+  - *Treatment* or *Intevention*  $Z_i=1$ for treatment and $Z_i=0$ for control
+    for units $i$. (We mostly assume that all units **could have** $Z_i=1$ or
+    $Z_i=0$. That it is not impossible for any unit to have either value.) (Q:
+    What is a unit? Examples of interventions?)
 
   - Each unit has a pair of *potential outcomes* $(y_{i,Z_i=1},y_{i,Z_i=0})$
     (also written  $(y_{i,1},y_{i,0})$ ) (given SUTVA).
-
-  - *Causal Effect*  when $y_{i,1} \ne y_{i,0}$, $\tau_i   =
-    f(y_{i,1},y_{i,0})$ ex. $\tau_i =  y_{i,1} - y_{i,0}$.
+    - Without the SUTVA assumption, and with 4 units, with two having $Z_i=1$, unit $i=1$ would have the following potential outcomes: $(y_{i,1100},y_{i,1010},y_{i,1001},y_{i,0101},y_{i,0011})$
+  - *Causal Effect under SUTVA*  when $y_{i,1} \ne y_{i,0}$, $\tau_i   =
+    f(y_{i,1},y_{i,0})$ ex. $\tau_i =  y_{i,1} - y_{i,0}$. (Examples of Interfering Units and Not Interfering Units)
 
   - *Fundamental Problem of (Counterfactual) Causality* We only see one
-    potential outcome $Y_i = Z_i * y_{i,1} + (1-Z_i) y_{i,0}$
+    potential outcome $Y_i = Z_i * y_{i,1} + (1-Z_i) y_{i,0}$ (Examples?)
 
   - *Covariates*,  $\bX=\begin{bmatrix} x_{11} & \ldots & x_{1k} \\ \vdots &
     \vdots & \vdots \\  x_{n1} & \ldots & x_{nk} \end{bmatrix}$ is a matrix
     containing  background information about the units that might predict
-    $(y_{i,1},y_{i,0})$ or $Z$ (except in an experiment).
+    $(y_{i,1},y_{i,0})$ or $Z$ (but that don't predict $Z$ if $Z$ is randomized
+    as in an experiment).
 
-Randomization makes $y_1, y_0, \bX \perp Z$. How to make use of this fact in a randomized experiment?
+## The link between observation and learning about causal claims
+
+We can learn about causal claims by observing [@brady2008causation]:
+
+- **Persistent association** ``We always/mostly see $Y=1$ when $X=1$ and $Y=0$ when $X=0$.''
+- **Counterfactual Difference** ``If  $X$ had not been this value, then $Y$ would not have been that value.''
+- **Difference after manipulation** ``When we change $X$ from one value to another value, then $Y$ changes from one value to another value.'' (establishes causal priority of $X$ over $Y$, implied that $Y$ would not have changed.).
+- **Difference after operation of a mechanism** ``Once upon a time $A$ changed $X$, and then one day $X$ changed $B$, and because of that $B$ changed $C$, and finally $C$ changed $Y$.''
+
+
+## How to interpret "X causes Y"?
+
+ -  We can establish that X causes Y without knowing the mechanism. The mechanism
+    can be complex, and it can involve probability: X causes Y sometimes because of
+A and sometimes because of B.
+ - "X causes Y" can mean "With X, probability of Y is higher than would be
+   without X." or "Without X there is no Y." Either is compatible with the
+counterfactual idea.
+ - Correlation is not causation: Favorite examples?
+ - "X causes Y" is a statement about what didn't happen: "If X had not
+   operated, occurred, then Y would not have occurred." (More about the
+fundamental problem of counterfactual causation later)
+
+## Example: Honey and Colds
+
+- Your friend says that eating raw honey (a traditional remedy) reduces the duration of colds.
+- Say we observe the duration of a cold among people who took honey and the duration of a cold among people who did not and we saw that the duration was shorter among those taking honey. What kinds of alternative explanations might we come up with for this result (other than the idea that honey shortened the duration of the cold)?
+
+## Example of confounding
+
+```{r, echo=FALSE}
+set.seed(12345)
+honeydat <- data.frame(x1=c(1,1,2,3,1,0,0,0,0,2),
+    x2=sample(1:10,size=10,replace=TRUE))
+honeydat$Zlat <- with(honeydat,.5*x1 + runif(10))
+honeydat$Z <- as.numeric(honeydat$Z > median(honeydat$Z))
+honeydat$y0 <- with(honeydat,x1+x2+Z+rpois(10,lambda=5))
+summary(lm(y0~x1+x2,data=honeydat))
+cor(honeydat[,c("x1","x2","Z","y0")])
+honeydat$Zlat <- NULL
+honeydat$y1 <- with(honeydat,y0 - c(1,1,2,3,1,0,0,0,0,2))
+honeydat$Y <- with(honeydat,y1*Z + y0*(1-Z))
+```
+
+```{r}
+honeydat
+with(honeydat, mean(y1-y0))
+with(honeydat,mean(Y[Z==1]) - mean(Y[Z==0]))
+```
+
+
+
 
 ## Benefits of Randomized Designs
+
+Randomization makes $y_1, y_0, \bX \perp Z$. How to make use of this fact in a randomized experiment?
 
  1. Interpretable comparisons (lack of omitted variable bias, confounding,
     selection bias)
@@ -243,995 +203,6 @@ Randomization makes $y_1, y_0, \bX \perp Z$. How to make use of this fact in a r
 
 ## Lingering Questions?
 
-
-# Doing Multivariate Matching
-
-```{r loaddata, echo=FALSE, cache=TRUE}
-load(url("http://jakebowers.org/Data/meddat.rda"))
-row.names(meddat) <- meddat$nh ## add row.names for use later
-```
-
-##  Did the Metrocable Reduce Crime?
-
-Cerdá et al. collected data on about roughly `r nrow(meddat)`
-neighborhoods in Medellin, Colombia. About  `r signif(sum(meddat$nhTrt),2)` of had
-access to the new Metrocable line and `r signif(sum(1-meddat$nhTrt),2)` did not.
-
-\centering
-\includegraphics[width=.7\textwidth]{medellin-gondola.jpg}
-
-<!-- For more on the Metrocable project see <https://www.medellincolombia.co/where-to-stay-in-medellin/medellin-orientation/> and <https://archleague.org/article/connective-spaces-and-social-capital-in-medellin-by-jeff-geisinger/> -->
-
-
-
-##  Did Transportation Reduce Crime?
-
-Cerdá et al. collected data on about roughly `r nrow(meddat)`
-neighborhoods in Medellin, Colombia. About  `r signif(sum(meddat$nhTrt),2)` of had
-access to the new Metrocable line and `r signif(sum(1-meddat$nhTrt),2)` did not.
-
-\centering
-\includegraphics[width=.8\textwidth]{medellin-conc-pov.jpg}
-
-
-## Codebook/Covariates
-
-We don't have a codebook. Here are some guesses about only some of the variables.
-listed here.
-
-\scriptsize
-```
-## The Intervention
-nhTrt        Intervention neighborhood (0=no Metrocable station, 1=Metrocable station)
-
-## Some Covariates (there are others, see the paper itself)
-nh03         Neighborhood id
-nhGroup      Treatment (T) or Control (C)
-nhTrt        Treatment (1) or Control (0)
-nhHom        Mean homicide rate per 100,000 population in 2003
-nhDistCenter Distance to city center (km)
-nhLogHom     Log Homicide (i.e. log(nhHom))
-
-## Outcomes (BE03,CE03,PV03,QP03,TP03 are baseline versions)
-BE      Neighborhood amenities Score 2008
-CE      Collective Efficacy Score 2008
-PV      Perceived Violence Score 2008
-QP      Trust in local agencies Score 2008
-TP      Reliance on police Score 2008
-hom     Homicide rate per 100,000 population Score 2008-2003 (in log odds)
-
-HomCount2003 Number of homicides in 2003
-Pop2003      Population in 2003
-HomCount2008 Number of homicides in 2008
-Pop2008      Population in 2008
-```
-
-## How did the Metrocable effect Homicides?
-
-
-```{r ratesfromcounts, echo=FALSE}
-meddat<- mutate(meddat, HomRate03=(HomCount2003/Pop2003)*1000,
-                HomRate08=(HomCount2008/Pop2008)*1000)
-row.names(meddat) <- meddat$nh ##tidyverse doesn't like row.names
-```
-
-One approach:  Estimate the average treatment effect of Metrocable on
-Homicides after the stations were built.
-
-```{r threeestates}
-themeans<-group_by(meddat,nhTrt) %>% summarise(ybar=mean(HomRate08))
-themeans
-diff(themeans$ybar)
-lmOne <- lm(HomRate08~nhTrt,meddat)
-coef(lmOne)["nhTrt"]
-library(estimatr)
-difference_in_means(HomRate08~nhTrt,meddat)
-```
-
-\bigskip
-
-**But alternative explanations?**
-
-## What are alternative explanations for this effect?
-
-We claim that the policy intervention had some effect. What are some alternative explanations?
-
-## Evidence about confounding?
-
-The `xBalance` function in the `RItools` R package tests the hypothesis that treatment assignment is independent of covariates \citep{bowersfredericksonhansen2016}.
-
-```{r}
-## xBalance(treatment~covariate)
-xbMed1 <- xBalance(nhTrt~nhAboveHS,data=meddat,report="all")
-xbMed1$overall ##  the overall chi-sq test
-xbMed1$results[1,c("Control","Treatment","adj.diff","std.diff","z","p"),]  ## the covariate specific z-test
-```
-
-It would be rare/surprising/strange to see a Treatment-vs-Control difference in
-education if treatment were independent of education.
-
-\medskip
-
-\emph{Note on `xBalance`}: Treatment  would be independent of education if it
-were randomly assigned. So, `xBalance` compares the observed (standardized)
-mean difference  to those consistent with a randomized experiment.
-
-## How would you adjust for Proportion Above HS Degree?
-
-So, part of the Metrocable effect might not reflect the causal effect of
-Metrocable per se, but rather the education of people in the
-neighborhood. How should we remove `nhAboveHS` from our estimate or test? What
-strategies can you think of?
-
-\medskip
-
-Features of a good adjustment process:
-   - Blind to outcome analysis (to preserve false positive rate and deter critics). Could be pre-registered.
-   - Easy to interpret ("controlling for"  versus "holding constant")
-   - Easy to diagnoses (Easy to answere the question "Did we adjust enough?")
-
-## Stratification V 1.0
-
-```{r}
-lm1a <- lm(HomRate08~nhTrt,data=meddat,subset=nhAboveHS>=.1)
-lm1b <- lm(HomRate08~nhTrt,data=meddat,subset=nhAboveHS<.1)
-res_strat <- c(hiEd_Effect=coef(lm1a)["nhTrt"],loEd_Effect= coef(lm1b)["nhTrt"])
-res_strat
-n_strat <- table(meddat$nhAboveHS>=.1)
-n_strat
-stopifnot(sum(n_strat)==nrow(meddat)) ## A test of code
-sum(res_strat * rev(n_strat)/45) ## What is happening here?
-```
-
-*But, standard errors? p-values? confidence intervals?*
-
-## Stratified adjustment V 2.0
-
-One-step stratified estimation.
-
-```{r}
-## Weight by block size
-ate1c <- difference_in_means(HomRate08~nhTrt, blocks = I(nhAboveHS>=.1),data=meddat)
-ate1c
-## Weight by both block size and  proportion in treatment vs control ("harmonic weight")
-lm1c <- lm_robust(HomRate08~nhTrt, fixed_effects = ~I(nhAboveHS>=.1),data=meddat)
-coef(lm1c)["nhTrt"]
-lm1d <- lm(HomRate08~nhTrt+I(nhAboveHS>=.1),data=meddat)
-coef(lm1d)["nhTrt"]
-xbate1 <- xBalance(nhTrt~HomRate08,strata=list(hs=~I(nhAboveHS>=.1)),data=meddat,report="all")
-xbate1$results[1,c("Control","Treatment","adj.diff"),]
-```
-
-## Balance assessment after stratification
-
-Did we adjust enough? What would *enough* mean?
-
-```{r}
-xbHS1 <- xBalance(nhTrt~nhAboveHS,strata=list(hs=~I(nhAboveHS>=.1)),data=meddat,report="all")
-xbHS1$overall
-xbHS1$results[1,c("Control","Treatment","adj.diff","std.diff","z","p"),]  ## the covariate specific z-test
-```
-## Disadvantages and Advantages of Simple Stratification
-
- -  (+) Easy to explain what  "controlling for" or "adjustment" means.
- -  (-) Hard to justify any particular cut-point
- -  (-) We could probably adjust *more* --- comparing neighborhoods similar in education rather than just  within  big   strata
-
-## Optmatch workflow: Stratification by minimizing distances
-
-Introduction to `optmatch` workflow. To minimize differences requires a matrix
-of those differences (in general terms, a matrix of distances between the
-treated and control units)
-
-```{r}
-## Using the help page for match_on for scalar distances
-tmp <- meddat$nhAboveHS
-names(tmp) <- rownames(meddat)
-absdist <- match_on(tmp, z = meddat$nhTrt,data=meddat)
-absdist[1:3,1:10]
-abs(meddat$nhAboveHS[meddat$nhTrt==1][1] - meddat$nhAboveHS[meddat$nhTrt==0][1] )
-```
-
-## Create Matched Research Designs
-
-```{r}
-fm1 <- fullmatch(absdist,data=meddat)
-summary(fm1, min.controls=0, max.controls=Inf )
-table(meddat$nhTrt,fm1)
-
-pm1 <- pairmatch(absdist,data=meddat)
-summary(pm1, min.controls=0, max.controls=Inf )
-table(meddat$nhTrt,pm1,exclude=c())
-```
-
-## Evaluate the design: Within set differences
-
-```{r echo=FALSE}
-meddat$fm1 <- fm1
-meddat$pm1 <- pm1
-```
-
-Differences within sets versus raw differences.
-
-```{r echo=FALSE, out.width=".9\\textwidth"}
-library(gridExtra)
-bpfm1 <- ggplot(meddat,aes(x=fm1,y=nhAboveHS)) +
-	geom_boxplot() +
-	 stat_summary(fun.y=mean, geom="point", shape=20, size=3, color="red", fill="red")
-meddat$nostrata <- rep(1,45)
-bporig <- ggplot(meddat,aes(x=nostrata,y=nhAboveHS))+
-	 geom_boxplot()+
-	 stat_summary(fun.y=mean, geom="point",
-		      shape=20, size=3, color="red", fill="red")
-
-grid.arrange(bpfm1,bporig,ncol=2,layout_matrix=matrix(c(1,1,1,1,2),nrow=1))
-```
-
-## Evaluate the design: Within set differences
-
-```{r echo=FALSE, out.width=".9\\textwidth"}
-bppm1 <- ggplot(meddat,aes(x=pm1,y=nhAboveHS)) +
-	geom_boxplot() +
-	 stat_summary(fun.y=mean, geom="point", shape=20, size=3, color="red", fill="red")
-
-grid.arrange(bppm1,bporig,ncol=2,layout_matrix=matrix(c(1,1,1,1,2),nrow=1))
-```
-
-## Evaluate the design: Inspecet within set differences
-
-```{r echo=FALSE}
-rawmndiffs <- with(meddat, mean(nhAboveHS[nhTrt==1]) - mean(nhAboveHS[nhTrt==0]))
-setdiffsfm1 <- meddat %>% group_by(fm1) %>% summarize(mneddiffs =
-						   mean(nhAboveHS[nhTrt==1]) -
-						   mean(nhAboveHS[nhTrt==0]),
-					   mnAboveHS = mean(nhAboveHS),
-					   minAboveHS = min(nhAboveHS),
-					   maxAboveHS = max(nhAboveHS))
-
-setdiffsfm1
-#summary(setdiffs$mneddiffs)
-#quantile(setdiffs$mneddiffs, seq(0,1,.1))
-```
-
-## Evaluate the design: Inspect within set differences
-
-
-```{r echo=FALSE, warnings=FALSE}
-setdiffspm1 <- meddat %>% group_by(pm1) %>% summarize(mneddiffs =
-						   mean(nhAboveHS[nhTrt==1]) -
-						   mean(nhAboveHS[nhTrt==0]),
-					   mnAboveHS = mean(nhAboveHS),
-					   minAboveHS = min(nhAboveHS),
-					   maxAboveHS = max(nhAboveHS))
-
-setdiffspm1
-```
-
-## Evaluate the design: Compare to a randomized experiment.
-
-The within-set differences look different from those that would be expected
-from a randomized experiment.
-
-```{r echo=FALSE}
-xbHS2 <- xBalance(nhTrt~nhAboveHS,
-                  strata=list(nostrat=NULL,
-                              fm = ~fm1,
-			      pm = ~pm1),
-                  data=meddat,report="all")
-xbHS2$results
-xbHS2$overall
-```
-
-
-## What is xBalance doing?
-
-```{r}
-setmeanDiffs <- meddat %>% group_by(fm1) %>%
-  summarise(diffAboveHS=mean(nhAboveHS[nhTrt==1])-mean(nhAboveHS[nhTrt==0]),
-            nb=n(),
-            nTb = sum(nhTrt),
-            nCb = sum(1-nhTrt),
-            hwt = ( 2*( nCb * nTb ) / (nTb + nCb))
-            )
-setmeanDiffs
-```
-
-## What is xBalance doing with multiple sets/blocks?
-
-The test statistic is a weighted average of the set-specific differences (same
-approach as we would use to test the null in a block-randomized experiment)
-
-```{r}
-## The descriptive adj.mean diff from balanceTest
-with(setmeanDiffs, sum(diffAboveHS*nTb/sum(nTb)))
-## The mean diff used as the observed value in the testing
-with(setmeanDiffs, sum(diffAboveHS*hwt/sum(hwt)))
-## Compare to xBalance output
-xbHS2$results[,,"fm"]
-```
-
-Notice that `balanceTest` prints the set-size weighted difference (the updated
-version differs a little from `xBalance`):
-
-```{r}
-btHS2 <- balanceTest(nhTrt~nhAboveHS+strata(fm1) +strata(pm1),
-                  data=meddat,report="all")
-btHS2
-```
-
-#  Matching With Many Covariates: Using Mahalnobis Distance
-
-## Dimension reduction using the Mahalanobis Distance
-
-The general idea: dimension reduction. When we convert many columns into one
-column we reduce the dimensions of the dataset (to one column).
-
-
-```{r}
-X <- meddat[,c("nhAboveHS","nhPopD")]
-row.names(X) <- meddat$nh
-plot(meddat$nhAboveHS,meddat$nhPopD,xlim=c(-.3,.6),ylim=c(50,700))
-```
-
-## Dimension reduction using the Mahalanobis Distance
-
-First, let's look at Euclidean distance: $\sqrt{ (x_1 - x_2)^2 + (y_1 - y_2)^2 }$
-
-```{r echo=FALSE, out.width=".8\\textwidth"}
-par(mgp=c(1.25,.5,0),oma=rep(0,4),mar=c(3,3,0,0))
-plot(meddat$nhAboveHS,meddat$nhPopD,xlim=c(-.3,.6),ylim=c(50,700))
-points(mean(X[,1]),mean(X[,2]),pch=19,cex=1)
-arrows(mean(X[,1]),mean(X[,2]),X["407",1],X["407",2])
-text(.4,200,label=round(dist(rbind(colMeans(X),X["407",])),2))
-```
-
-## Dimension reduction using the Mahalanobis Distance
-
-First, let's look at Euclidean distance: $\sqrt{ (x_1 - x_2)^2 + (y_1 - y_2)^2 }$
-
-```{r echo=FALSE, out.width=".5\\textwidth"}
-par(mgp=c(1.25,.5,0),oma=rep(0,4),mar=c(3,3,0,0))
-plot(meddat$nhAboveHS,meddat$nhPopD,xlim=c(-.3,.6),ylim=c(50,700))
-points(mean(X[,1]),mean(X[,2]),pch=19,cex=1)
-arrows(mean(X[,1]),mean(X[,2]),X["407",1],X["407",2])
-text(.4,200,label=round(dist(rbind(colMeans(X),X["407",])),2))
-```
-
-```{r}
-tmp <- rbind(colMeans(X),X["407",])
-tmp
-sqrt( (tmp[1,1] - tmp[2,1])^2 + (tmp[1,2]-tmp[2,2])^2 )
-```
-
-## Dimension reduction using the Mahalanobis Distance
-
-Now the Euclidean distance (on a standardized scale)
-
-```{r echo=FALSE}
-Xsd <-scale(X)
-apply(Xsd,2,sd)
-apply(Xsd,2,mean)
-plot(Xsd[,1],Xsd[,2],xlab="nhAboveHS/sd",ylab="nhPopD/sd")
-points(mean(Xsd[,1]),mean(Xsd[,2]),pch=19,cex=1)
-arrows(mean(Xsd[,1]),mean(Xsd[,2]),Xsd["407",1],Xsd["407",2])
-text(2,-1.2,label=round(dist(rbind(colMeans(Xsd),Xsd["407",])),2))
-```
-
-
-## Dimension reduction using the Mahalanobis Distance
-
-The Mahalanobis distance avoids the scale problem in the euclidean distance.
-<!-- [For more see <https://stats.stackexchange.com/questions/62092/bottom-to-top-explanation-of-the-mahalanobis-distance>] -->
-
-```{r echo=FALSE, out.width=".6\\textwidth"}
-library(chemometrics)
-par(mgp=c(1.5,.5,0),oma=rep(0,4),mar=c(3,3,0,0))
-mh <- mahalanobis(X,center=colMeans(X),cov=cov(X))
-drawMahal(X,center=colMeans(X),covariance=cov(X),
-          quantile = c(0.975, 0.75, 0.5, 0.25))
-abline(v=mean(meddat$nhAboveHS),h=mean(meddat$nhPopD))
-pts <-c("401","407","411","202")
-arrows(rep(mean(X[,1]),4),rep(mean(X[,2]),4),X[pts,1],X[pts,2])
-text(X[pts,1],X[pts,2],labels=round(mh[pts],2),pos=1)
-```
-
-```{r}
-Xsd <- scale(X)
-tmp<-rbind(c(0,0),Xsd["407",])
-mahalanobis(tmp,center=c(0,0),cov=cov(Xsd))
-edist <- sqrt( (tmp[1,1] - tmp[2,1])^2 + (tmp[1,2]-tmp[2,2])^2 )
-edist
-```
-
-## Matching on the Mahalanobis Distance
-
-Here using the rank based Mahalanobis distance following DOS Chap. 8 (but
-comparing to the ordinary version).
-
-```{r}
-mhdist <- match_on(nhTrt~nhPopD+nhAboveHS,data=meddat,method="rank_mahalanobis")
-mhdist[1:3,1:8]
-mhdist2 <- match_on(nhTrt~nhPopD+nhAboveHS,data=meddat)
-mhdist2[1:3,1:8]
-```
-
-## A Mahalanobis Distance Picture
-
-```{r echo=FALSE}
-cpts <-c("401","407","411")
-tpts <-c("101","102","202")
-```
-
-Distances between neighborhood 407 and some others.
-```{r}
-mhdist2[tpts,"407"]
-```
-
-```{r distto407, echo=FALSE}
-par(mgp=c(1.5,.5,0),oma=rep(0,4),mar=c(3,3,0,0))
-drawMahal(X,center=colMeans(X),covariance=cov(X),
-          quantile = c(0.975, 0.75, 0.5, 0.25))
-abline(v=mean(meddat$nhAboveHS),h=mean(meddat$nhPopD))
-arrows(X[tpts,1],X[tpts,2],rep(X["407",1]),rep(X["407",2]))
-text(X[tpts,1],X[tpts,2],labels=round(mhdist2[tpts,"407"],2),pos=1)
-```
-
-
-## Matching on the Mahalanobis Distance
-
-```{r}
-fmMh <- fullmatch(mhdist,data=meddat)
-summary(fmMh,min.controls=0,max.controls=Inf)
-```
-
-#  Matching on Many Covariates: Using Propensity Scores
-
-## Matching on the propensity score
-
-**Make the score**^[Note that we will be using `brglm` or `bayesglm` in the
-future because of logit separation problems when the number of covariates
-increases.]
-
-```{r}
-theglm <- glm(nhTrt~nhPopD+nhAboveHS,data=meddat,family=binomial(link="logit"))
-thepscore <- theglm$linear.predictor
-thepscore01 <- predict(theglm,type="response")
-````
-
-We tend to match on the linear predictor rather than the version required to
-range only between 0 and 1.
-
-```{r echo=FALSE, out.width=".7\\textwidth"}
-par(mfrow=c(1,2),oma=rep(0,4),mar=c(3,3,2,0),mgp=c(1.5,.5,0))
-boxplot(split(thepscore,meddat$nhTrt),main="Linear Predictor (XB)")
-stripchart(split(thepscore,meddat$nhTrt),add=TRUE,vertical=TRUE)
-
-boxplot(split(thepscore01,meddat$nhTrt),main="Inverse Link Function (g^-1(XB)")
-stripchart(split(thepscore01,meddat$nhTrt),add=TRUE,vertical=TRUE)
-```
-
-## Matching on the propensity score
-
-```{r}
-psdist <- match_on(theglm,data=meddat)
-psdist[1:4,1:4]
-fmPs <- fullmatch(psdist,data=meddat)
-summary(fmPs,min.controls=0,max.controls=Inf)
-```
-
-## Can you do better?
-
-**Challenge:** Improve the matched design by adding covariates or functions of
-covariates using either or both of the propensity score or mahalanobis distance
-(rank- or not-rank based). So far we have:
-
-```{r}
-thecovs <- unique(c(names(meddat)[c(5:7,9:24)],"HomRate03"))
-balfmla<-reformulate(thecovs,response="nhTrt")
-xb4 <- balanceTest(update(balfmla,.~.+strata(fmMh)+strata(fmPs)),
-                   data=meddat,report="all",p.adjust.method="none")
-xb4$overall[,]
-```
-
-```{r}
-
-psmod2 <- glm(balfmla,data=meddat)
-psdist2 <- match_on(psmod2,data=meddat)
-
-mhdist2 <- match_on(balfmla,data=meddat,method = "rank_mahalanobis")
-
-fmMh2 <- fullmatch(mhdist2,data=meddat)
-summary(fmMh2,min.controls=0,max.controls=Inf)
-
-fmPs2 <- fullmatch(psdist2,data=meddat)
-summary(fmPs2,min.controls=0,max.controls=Inf)
-
-xb5 <- balanceTest(update(balfmla,.~.+strata(fmPs2)+strata(fmMh2)+strata(fmMh)+strata(fmPs)),
-                   data=meddat,report="all",p.adjust.method="none")
-xb5$overall[,]
-
-```
-
-## Can you do better?
-
-Challenge: Improve the matched design. So far we have:
-
-```{r}
-plot(xb4)
-```
-
-# Estimating Treatment Effects and Testing Hypotheses About Causal Effects
-
-## What is the average treatment effect in a block randomized experiment?
-
-Recall Neyman's approach.
-
-\medskip
-
-If we define the unit-level effect as $\tau_i = y_{i,1} -  y_{i,0}$ then we could write the average treatment effect  as  $\bar{\tau}=\bar{y}_1 - \bar{y}_0$.
-
-\medskip
-
-Without blocks, and with randomization, we estimate $\bar{\tau}$ with $\hat{\bar{\tau}}=\hat{\bar{y}}_1 - \hat{\bar{y}}_0$. And with $m$ treated units, $\hat{\bar{y}}_1  = (1/m) \sum_{i \in Z_i=1} Y_i$  and  $\hat{\bar{y}}_0  = (1/(n-m)) \sum_{i \in Z_i=0} Y_i$
-
-\medskip
-
-In a simple randomized study we know that $E[\hat{\bar{\tau}}]=\bar{\tau}$.
-
-\medskip
-
-But this is **not**  the case in a block randomized  study, in general.
-
-## What is the average treatment effect in a block randomized experiment?
-
-A block-randomized experiment is a series of independent mini-experiments within block. So, for each block $b$ in the total of $B$ blocks, we can calculate $\hat{\bar{\tau}}_b$, and know that $E[\hat{\bar{\tau}}_b]=\bar{\tau}_b$.
-
-\smallskip
-
-How should we combine the $\hat{\bar{\tau}}_b$ to estimate $\bar{\tau}$?
-
-\smallskip
-
-Idea 1: weight by block-size such that $\hat{\bar{\tau}}_{blk}=\sum_{b=1}^B \hat{\bar{\tau}}_b (n_b/B)$. In a randomized experiment, we can show that $E[\hat{\bar{\tau}}_{blk}]=\bar{\tau}$.
-
-## "As-if block-randomized" analysis of a matched design
-
-Imagine that our matched-design was a randomized experiment. If so, we could do the following:
-
-```{r echo=TRUE}
-## Add the matched design factor to the data
-meddat[names(fmMh),"fmMh"] <- fmMh
-## Calculate the ATE within each set and also calculate some weights.
-setmeanDiffs <- meddat %>% filter(!is.na(fmMh)) %>% group_by(fmMh) %>%
-  summarise(ateb=mean(HomRate08[nhTrt==1])-mean(HomRate08[nhTrt==0]),
-            nb=n(),
-            nTb = sum(nhTrt),
-            nCb = sum(1-nhTrt),
-            hwt = ( 2*( nCb * nTb ) / (nTb + nCb)),
-	    nbwt = nb/nrow(meddat)
-            )
-setmeanDiffs
-```
-
-```{r}
-## The set-size weighted version
-atewnb<-with(setmeanDiffs, sum(ateb*nb/sum(nb)))
-atewnb
-with(setmeanDiffs,sum(ateb*nbwt))
-```
-
-
-## Using the weights to estimate the ATE: Set size weights
-
-Asking least squares to calculate weighted differences of means for us for easy
-standard errors and tests of $H_0: \bar{tau}=0$.
-
-```{r echo=FALSE, warnings=FALSE}
-## See Gerber and Green section 4.5 and also Chapter 3 on block randomized experiments. Also Hansen and Bowers 2008.
-wdat <- meddat %>% filter(!is.na(fmMh)) %>% group_by(fmMh) %>% mutate(trtprob=mean(nhTrt),
-                                               nbwt=nhTrt/trtprob + (1-nhTrt)/(1-trtprob),
-                                               gghbwt= 2*( n()/nrow(meddat) )*(trtprob*(1-trtprob)), ## GG version,
-                                               nb = n(),
-                                               nTb = sum(nhTrt),
-                                               nCb = nb - nTb,
-                                               hbwt = ( 2*( nCb * nTb ) / (nTb + nCb))
-                                               ) %>% ungroup()
-row.names(wdat) <- wdat$nh ## dplyr strips row.names
-ateblk1<-lm(HomRate08~nhTrt,data=wdat,weights=nbwt)
-coef(ateblk1)["nhTrt"]
-coeftest(ateblk1,vcov=vcovHC(ateblk1,type="HC2"))[1:2,]
-coefci(ateblk1,parm="nhTrt",vcov.=vcovHC(ateblk1,type="HC2"))
-## Easiest option
-ateblk2 <- lm_robust(HomRate08~nhTrt,data=wdat,weight=nbwt)
-ateblk2
-```
-
-```{r echo=FALSE, eval=FALSE}
-## Evaluating the different expressions for the harmonic mean weight
-wdat <- meddat %>% filter(!is.na(fmMh)) %>% group_by(fmMh) %>% mutate(trtprob=mean(nhTrt),
-                                               nbwt=nhTrt/trtprob + (1-nhTrt)/(1-trtprob),
-                                               gghbwt= 2*( n()/nrow(meddat) )*(trtprob*(1-trtprob)), ## GG version,
-                                               nb = n(),
-                                               nTb = sum(nhTrt),
-                                               nCb = nb - nTb,
-                                               hbwt = ( 2*( nCb * nTb ) / (nTb + nCb))
-					       hwt2 = nb * (trtprob * (1 - trtprob)),
-					       hwt3 = 2* sum((nhTrt-mean(nhTrt))^2)
-                                               )
-
-cor(wdat[,c("gghbwt","hbwt","hwt2","hwt3")])
-```
-
-
-## Testing the null of no effects
-
-Above we showed a test of $H_0: \bar{\tau}=0$ (the weak null of no effects). What about a test of the strong null? $H_0: \tau_i=0, \forall i$?
-
-
-## Easier permutation tests
-
-```{r coin1, cache=FALSE}
-library(coin)
-wdat$nhTrtF <- factor(wdat$nhTrt)
-testHwt <- oneway_test(HomRate08~nhTrtF | fmMh,data=wdat)
-pvalue(testHwt)
-```
-
-What if we worried about the asymptotic approximations to the randomization distribution above?
-
-```{r coin2, cache=TRUE}
-testHwtPerm <- oneway_test(HomRate08~nhTrtF | fmMh,data=wdat,
-		       distribution=approximate(nresample=10000))
-pvalue(testHwtPerm)
-```
-
-What if we worried about outliers reducing power?
-
-```{r coin3, cache=TRUE}
-testHwtPermRanks1 <- wilcox_test(HomRate08~nhTrtF | fmMh,data=wdat,
-		       distribution=approximate(nresample=10000))
-pvalue(testHwtPermRanks1)
-
-wdat <- wdat %>% group_by(fmMh) %>% mutate(rankHR08 = rank(HomRate08)) %>% ungroup()
-
-testHwtPermRanks2 <- oneway_test(rankHR08~nhTrtF | fmMh,data=wdat,
-		       distribution=approximate(nresample=10000))
-pvalue(testHwtPermRanks2)
-```
-
-# Difference in Differences for Matched Designs
-
-## Difference in Differences
-
-Although we have adjusted for contemporaneous differences between neighborhoods and also
-adjusted somewhat for time-varying differences within neighborhoods by
-matching on baseline outcome, we *might* increase precision and diminish bias by
-further adjusting after matching.
-
-Assess balance on baseline outcome:
-```{r}
-bal1 <- balanceTest(update(balfmla,.~.+strata(fmMh)),data=meddat,report="all")
-t(bal1$results["HomRate03",,])
-```
-
-Estimate ATE adjusting for baseline outcome.
-
-```{r}
-wdat$HDiff <- wdat$HomRate08 - wdat$HomRate03
-ddblk1 <- lm_robust(HDiff ~ nhTrt,data=wdat,weights=nbwt)
-ddblk1
-ateblk2
-```
-
-## Difference in Differences
-
-```{r echo=FALSE}
-newdat <- bind_rows(list(yr08=wdat[,c("nhTrt","fmMh","HomRate08","nbwt")],
-		    yr03=wdat[,c("nhTrt","fmMh","HomRate03","nbwt")]),
-		    .id="year")
-newdat$post <- as.numeric(newdat$year=="yr08")
-newdat$pre <- as.numeric(newdat$year!="yr08")
-newdat$Y <- ifelse(newdat$year=="yr08",newdat$HomRate08,newdat$HomRate03)
-newdat$Z <- factor(newdat$nhTrt)
-newdat$fm <- factor(newdat$fmMh)
-
-g <- ggplot(data=newdat,aes(x=post,y=Y,color=Z,shape=fm)) +
-	scale_shape_manual(values=1:14) +
-	#geom_point() +
-	geom_jitter(width=.1) +
-	geom_smooth(method="lm",aes(x=post,y=Y,group=fm,weight=nbwt),se=FALSE,size=.1,alpha=.1) +
-	geom_smooth(method="lm",aes(x=post,y=Y,group=Z,weight=nbwt),se=FALSE)
-
-print(g)
-
-```
-
-
-# Summary of the day
-
-## What have we done?
-
- - Reviewed introductory material
- - Discussed a method to compare observed data to a randomized design as a way to answer the question about "enough adjustment"
- - Used simple stratification for adjustment, and assessed the performance of that approach.
- - Created matched  designs using scalar as well as multivariate distances.
- - Estimated the ATE and tested the hypothesis of no effects given the matched research designs that we created.
-
-# Supplementary Material
-
-## One approach to this problem: model-based adjustment
-
-Let's try to just adjust for this covariate in a very common manner:
-
-```{r echo=FALSE}
-lm1 <- lm(HomRate08~nhTrt+nhAboveHS,data=meddat)
-```
-
-```{r echo=FALSE}
-preddat <- expand.grid(nhTrt=c(0,1),nhAboveHS=range(meddat$nhAboveHS))
-preddat$fit <- predict(lm1,newdata=preddat)
-```
-
-\centering
-```{r, out.width=".9\\textwidth", echo=FALSE}
-par(oma=rep(0,4),mgp=c(1.5,.5,0),mar=c(3,3,0,0))
-with(meddat, plot(nhAboveHS,HomRate08,pch=c(1,2)[nhTrt+1]))
-with(subset(preddat,subset=nhTrt==0),lines(nhAboveHS,fit,lty=1))
-with(subset(preddat,subset=nhTrt==1),lines(nhAboveHS,fit,lty=2))
-## locator()
-text(c(0.111807,0.001629), c(1.871,2.204), labels=c("Treat","Control"),pos=1)
-text(c(.3,.5),c( coef(lm1)[1]+coef(lm1)[3]*.3 , coef(lm1)[1]+coef(lm1)[2]+coef(lm1)[3]*.5),
-     labels=c("Control","Treat"))
-```
-
-## Exactly what does this kind of adjustment do?
-
-Notice that I can get the same coefficient (the effect of Metrocable on
-Homicides adjusted for HS-Education in the neighborhood) either directly (as
-earlier) or via **residualization**:
-
-```{r}
-coef(lm1)["nhTrt"]
-eYX <- residuals(lm(HomRate08~nhAboveHS,data=meddat))
-eZX <- residuals(lm(nhTrt ~ nhAboveHS, data=meddat))
-lm1a <- lm(eYX~eZX)
-coef(lm1a)[2]
-```
-
-## Exactly what does this kind of adjustment do?
-
-So, how would you explain what it means to "control for HS-Education" here?
-
-```{r}
-plot(eZX,eYX)
-```
-
-
-
-## Did we adjust enough?
-
-Maybe adding some more information to the plot can help us decide whether, and to what extend, we effectively "controlled for" the proportion of the neighborhood with more than High School education. Specifically, we might be interested in assessing extrapolation/interpolation problems arising from our linear assumptions.
-
-\centering
-```{r, out.width=".7\\textwidth", echo=FALSE, warning=FALSE, message=FALSE}
-par(oma=rep(0,4),mgp=c(1.5,.5,0),mar=c(3,3,0,0))
-with(meddat, plot(nhAboveHS,HomRate08,pch=c(1,2)[nhTrt+1]))
-with(subset(preddat,subset=nhTrt==0), lines(nhAboveHS,fit,lty=1))
-with(subset(preddat,subset=nhTrt==1),lines(nhAboveHS,fit,lty=2))
-with(subset(meddat,subset=nhTrt==0),lines(loess.smooth(nhAboveHS,HomRate08,deg=1,span=2/3),lty=1))
-with(subset(meddat,subset=nhTrt==1),lines(loess.smooth(nhAboveHS,HomRate08,deg=1,span=2/3),lty=2))
-## locator()
-text(c(0.111807,0.001629), c(1.871,2.204), labels=c("Treat","Control"),pos=1)
-text(c(.3,.5),c( coef(lm1)[1]+coef(lm1)[3]*.3 , coef(lm1)[1]+coef(lm1)[2]+coef(lm1)[3]*.5),
-     labels=c("Control","Treat"))
-with(subset(meddat,subset=nhTrt==0),rug(nhAboveHS))
-with(subset(meddat,subset=nhTrt==1),rug(nhAboveHS,line=-.5))
-```
-
-How should we interpret this adjustment? How should we judge the improvement that we made? What concerns might we have?
-
-
-
-```{r echo=FALSE, eval=FALSE}
-thecovs <- unique(c(names(meddat)[c(5:7,9:24)],"HomRate03"))
-balfmla<-reformulate(thecovs,response="nhTrt")
-
-xbMed<-balanceTest(balfmla,
-	      data=meddat,
-	      report=c("all"),
-        p.adjust.method="none")
-xbMed$overall
-xbMed$results["nhAboveHS",,]
-```
-
-
-```{r echo=FALSE, eval=FALSE}
-outcomefmla <- reformulate(c("nhTrt",thecovs),response="HomRate08")
-lmbig <- lm(outcomefmla,data=meddat)
-```
-
-## Back to the randomized experiment to help make a case for appropriate adjustment
-
-It seems like arguments about plots may be difficult to resolve. How about going back to `xBalance`? The idea of a standard against which we can compare a given design. How might we do this in this case?
-
-
-*Attempt 1: Stratification ... but two estimates rather than one adjusted
-estimate*
-
-```{r}
-lm1a <- lm(HomRate08~nhTrt,data=meddat,subset=nhAboveHS>=.1)
-lm1b <- lm(HomRate08~nhTrt,data=meddat,subset=nhAboveHS<=.1)
-```
-
-*Attempt 2: Stratified adjustment*
-
-```{r}
-lm1c <- lm(HomRate08~nhTrt+I(nhAboveHS>=.1),data=meddat)
-coef(lm1c)["nhTrt"]
-```
-
-And balance assessment after stratification:
-
-```{r}
-xbHS1 <- xBalance(nhTrt~nhAboveHS,strata=list(hs=~I(nhAboveHS>=.1)),data=meddat,report="all")
-xbHS1$overall
-xbHS1$results
-```
-
-## The Curse of Dimensionality and linear adjustment for one more variable.
-
-What about more than one variable? Have we controlled for both population
-density and educational attainment enough? How would we know?
-
-```{r}
-lm2x <- lm(HomRate08 ~ nhTrt + nhPopD + nhAboveHS, data=meddat)
-coef(lm2x)["nhTrt"]
-```
-
-Maybe another plot?
-
-```{r eval=FALSE}
-meddat$nhTrtF <- factor(meddat$nhTrt)
-library(car)
-scatter3d(HomRate08~nhAboveHS+nhPopD,
-	  groups=meddat$nhTrtF,
-	  data=meddat,surface=TRUE,
-    fit=c("linear")) #additive"))
-```
-
-```{r echo=FALSE, eval=FALSE}
-scatter3d(HomRate08~nhAboveHS+nhPopD,
-	  groups=meddat$nhTrtF,
-	  data=meddat,surface=TRUE,
-    fit=c("additive"))
-
-```
-
-
-## Can we improve stratified adjustment?
-
-Rather than two strata, why not three?
-
-```{r}
-lm1cut3 <- lm(HomRate08~nhTrt+cut(nhAboveHS,3),data=meddat)
-coef(lm1cut3)["nhTrt"]
-```
-But why those cuts? And why not 4? Why not...?
-
-\medskip
-
-One idea: collect observations into strata such that the sum of the
-differences in means of nhAboveHS within strata is smallest? This is the idea
-behind `optmatch` and other matching approaches.
-
-## Estimating the ATT
-
-We could also estimate the average effect on the treated (the ATT):
-
-\begin{equation}
-ATT=(\bar{\tau}|Z==1)=(\bar{y}_1|Z=1) - (\bar{y}_0|Z=1)
-\end{equation}
-
-```{r}
-with(setmeanDiffs,sum(ateb*(nTb)/sum(nTb)))
-```
-
-`balanceTest` reports the ATT (the set mean differences weighted by number of
-treated) but uses the precision-weighted mean for the $p$-value.  `xBalance`
-reports the same $p$-values but reports the harmonic mean weighted difference
-of means as the `adj.diff`.
-
-
-```{r echo=FALSE,eval=FALSE}
-## The descriptive adj.mean diff from balanceTest
-xbOutcome1 <- balanceTest(nhTrt~HomRate08+strata(fmMh),data=wdat,report="all")
-xbOutcome1$results[,,"fmMh"]
-```
-
-```{r}
-xbOutcome2 <- xBalance(nhTrt~HomRate08,strata=list(fmMh=~fmMh),data=wdat,report="all")
-xbOutcome2$results[,,"fmMh"]
-```
-
-
-## Demonstrating randomization inference for the sharp null by hand.
-
-```{r}
-library(randomizr)
-library(permute) ## for shuffle()
-
-newExp <- function(z,b){
-  n <- length(z)
-  h1 <- how(blocks=b)
-  z[shuffle(n,control=h1)]
-}
-
-newExp2 <- function(b,nT){
-	block_ra(blocks=b,block_m=nT)
-}
-
-newz2 <- newExp2(b=wdat$fmMh,nT=setmeanDiffs$nTb)
-testnewExp2 <- sapply(split(newz2,wdat$fmMh),function(x){ c(nb=length(x),nTb=sum(x)) })
-stopifnot(all.equal(testnewExp2["nb",],setmeanDiffs$nb,check.attributes=FALSE))
-stopifnot(all.equal(testnewExp2["nTb",],setmeanDiffs$nTb,check.attributes=FALSE))
-
-newz1 <- newExp(wdat$nhTrt,wdat$fmMh)
-testnewExp1 <- sapply(split(newz1,wdat$fmMh),function(x){ c(nb=length(x),nTb=sum(x)) })
-stopifnot(all.equal(testnewExp1["nb",],setmeanDiffs$nb,check.attributes=FALSE))
-stopifnot(all.equal(testnewExp1["nTb",],setmeanDiffs$nTb,check.attributes=FALSE))
-
-
-hwtfn <- function(data){
-  tapply(data$Tx.grp,data$stratum.code,function(x){ 2* sum((x-mean(x))^2) })
-}
-
-setsizewtfn<- function(data){
-  tapply(data$Tx.grp,data$stratum.code,function(x){ length(x) })
-}
-
-trtsizewtfn<- function(data){
-  ## Assumes Tx.grp \in \{0,1\} and 1=assigned to treatment
-  tapply(data$Tx.grp,data$stratum.code,function(x){ sum(x) })
-}
-
-wtMeanDiffTZ<-function(y,z,b,wtfn){
-  tzb <- mapply(function(yb,zb){ mean(yb[zb==1]) - mean(yb[zb==0]) },
-                yb=split(y,b),
-                zb=split(z,b))
-  wts <- wtfn(data.frame(Tx.grp=z,stratum.code=b))
-  sum(tzb*wts/sum(wts))
-}
-
-## Testing (compare to above)
-obsHTZ<-wtMeanDiffTZ(wdat$HomRate08,wdat$nhTrt,wdat$fmMh,hwtfn)
-obsNTZ<-wtMeanDiffTZ(wdat$HomRate08,wdat$nhTrt,wdat$fmMh,setsizewtfn)
-obsTTZ<-wtMeanDiffTZ(wdat$HomRate08,wdat$nhTrt,wdat$fmMh,trtsizewtfn)
-```
-
-Test the null hypothesis of no effects:
-
-```{r cache=TRUE}
-
-set.seed(12345)
-nulldistHwt <- replicate(10000,wtMeanDiffTZ(wdat$HomRate08,newExp(wdat$nhTrt,wdat$fmMh),wdat$fmMh,hwtfn))
-set.seed(12345)
-nulldistNwt <- replicate(10000,wtMeanDiffTZ(wdat$HomRate08,newExp(wdat$nhTrt,wdat$fmMh),wdat$fmMh,setsizewtfn))
-
-## Notice more precision with the Harmonic weight in thes p-values.
-2*min(mean(nulldistHwt>=obsHTZ),mean(nulldistHwt<=obsHTZ))
-2*min(mean(nulldistNwt>=obsNTZ),mean(nulldistNwt<=obsNTZ))
-
-```
-
-Comparing the reference distributions to each other and to their Normal approximations.
-
-```{r}
-plot(density(nulldistHwt),ylim=c(0,3))
-lines(density(nulldistNwt),lty=2)
-curve(dnorm(x,sd=sd(nulldistHwt)),from=-1,to=1,col="gray",add=TRUE)
-curve(dnorm(x,sd=sd(nulldistNwt)),from=-1,to=1,col="gray",lty=2,add=TRUE)
-abline(v=0)
-```
 
 ## References
 
