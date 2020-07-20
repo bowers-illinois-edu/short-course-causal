@@ -64,8 +64,9 @@ library(RItools)
   - 01:00 -- 01:10 --- Break
   - 01:10 -- 01:30 --- Questions about the lecture and/or readings
   - 01:30 -- 02:00 --- Tell us about a project and/or data set that you might want to use in this class to practice and learn.
-  - 02:00 -- 03:00 --- Exercise 1: Describe your data.
-  - 03:00 -- 03:30 --- Jake discuss the problem of adjustment in observational studies as compared to experiments
+  - 02:00 -- 03:00 --- Break and Exercise 1: Describe your data.
+  - 03:00 -- 03:10 --- Break
+  - 03:10 -- 03:30 --- Jake discuss the problem of adjustment in observational studies as compared to experiments
   - 03:30 -- 04:00 --- Open Discussion on any topic.
 
 ## Notation and Concepts for Counterfactual Causal Inference
@@ -92,15 +93,18 @@ library(RItools)
 
 ## The link between observation and learning about causal claims
 
-We can learn about causal claims by observing [@brady2008cae]:
+We can learn about causal claims by observing the world [@brady2008cae]:
 
 - **Persistent association** ``We always/mostly see $Y=1$ when $X=1$ and $Y=0$ when $X=0$.''
 - **Counterfactual Difference** ``If  $X$ had not been this value, then $Y$ would not have been that value.''
 - **Difference after manipulation** ``When we change $X$ from one value to another value, then $Y$ changes from one value to another value.'' (establishes causal priority of $X$ over $Y$, implied that $Y$ would not have changed.).
 - **Difference after operation of a mechanism** ``Once upon a time $A$ changed $X$, and then one day $X$ changed $B$, and because of that $B$ changed $C$, and finally $C$ changed $Y$.''
 
+All approaches are useful. This week we are focusing on the counterfactual approach and somewhat on the persistent association.
 
-## How to interpret "X causes Y"?
+## How to interpret "X causes Y" in counterfactual terms?
+
+The counterfactual approach requires that we can imagine units with and without $X$ (or say, $X=1$ and $X=0$).
 
  -  We can establish that X causes Y without knowing the mechanism. The mechanism
     can be complex, and it can involve probability: X causes Y sometimes because of
@@ -124,7 +128,7 @@ fundamental problem of counterfactual causation later)
 ```{r, echo=FALSE, results="hide"}
 set.seed(12345)
 honeydat <- data.frame(x1=c(1,1,2,3,1,0,0,0,0,2),
-    x2=sample(1:10,size=10,replace=TRUE))
+    x2=sample(1:9,size=10,replace=TRUE))
 honeydat$Zlat <- with(honeydat,.5*x1 + runif(10))
 honeydat$Z <- as.numeric(honeydat$Z > median(honeydat$Z))
 ## honeydat$y0 <- with(honeydat,x1+x2+Z+rpois(10,lambda=5))
@@ -137,10 +141,10 @@ honeydat$Y <- with(honeydat,y1*Z + y0*(1-Z))
 with(honeydat,mean(Y[Z==1]) - mean(Y[Z==0]))
 honeydat$tau <- honeydat$y1 - honeydat$y0
 honeydat$id <- 1:10
-dat <- honeydat[,c("id","x1","y0","y1","tau")]
+dat <- honeydat[,c("id","x1","x2","y0","y1","tau")]
 ```
 
-Imagine these were the underlying potential outcomes and that x1 -> y0.
+Imagine these were the underlying potential outcomes and that x1 -> y0 and that x2 is indep of outcomes.
 
 ```{r}
 kable(dat)
@@ -204,38 +208,138 @@ mean(dist_est1)
 
 ## How does randomization help us trust our estimators?
 
-What did randomization provide here? (1) Grounds for repetition (i.e. we **knew**
-how to repeat the generation of $Z$), (2) No need to mention `x1`, (3) an
-unbiased estimator.
+What did randomization provide here?
 
-## What about if we didn't know how Z was assigned?
+ 1. Grounds for repetition (i.e. we **knew** how to repeat the generation of $Z$),
+ 2. No need to mention `x1` (we could check to see if we should worry about x1).
+ 3. an unbiased estimator.
 
-Imagine that `x1` causes `Z`.
+## What about if we didn't know exactly how Z was assigned?
 
-```{r echo=TRUE}
-dat$Z <- as.numeric(dat$x1 > 0)
+Imagine that `x1` causes `Z` (here, Z is randomized but x1 changes Z before revealing y0 or y1):
+
+```{r biasexample, cache=TRUE, echo=TRUE}
+new_exp2 <- function(Z,x1){
+    newZ1 <- sample(Z)
+    # newZ <- newZ1*rbinom(10,size=1,prob=(x1+1)/4)
+    newZ <- pnorm(x1+newZ1)>pnorm(median(x1+newZ1))
+    return(as.numeric(newZ))
+}
 with(dat,mean(y1-y0))
-est1(dat$Z,dat$Y)
+with(dat,est1(new_exp2(Z,x1),Y))
+
+set.seed(1235)
+dist_est1a <- with(dat, replicate(5000, new_est(newZ=new_exp2(Z,x1),y0=y0,y1=y1,the_est=est1)))
+summary(dist_est1a)
+## And recall our previous distribution of our estimator across randomizations
+summary(dist_est1)
 ```
 
+## What about if we didn't know exactly how Z was assigned?
+
+Imagine that `x1` causes `Z` (here, Z is randomized but x1 changes Z before reveals y0 or y1):
+
+```{r}
+plot(density(dist_est1),ylim=c(0,.8))
+lines(density(na.omit(dist_est1a)),col="blue")
+abline(v=with(dat,mean(y1-y0)))
+points(c(mean(dist_est1a,na.rm=TRUE),mean(dist_est1)),c(0,0),pch=c(17,18),cex=2,col=c("blue","black"))
+```
+
+## What about if we didn't know how Z was assigned at all?
+
 How would we assess bias if we didn't know that x1 caused Z?
+
  - We cannot simply shuffle Z. Because we don't know how Z arose.
- - Hmm... do we know how x1 was generated? We could re-generate x1 and *hope* that our x1 to Z function is right
+ - Do we know how x1 was generated? If so, we could re-generate x1 and *hope* that our x1 to Z function is right
  - We could repeatedly re-generate Y itself if we **knew** how it was created.
  - We could resample the entire dataset if we **knew** how it was sampled.
 
 ## What about controlling for x1?
 
-If we knew that x1 causes both Z and Y, then perhaps we can "control for it":
+If we knew that x1 causes both Z and Y, then perhaps we can "control for it"? What does this do?
 
 ```{r echo=TRUE}
-
-est2 <- lm(Y~Z+x1,data=dat)
-coef(est2)[["Z"]]
-
+set.seed(12345)
+dat$Z <- new_exp2(dat$Z,dat$x1)
+e1 <-lm(Y~Z,data=dat)
+e2 <- lm(Y~Z+x1,data=dat)
+coef(e1)[["Z"]]
+coef(e2)[["Z"]]
 ```
 
-Is this enough? Did we do a good job? How would we know? What does "controlling for" really mean?
+Recall the true ATE:
+
+```{r}
+with(dat,mean(y1-y0))
+```
+
+
+## What about controlling for x1?
+
+What does it mean when we "control for" x1?
+
+```{r}
+with(dat,plot(x1,Y))
+abline(a=coef(e2)[[1]],b=coef(e2)[["x1"]])
+abline(a=coef(e2)[[1]]+1,b=coef(e2)[["x1"]])
+text(y=c(coef(e2)[[1]],coef(e2)[[1]]+1),x=c(0,0),labels=c("Z=0","Z=1"))
+```
+
+## What about controlling for x1?
+
+Controlling for as residualization:
+
+```{r echo=TRUE}
+resid1 <- residuals(lm(Y~x1,data=dat))
+resid2 <- residuals(lm(Z~x1,data=dat))
+e2new <- lm(resid1~resid2)
+coef(e2new)[[2]]
+stopifnot(all.equal(coef(e2new)[[2]], coef(e2)[["Z"]]))
+```
+
+```{r out.width=".5\\textwidth"}
+par(mfrow=c(1,2),oma=rep(0,4),mar=c(3,3,1,1),mgp=c(1.25,.5,0))
+with(dat,plot(x1,Y))
+abline(lm(Y~x1,data=dat))
+plot(dat$x1,resid1)
+abline(lm(resid1~dat$x1))
+```
+
+
+## What about controlling for x1?
+
+Controlling for as residualization:
+
+```{r out.width=".8\\textwidth"}
+par(mfrow=c(1,2),oma=rep(0,4),mar=c(3,3,1,1),mgp=c(1.25,.5,0))
+with(dat,plot(x1,Y))
+abline(lm(Y~x1,data=dat))
+plot(dat$x1,resid1)
+abline(lm(resid1~dat$x1))
+```
+
+## What about controlling for x1?
+
+How should we control for x1? How to choose?
+
+```{r echo=TRUE}
+set.seed(12345)
+dat$Z <- new_exp2(dat$Z,dat$x1)
+e1 <-lm(Y~Z,data=dat)
+e2 <- lm(Y~Z+x1,data=dat)
+e3 <- lm(Y~Z+x1+I(x1^2),data=dat)
+e4 <- lm(Y~Z*x1+I(x1^2),data=dat)
+coef(e1)[["Z"]]
+coef(e2)[["Z"]]
+coef(e3)[["Z"]]
+preddat <- expand.grid(Z=unique(dat$Z),x1=unique(dat$x1))
+preddat$e4fit <- predict(e4,newdata=preddat)
+## Equal weight estimate
+with(preddat,mean(e4fit[Z==1]) - mean(e4fit[Z==0]))
+```
+
+Is this enough? What else might we do? Did we do a good job? How would we know? What does "controlling for" really mean?
 
 
 # Summary and Overview
@@ -254,8 +358,49 @@ Randomization makes $y_1, y_0, \bX \perp Z$. How to make use of this fact in a r
       - The idea of **design-based** versus **model-based** statistical
 	inference (next few slides).
 
+## Design Based Approach: Estimate Averages
 
-## Design Based Approach 1: Test Hypotheses
+  1. Notice that the observed $Y_i$ are a sample from  the (small, finite)
+     population of $(y_{i,1},y_{i,0})$.
+  2. Decide to focus on the average, $\bar{\tau}$, because sample averages,
+     $\hat{\bar{\tau}}$ are unbiased and consistent estimators of population
+     averages under random sampling (where no covariate determines the sample
+     inclusion probability or assignment to $Z_i$).
+  3. Estimate $\bar{\tau}$ with the observed difference in means.
+
+\centering
+  \includegraphics[width=.5\textwidth]{images/cartoonNeyman.pdf}
+
+## Design Based Approach: Estimate Averages
+
+\centering
+  \includegraphics[width=.9\textwidth]{images/cartoonNeyman.pdf}
+
+
+## Design Based Approach: Estimate Averages
+
+
+```{r}
+set.seed(12345)
+dat$Z <- randomizr::complete_ra(N=10,m=5)
+dat
+## The estimand: the ATE
+with(dat,mean(y1-y0))
+## An estimator
+with(dat,est1(Z,Y))
+```
+
+## What about when we have not randomized?
+
+We can try to adjust (for example by "controlling for". But adjustment raises new questions: how to adjust? how to assess our adjustment?)
+
+Ideas for a simpler way to say "We have held x1 constant?" as a way to discard alternative explanations based on x1?
+
+## Lingering Questions?
+
+# Appendix
+
+## Design Based Approach: Test Hypotheses
 
  1. Make a guess about $\tau_i$.
  2. Then measure surprise or consistency of data with this guess given the
@@ -266,32 +411,15 @@ Randomization makes $y_1, y_0, \bX \perp Z$. How to make use of this fact in a r
 \centering
   \includegraphics[width=.6\textwidth]{images/cartoonFisherNew1.pdf}
 
-## Design Based Approach 1: Test Hypotheses
+## Design Based Approach: Test Hypotheses
 
 \centering
   \includegraphics[width=\textwidth]{images/cartoonFisherNew1.pdf}
 
-## Design Based Approach 1: Test Hypotheses
+## Design Based Approach: Test Hypotheses
 
 \centering
   \includegraphics[width=\textwidth]{images/cartoonFisherNew2.pdf}
-
-
-
-## Design Based Approach 2: Estimate Averages
-
-  1. Notice that the observed $Y_i$ are a sample from  the (small, finite) population of $(y_{i,1},y_{i,0})$.
-  2. Decide to focus on the average, $\bar{\tau}$, because sample averages, $\hat{\bar{\tau}}$ are unbiased and consistent estimators of population averages.
-  3. Estimate $\bar{\tau}$ with the observed difference in means.
-
-\centering
-  \includegraphics[width=.5\textwidth]{images/cartoonNeyman.pdf}
-
-## Design Based Approach 2: Estimate Averages
-
-\centering
-  \includegraphics[width=.9\textwidth]{images/cartoonNeyman.pdf}
-
 
 ## Approaches to creating interpretable comparisons:
 
@@ -301,9 +429,6 @@ Randomization makes $y_1, y_0, \bX \perp Z$. How to make use of this fact in a r
    - Difference-in-Differences (reduce bias *and* increase precision from reducing heterogeneity in $Y$)
    - Semi-/Non-parametric Covariance Adjustment (ex. Matching)
    - Parametric covariance adjustment
-
-## Lingering Questions?
-
 
 ## References
 
