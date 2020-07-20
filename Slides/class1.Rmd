@@ -43,11 +43,15 @@ library(RItools)
 
 ## Experiments, Potential Outcomes, and Treatment Effects
 
-  1. Causal inference in randomized experiments and potential outcomes
+  1. Causal inference in randomized experiments and the idea of only partially
+     observed **potential outcomes**
   2. Statistical inference for causal effects in randomized experiments via the
      Fisher and Neyman approaches \autocite[Chap 2]{rosenbaum2010},
      \autocite[Chap 1-3]{gerbergreen2012}.
-  3. Why are randomized experiments special? 
+  3. Why are randomized experiments special?
+  4. What does "controlling for" do in a linear model when we do not have a
+     randomized experiment? How can we make the case that we are "controlling
+     for" enough?
 
 ## Overly Ambitious Plan
 
@@ -113,10 +117,11 @@ fundamental problem of counterfactual causation later)
 
 - Your friend says that eating raw honey (a traditional remedy) reduces the duration of colds.
 - Say we observe the duration of a cold among people who took honey and the duration of a cold among people who did not and we saw that the duration was shorter among those taking honey. What kinds of alternative explanations might we come up with for this result (other than the idea that honey shortened the duration of the cold)?
+- How might a randomized design help us here?
 
 ## Example of confounding
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, results="hide"}
 set.seed(12345)
 honeydat <- data.frame(x1=c(1,1,2,3,1,0,0,0,0,2),
     x2=sample(1:10,size=10,replace=TRUE))
@@ -124,18 +129,56 @@ honeydat$Zlat <- with(honeydat,.5*x1 + runif(10))
 honeydat$Z <- as.numeric(honeydat$Z > median(honeydat$Z))
 honeydat$y0 <- with(honeydat,x1+x2+Z+rpois(10,lambda=5))
 summary(lm(y0~x1+x2,data=honeydat))
-cor(honeydat[,c("x1","x2","Z","y0")])
+## cor(honeydat[,c("x1","x2","Z","y0")])
 honeydat$Zlat <- NULL
 honeydat$y1 <- with(honeydat,y0 - c(1,1,2,3,1,0,0,0,0,2))
 honeydat$Y <- with(honeydat,y1*Z + y0*(1-Z))
+with(honeydat,mean(Y[Z==1]) - mean(Y[Z==0]))
+honeydat$tau <- honeydat$y1 - honeydat$y0
+honeydat$id <- 1:10
+dat <- honeydat[,c("id","y0","y1","tau")]
 ```
+
+Imagine these were the underlying potential outcomes:
 
 ```{r}
-honeydat
-with(honeydat, mean(y1-y0))
-with(honeydat,mean(Y[Z==1]) - mean(Y[Z==0]))
+kable(dat)
+message("Average (additive) causal effect is: ", with(honeydat, mean(y1-y0)))
 ```
 
+Let us run a randomized experiment and see how we do:
+
+## An RCT:
+
+What is happening here?
+
+```{r}
+library(randomizr)
+set.seed(12345)
+dat$Z <- complete_ra(N=10,m=5)
+dat$Y <- with(dat,Z*y1 + (1-Z)*y0)
+kable(dat)
+```
+
+How might we estimate the average causal effect?
+
+## Estimating the ATE in an RCT:
+
+Here are two proposals for estimating the ATE. How would we know whether either
+or both of them work well? (What do we want estimators to do for us?)
+
+```{r}
+est1 <- function(Z,Y){
+    mean(Y[Z==1]) - mean(Y[Z==0])
+}
+est2 <- function(Z,Y){
+    coef(lm(Y~Z))[["Z"]]
+}
+
+with(dat,est1(Z=Z,Y=Y))
+with(dat,est2(Z=Z,Y=Y))
+
+```
 
 
 
