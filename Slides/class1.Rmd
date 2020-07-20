@@ -16,7 +16,7 @@ output:
   beamer_presentation:
     slide_level: 2
     keep_tex: true
-    latex_engine: xelatex
+    latex_engine: lualatex
     citation_package: biblatex
     incremental: true
     template: icpsr.beamer
@@ -47,7 +47,7 @@ library(RItools)
      observed **potential outcomes**
   2. Statistical inference for causal effects in randomized experiments via the
      Fisher and Neyman approaches \autocite[Chap 2]{rosenbaum2010},
-     \autocite[Chap 1-3]{gerbergreen2012}.
+     \autocite[Chap 1-3]{gerbergreen2012}: Estimation, Estimators, Tests, Testing.
   3. Why are randomized experiments special?
   4. What does "controlling for" do in a linear model when we do not have a
      randomized experiment? How can we make the case that we are "controlling
@@ -92,7 +92,7 @@ library(RItools)
 
 ## The link between observation and learning about causal claims
 
-We can learn about causal claims by observing [@brady2008causation]:
+We can learn about causal claims by observing [@brady2008cae]:
 
 - **Persistent association** ``We always/mostly see $Y=1$ when $X=1$ and $Y=0$ when $X=0$.''
 - **Counterfactual Difference** ``If  $X$ had not been this value, then $Y$ would not have been that value.''
@@ -119,7 +119,7 @@ fundamental problem of counterfactual causation later)
 - Say we observe the duration of a cold among people who took honey and the duration of a cold among people who did not and we saw that the duration was shorter among those taking honey. What kinds of alternative explanations might we come up with for this result (other than the idea that honey shortened the duration of the cold)?
 - How might a randomized design help us here?
 
-## Example of confounding
+## Example: What does randomization provide?
 
 ```{r, echo=FALSE, results="hide"}
 set.seed(12345)
@@ -127,7 +127,8 @@ honeydat <- data.frame(x1=c(1,1,2,3,1,0,0,0,0,2),
     x2=sample(1:10,size=10,replace=TRUE))
 honeydat$Zlat <- with(honeydat,.5*x1 + runif(10))
 honeydat$Z <- as.numeric(honeydat$Z > median(honeydat$Z))
-honeydat$y0 <- with(honeydat,x1+x2+Z+rpois(10,lambda=5))
+## honeydat$y0 <- with(honeydat,x1+x2+Z+rpois(10,lambda=5))
+honeydat$y0 <- with(honeydat, x1 + .25*x1^2+rpois(10,lambda=8))
 summary(lm(y0~x1+x2,data=honeydat))
 ## cor(honeydat[,c("x1","x2","Z","y0")])
 honeydat$Zlat <- NULL
@@ -136,10 +137,10 @@ honeydat$Y <- with(honeydat,y1*Z + y0*(1-Z))
 with(honeydat,mean(Y[Z==1]) - mean(Y[Z==0]))
 honeydat$tau <- honeydat$y1 - honeydat$y0
 honeydat$id <- 1:10
-dat <- honeydat[,c("id","y0","y1","tau")]
+dat <- honeydat[,c("id","x1","y0","y1","tau")]
 ```
 
-Imagine these were the underlying potential outcomes:
+Imagine these were the underlying potential outcomes and that x1 -> y0.
 
 ```{r}
 kable(dat)
@@ -150,24 +151,23 @@ Let us run a randomized experiment and see how we do:
 
 ## An RCT:
 
-What is happening here?
+What is happening here? How would we know whether `complete_ra` worked as it should?
 
-```{r}
+```{r, echo=TRUE}
 library(randomizr)
 set.seed(12345)
-dat$Z <- complete_ra(N=10,m=5)
+dat$Z <- randomizr::complete_ra(N=10,m=5)
 dat$Y <- with(dat,Z*y1 + (1-Z)*y0)
 kable(dat)
 ```
 
-How might we estimate the average causal effect?
 
 ## Estimating the ATE in an RCT:
 
 Here are two proposals for estimating the ATE. How would we know whether either
 or both of them work well? (What do we want estimators to do for us?)
 
-```{r}
+```{r echo=TRUE}
 est1 <- function(Z,Y){
     mean(Y[Z==1]) - mean(Y[Z==0])
 }
@@ -177,10 +177,68 @@ est2 <- function(Z,Y){
 
 with(dat,est1(Z=Z,Y=Y))
 with(dat,est2(Z=Z,Y=Y))
+```
+
+## How does randomization help us trust our estimators?
+
+```{r, echo=TRUE}
+## The truth:
+with(dat,mean(y1-y0))
+
+new_exp <- function(Z){
+    ## This next shuffles Z
+    newZ <- sample(Z)
+    return(newZ)}
+
+new_est <- function(newZ,y0,y1,the_est){
+    newY <- newZ * y1 + (1-newZ)*y0
+    result <- the_est(Z=newZ,Y=newY)
+}
+
+set.seed(1235)
+dist_est1 <- with(dat, replicate(100, new_est(newZ=new_exp(Z),y0=y0,y1=y1,the_est=est1)))
+mean(dist_est1)
+dist_est1 <- with(dat, replicate(1000, new_est(newZ=new_exp(Z),y0=y0,y1=y1,the_est=est1)))
+mean(dist_est1)
+```
+
+## How does randomization help us trust our estimators?
+
+What did randomization provide here? (1) Grounds for repetition (i.e. we **knew**
+how to repeat the generation of $Z$), (2) No need to mention `x1`, (3) an
+unbiased estimator.
+
+## What about if we didn't know how Z was assigned?
+
+Imagine that `x1` causes `Z`.
+
+```{r echo=TRUE}
+dat$Z <- as.numeric(dat$x1 > 0)
+with(dat,mean(y1-y0))
+est1(dat$Z,dat$Y)
+```
+
+How would we assess bias if we didn't know that x1 caused Z?
+ - We cannot simply shuffle Z. Because we don't know how Z arose.
+ - Hmm... do we know how x1 was generated? We could re-generate x1 and *hope* that our x1 to Z function is right
+ - We could repeatedly re-generate Y itself if we **knew** how it was created.
+ - We could resample the entire dataset if we **knew** how it was sampled.
+
+## What about controlling for x1?
+
+If we knew that x1 causes both Z and Y, then perhaps we can "control for it":
+
+```{r echo=TRUE}
+
+est2 <- lm(Y~Z+x1,data=dat)
+coef(est2)[["Z"]]
 
 ```
 
+Is this enough? Did we do a good job? How would we know? What does "controlling for" really mean?
 
+
+# Summary and Overview
 
 ## Benefits of Randomized Designs
 
