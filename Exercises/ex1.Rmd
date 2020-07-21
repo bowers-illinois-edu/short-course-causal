@@ -22,7 +22,7 @@ biblio-style: "authoryear-comp,natbib"
 ---
 
 <!-- Make this document using library(rmarkdown); render("exploration1.Rmd") -->
-\input{mytexsymbols}
+<!-- \input{mytexsymbols} -->
 
 ```{r setup, echo=FALSE, results=FALSE, include=FALSE, cache=FALSE}
 library(here)

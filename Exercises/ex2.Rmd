@@ -1,0 +1,44 @@
+---
+title: 'Exercise 2: Adjusting for 1 Covariate using Residualization and Stratification"
+author: 'Jake Bowers'
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+header-includes:
+  - \usepackage{bm}
+output:
+  pdf_document:
+    number_sections: true
+    fig_caption: yes
+    fig_height: 8
+    fig_width: 8
+    latex_engine: xelatex
+    citation_package: biblatex
+    keep_tex: true
+fontsize: 10pt
+geometry: margin=1in
+graphics: yes
+mainfont: "Helvetica"
+bibliography: classbib.bib
+biblio-style: "authoryear-comp,natbib"
+---
+
+<!-- Make this document using library(rmarkdown); render("exploration1.Rmd") -->
+\input{mytexsymbols}
+
+```{r setup, echo=FALSE, results=FALSE, include=FALSE, cache=FALSE}
+library(here)
+source(here("rmd_setup.R"))
+```
+
+ 1. Using your existing data, please use OLS to "control for" one covariate using both (a) the direct approach (`y~z+x`) and (b) the residualization approach. Please also plot your outcome against your covariate using different colors of points for values of your treatment or intervention variable if possible. Does it look like this approach is involving a lot of extrapolation? Interpolation? Does it look like the parallel lines assumption will make sense here? Are there any especially influential/outlying points that we should be worried about?
+
+ 2. Using your existing data, please use OLS to "hold constant" your covariate
+    by breaking it into distinct pieces and then (a) fitting OLS within each
+    piece and (b) fitting the same approach using fixed effects for your now
+    categorical covariate. Can you recover the coefficient in b from the results in a? Do you see how the fixed effects approach implies a certain weighting to the within-strata approach?
+
+3. Use `xBalance` or `balanceTest` to assess the extent to which your
+   stratification created Z to Y relationships that would have been usual or
+   expected in a randomized experiment.
+
+# References
+
