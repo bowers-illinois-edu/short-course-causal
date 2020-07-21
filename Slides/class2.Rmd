@@ -33,404 +33,169 @@ header-includes:
 
 ```{r echo=FALSE, include=FALSE, cache=FALSE}
 library(here)
+## You may need to change this next line to the following if you are using the EIM repo
+## source(here::here("rmd_setup.R"))
 source(here::here("Exercises/rmd_setup.R"))
 library(tidyverse)
 library(optmatch)
 library(RItools)
+library(estimatr)
 ```
 
 # Overview and Review
 
-## Experiments, Potential Outcomes, and Treatment Effects
+## Controlling for, Holding Consant, Evaluating Stratifications/Designs
 
-  1. Causal inference in randomized experiments and the idea of only partially
-     observed **potential outcomes**. The idea that we can use what we observe to learn about what we cannot observe.
-  2. Statistical inference for causal effects in randomized experiments via the
-     Fisher and Neyman approaches \autocite[Chap 2]{rosenbaum2010},
-     \autocite[Chap 1-3]{gerbergreen2012}: Estimation, Estimators, Tests, Testing.
-  3. Why are randomized experiments special? Unbiased estimators. The ability to assess bias. The ability to exclude alternative explanations. Tests with known error rates. The ability to assess error rates of tests.
-  4. What does "controlling for" do in a linear model when we do not have a
-     randomized experiment? How can we make the case that we are "controlling
-     for" enough?
+  1. **Last time:**
+     1. An intervention or causal agent has a counterfactual causal effect on a
+        unit $i$ if its potential outcomes differ: $y_{i,1} \ne y_{i,0}$.
+     2. We cannot directly see **both** potential outcomes.
+     3. So we have three options: we can estimate average effects, or (not last
+        time) test hypotheses about effects, or predict individual level
+        effects (and their posterior distributions, usually).
+     4. We can learn about the true, underlying, unobservable, average
+        treatment effect (the ATE) in a way that is not systematically wrong
+        **if we have a randomized experiment (RCT)** using the sample
+        differences of means.
+    5. If we do not have an RCT then we have a series of worries: (a) how to
+       manage alternative explanations, (b) how much bias is there in our
+       estimator of the underlying ATE? (How to tell how much bias there is?)
+    6. If we use a linear model to "control for" a covariate then a new set of
+       questions arises:
+       1. How much is our adjustment based on functional form assumptions and
+          how much is supported by the data?
+       2. Related: how much extrapolation is involved? how much interpolation?
+          how can we justify one specification over another?
+       3. Overall: how can we claim that we have "controlled for" enough? What
+          is the standard against which we can compare a given linear model
+          adjustment strategy?
+  2. **Today:** Confront those question and use stratification rather than
+     residualization: actively and transparently "hold constant" rather than
+     "remove linear additive relationships". Also, assess the success of
+     stratification and maybe stratify optimally.
 
 ## Overly Ambitious Plan
 
-  - 00:00 -- 00:30  ---  Introductions: Name, Affiliation/Organization, Interest
-    (Substantive or Methodological). Be thinking about (for later) a project
-    that you are working on that involves some form of comparison of
-    intervention with outcome, perhaps involving some causal inference.
-  - 00:30 -- 01:00 ---  Lecture by Jake to introduce concepts of potential outcomes, treatment effects, unbiased estimation, and encourage
-    questions and answers.
-  - 01:00 -- 01:10 --- Break
-  - 01:10 -- 01:30 --- Questions about the lecture and/or readings
-  - 01:30 -- 02:00 --- Tell us about a project and/or data set that you might want to use in this class to practice and learn.
-  - 02:00 -- 03:00 --- Break and Exercise 1: Describe your data.
-  - 03:00 -- 03:10 --- Break
-  - 03:10 -- 03:30 --- Jake discuss the problem of adjustment in observational studies as compared to experiments
-  - 03:30 -- 04:00 --- Open Discussion on any topic.
+  - 00:00 -- 00:30  --- Review
+  - 00:30 -- 01:30 ---  Lecture by Jake with lots of questions from the class
+  - 01:30 -- 01:40 --- Break
+  - 01:40 -- 02:00 --- Questions about the lecture and/or readings
+  - 02:00 -- 03:00 --- Break and Exercise 2 and maybe Exercise 3.
+  - 03:00 -- 04:00 --- Discussion of questions arising from the exercises and
+    questions lingering from reading, or lecture, or open discussion on any
+    topic.
 
-## Notation and Concepts for Counterfactual Causal Inference
+## "Controlling For" versus "Holding Constant"
 
-  - *Treatment* or *Intevention*  $Z_i=1$ for treatment and $Z_i=0$ for control
-    for units $i$. (We mostly assume that all units **could have** $Z_i=1$ or
-    $Z_i=0$. That it is not impossible for any unit to have either value.) (Q:
-    What is a unit? Examples of interventions?)
-
-  - Each unit has a pair of *potential outcomes* $(y_{i,Z_i=1},y_{i,Z_i=0})$
-    (also written  $(y_{i,1},y_{i,0})$ ) (given SUTVA).
-    - Without the SUTVA assumption, and with 4 units, with two having $Z_i=1$, unit $i=1$ would have the following potential outcomes: $(y_{i,1100},y_{i,1010},y_{i,1001},y_{i,0101},y_{i,0011})$
-  - *Causal Effect under SUTVA*  when $y_{i,1} \ne y_{i,0}$, $\tau_i   =
-    f(y_{i,1},y_{i,0})$ ex. $\tau_i =  y_{i,1} - y_{i,0}$. (Examples of Interfering Units and Not Interfering Units)
-
-  - *Fundamental Problem of (Counterfactual) Causality* We only see one
-    potential outcome $Y_i = Z_i * y_{i,1} + (1-Z_i) y_{i,0}$ (Examples?)
-
-  - *Covariates*,  $\bX=\begin{bmatrix} x_{11} & \ldots & x_{1k} \\ \vdots &
-    \vdots & \vdots \\  x_{n1} & \ldots & x_{nk} \end{bmatrix}$ is a matrix
-    containing  background information about the units that might predict
-    $(y_{i,1},y_{i,0})$ or $Z$ (but that don't predict $Z$ if $Z$ is randomized
-    as in an experiment).
-
-## The link between observation and learning about causal claims
-
-We can learn about causal claims by observing the world [@brady2008cae]:
-
-- **Persistent association** ``We always/mostly see $Y=1$ when $X=1$ and $Y=0$ when $X=0$.''
-- **Counterfactual Difference** ``If  $X$ had not been this value, then $Y$ would not have been that value.''
-- **Difference after manipulation** ``When we change $X$ from one value to another value, then $Y$ changes from one value to another value.'' (establishes causal priority of $X$ over $Y$, implied that $Y$ would not have changed.).
-- **Difference after operation of a mechanism** ``Once upon a time $A$ changed $X$, and then one day $X$ changed $B$, and because of that $B$ changed $C$, and finally $C$ changed $Y$.''
-
-All approaches are useful. This week we are focusing on the counterfactual approach and somewhat on the persistent association.
-
-## How to interpret "X causes Y" in counterfactual terms?
-
-The counterfactual approach requires that we can imagine units with and without $X$ (or say, $X=1$ and $X=0$).
-
- -  We can establish that X causes Y without knowing the mechanism. The mechanism
-    can be complex, and it can involve probability: X causes Y sometimes because of
-A and sometimes because of B.
- - "X causes Y" can mean "With X, probability of Y is higher than would be
-   without X." or "Without X there is no Y." Either is compatible with the
-counterfactual idea.
- - Correlation is not causation: Favorite examples?
- - "X causes Y" is a statement about what didn't happen: "If X had not
-   operated, occurred, then Y would not have occurred." (More about the
-fundamental problem of counterfactual causation later)
-
-## Example: Honey and Colds
-
-- Your friend says that eating raw honey (a traditional remedy) reduces the duration of colds.
-- Say we observe the duration of a cold among people who took honey and the duration of a cold among people who did not and we saw that the duration was shorter among those taking honey. What kinds of alternative explanations might we come up with for this result (other than the idea that honey shortened the duration of the cold)?
-- How might a randomized design help us here?
-
-## Example: What does randomization provide?
-
-```{r, echo=FALSE, results="hide"}
-set.seed(12345)
-honeydat <- data.frame(x1=c(1,1,2,3,1,0,0,0,0,2),
-    x2=sample(1:9,size=10,replace=TRUE))
-honeydat$Zlat <- with(honeydat,.5*x1 + runif(10))
-honeydat$Z <- as.numeric(honeydat$Z > median(honeydat$Z))
-## honeydat$y0 <- with(honeydat,x1+x2+Z+rpois(10,lambda=5))
-honeydat$y0 <- with(honeydat, x1 + .25*x1^2+rpois(10,lambda=8))
-summary(lm(y0~x1+x2,data=honeydat))
-## cor(honeydat[,c("x1","x2","Z","y0")])
-honeydat$Zlat <- NULL
-honeydat$y1 <- with(honeydat,y0 - c(1,1,2,3,1,0,0,0,0,2))
-honeydat$Y <- with(honeydat,y1*Z + y0*(1-Z))
-with(honeydat,mean(Y[Z==1]) - mean(Y[Z==0]))
-honeydat$tau <- honeydat$y1 - honeydat$y0
-honeydat$id <- 1:10
-dat <- honeydat[,c("id","x1","x2","y0","y1","tau")]
-```
-
-Imagine these were the underlying potential outcomes and that x1 -> y0 and that x2 is indep of outcomes.
+These two phrases imply differ adjustments:
 
 ```{r}
-kable(dat)
-message("Average (additive) causal effect is: ", with(honeydat, mean(y1-y0)))
+load(url("http://jakebowers.org/Data/meddat.rda"))
+## These next are equivalent ways to get rates per 1000 from counts
+## meddat$HomRate03<-with(meddat, (HomCount2003/Pop2003)*1000)
+## meddat$HomRate08<-with(meddat, (HomCount2008/Pop2008)*1000)
+meddat<-transform(meddat, HomRate03=(HomCount2003/Pop2003)*1000)
+meddat<-transform(meddat, HomRate08=(HomCount2008/Pop2008)*1000)
 ```
 
-Let us run a randomized experiment and see how we do:
-
-## An RCT:
-
-What is happening here? How would we know whether `complete_ra` worked as it should?
-
-```{r, echo=TRUE}
-library(randomizr)
-set.seed(12345)
-dat$Z <- randomizr::complete_ra(N=10,m=5)
-dat$Y <- with(dat,Z*y1 + (1-Z)*y0)
-kable(dat)
+Controlling for:
+```{r echo=TRUE, results="markup"}
+lm1 <- lm(HomRate08~nhTrt+nhAboveHS,data=meddat)
+coef(lm1)
 ```
 
-
-## Estimating the ATE in an RCT:
-
-Here are two proposals for estimating the ATE. How would we know whether either
-or both of them work well? (What do we want estimators to do for us?)
-
+Holding constant:
 ```{r echo=TRUE}
-est1 <- function(Z,Y){
-    mean(Y[Z==1]) - mean(Y[Z==0])
-}
-est2 <- function(Z,Y){
-    coef(lm(Y~Z))[["Z"]]
+lm2a <- lm(HomRate08~nhTrt,data=meddat,subset=nhAboveHS>.05)
+lm2b <- lm(HomRate08~nhTrt,data=meddat,subset=nhAboveHS<=.05)
+coef(lm2a)
+coef(lm2b)
+```
+
+## Detail: How to estimate an overall ATE while holding constant?
+
+We know how to analyze a block-randomized (or strata-randomized) experiment
+(see @gerbergreen2012)): each block is a mini-experiment. We estimate the ATE
+within each block and combine by weighting each block.
+
+```{r}
+## Make a 2 category variable:
+meddat$nhAboveHS2cat <- (meddat$nhAboveHS>.05)
+
+tmp <- meddat %>% group_by(nhAboveHS2cat) %>% summarize(ateb = mean(HomRate08[nhTrt==1]) - mean(HomRate08[nhTrt==0]),
+   prob_trt = mean(nhTrt),
+   nbwt = n()/nrow(meddat),
+   prec_wt = nbwt * prob_trt * ( 1 - prob_trt))
+
+est_ate1 <- with(tmp,sum(ateb*nbwt))
+est_ate2 <- with(tmp,sum(ateb*prec_wt/(sum(prec_wt))))
+
+## Now at the individual level
+meddat <- meddat %>% group_by(nhAboveHS2cat) %>% mutate(nb=n(),
+    mb=sum(nhTrt),
+    ateb = mean(HomRate08[nhTrt==1]) - mean(HomRate08[nhTrt==0]),
+   prob_trt = mean(nhTrt),
+   nbwt = ( nhTrt/prob_trt) + (1-nhTrt)/(1 - prob_trt),
+   prec_wt = nbwt * prob_trt * ( 1 - prob_trt))
+
+## Two ways to use the block-size weight
+est_ate1a <- difference_in_means(HomRate08~nhTrt,blocks=nhAboveHS2cat,data=meddat)
+est_ate1b <- lm_robust(HomRate08~nhTrt,weights=nbwt,data=meddat)
+
+## Three other ways to use the precision or harmonic weight
+est_ate2a <- lm_robust(HomRate08~nhTrt+nhAboveHS2cat,data=meddat)
+est_ate2b<- lm_robust(HomRate08~nhTrt,fixed_effects=~nhAboveHS2cat,data=meddat)
+est_ate2c<- lm_robust(HomRate08~nhTrt,weights=prec_wt,data=meddat)
+```
+
+## Did the stratification adjust enough?
+
+What is the standard for "adjusted enough"? How about an experiment where
+treatment has been randomized within each block? How does our adjustment
+compare to that standard?
+
+```{r simpsim, cache=TRUE}
+new_exp_and_test_stat <- function(data){
+    ## Shuffle intervention within block
+    dat <- data %>% group_by(nhAboveHS2cat) %>% mutate(newZ = sample(nhTrt))
+    ## here, using the precision weighted version
+    test_stat_hyp <- coef(lm(nhAboveHS~newZ+nhAboveHS2cat,data=dat))[["newZ"]]
+    return(test_stat_hyp)
 }
 
-with(dat,est1(Z=Z,Y=Y))
-with(dat,est2(Z=Z,Y=Y))
+no_effects_dist <- replicate(10000,new_exp_and_test_stat(meddat))
+obs_test_stat <- coef(lm(nhAboveHS~nhTrt+nhAboveHS2cat,data=meddat))[["nhTrt"]]
+pval <- 2*min( mean(no_effects_dist >= obs_test_stat), mean(no_effects_dist <= obs_test_stat))
 ```
-
-## How does randomization help us trust our estimators?
-
-```{r, echo=TRUE}
-## The truth:
-with(dat,mean(y1-y0))
-
-new_exp <- function(Z){
-    ## This next shuffles Z
-    newZ <- sample(Z)
-    return(newZ)}
-
-new_est <- function(newZ,y0,y1,the_est){
-    newY <- newZ * y1 + (1-newZ)*y0
-    result <- the_est(Z=newZ,Y=newY)
-}
-
-set.seed(1235)
-dist_est1 <- with(dat, replicate(100, new_est(newZ=new_exp(Z),y0=y0,y1=y1,the_est=est1)))
-mean(dist_est1)
-dist_est1 <- with(dat, replicate(1000, new_est(newZ=new_exp(Z),y0=y0,y1=y1,the_est=est1)))
-mean(dist_est1)
-dist_est1 <- with(dat, replicate(10000, new_est(newZ=new_exp(Z),y0=y0,y1=y1,the_est=est1)))
-mean(dist_est1)
-```
-
-## How does randomization help us trust our estimators?
-
-What did randomization provide here?
-
- 1. Grounds for repetition (i.e. we **knew** how to repeat the generation of $Z$),
- 2. No need to mention `x1` (we could check to see if we should worry about x1).
- 3. an unbiased estimator.
-
-## What about if we didn't know exactly how Z was assigned?
-
-Imagine that `x1` causes `Z` (here, Z is randomized but x1 changes Z before revealing y0 or y1):
-
-```{r biasexample, cache=TRUE, echo=TRUE}
-new_exp2 <- function(Z,x1){
-    newZ1 <- sample(Z)
-    # newZ <- newZ1*rbinom(10,size=1,prob=(x1+1)/4)
-    newZ <- pnorm(x1+newZ1)>pnorm(median(x1+newZ1))
-    return(as.numeric(newZ))
-}
-with(dat,mean(y1-y0))
-with(dat,est1(new_exp2(Z,x1),Y))
-
-set.seed(1235)
-dist_est1a <- with(dat, replicate(10000, new_est(newZ=new_exp2(Z,x1),y0=y0,y1=y1,the_est=est1)))
-summary(dist_est1a)
-## And recall our previous distribution of our estimator across randomizations
-summary(dist_est1)
-```
-
-## What about if we didn't know exactly how Z was assigned?
-
-Imagine that `x1` causes `Z` (here, Z is randomized but x1 changes Z before reveals y0 or y1):
 
 ```{r}
-plot(density(dist_est1),ylim=c(0,.8))
-lines(density(na.omit(dist_est1a)),col="blue")
-abline(v=with(dat,mean(y1-y0)))
-points(c(mean(dist_est1a,na.rm=TRUE),mean(dist_est1)),c(0,0),pch=c(17,18),cex=2,col=c("blue","black"))
+plot(density(no_effects_dist),main="Block-Rand Experiment No Effects Dist (plus observed effects)")
+abline(v=obs_test_stat)
 ```
 
-## What about if we didn't know how Z was assigned at all?
+A faster way to do the preceding (to compare what we observe to the distribution of the mean difference if there were no effects and the design was block-randomized):
 
-How would we assess bias if we didn't know that x1 caused Z?
-
- - We cannot simply shuffle Z. Because we don't know how Z arose.
- - Do we know how x1 was generated? If so, we could re-generate x1 and *hope* that our x1 to Z function is right
- - We could repeatedly re-generate Y itself if we **knew** how it was created.
- - We could resample the entire dataset if we **knew** how it was sampled.
-
-## What about controlling for x1?
-
-If we knew that x1 causes both Z and Y, then perhaps we can "control for it"? What does this do?
-
-```{r echo=TRUE}
-set.seed(12345)
-dat$Z <- new_exp2(dat$Z,dat$x1)
-e1 <-lm(Y~Z,data=dat)
-e2 <- lm(Y~Z+x1,data=dat)
-coef(e1)[["Z"]]
-coef(e2)[["Z"]]
+```{r xbal, echo=TRUE}
+xb1 <- xBalance(nhTrt~nhAboveHS,strata=list(unstrat=NULL,HS=~nhAboveHS2cat),data=meddat,report="all")
+xb1$results
+xb1$overall
 ```
 
-Recall the true ATE:
+Outcome analysis:
 
-```{r}
-with(dat,mean(y1-y0))
+```{r xbal, echo=TRUE}
+xb2 <- xBalance(nhTrt~HomRate08,strata=list(unstrat=NULL,HS=~nhAboveHS2cat),data=meddat,report="all")
+xb2$results
+xb2$overall
+## FYI: when we are thinking about estimators versus test statistics
+## lm3 <- lm_robust(HomRate08~nhTrt,fixed_effects = ~nhAboveHS2cat,data=meddat)
 ```
 
 
-## What about controlling for x1?
-
-What does it mean when we "control for" x1?
-
-```{r}
-with(dat,plot(x1,Y,pch=c(1,19)[Z+1],col=c("black","grey")[Z+1]))
-abline(a=coef(e2)[[1]],b=coef(e2)[["x1"]])
-abline(a=coef(e2)[[1]]+1,b=coef(e2)[["x1"]])
-text(y=c(coef(e2)[[1]],coef(e2)[[1]]+1),x=c(0,0),labels=c("Z=0","Z=1"))
-```
-
-## What about controlling for x1?
-
-Controlling for as residualization:
-
-```{r echo=TRUE}
-resid1 <- residuals(lm(Y~x1,data=dat))
-resid2 <- residuals(lm(Z~x1,data=dat))
-e2new <- lm(resid1~resid2)
-coef(e2new)[[2]]
-stopifnot(all.equal(coef(e2new)[[2]], coef(e2)[["Z"]]))
-```
-
-```{r out.width=".5\\textwidth"}
-par(mfrow=c(1,2),oma=rep(0,4),mar=c(3,3,1,1),mgp=c(1.25,.5,0))
-with(dat,plot(x1,Y))
-abline(lm(Y~x1,data=dat))
-plot(dat$x1,resid1)
-abline(lm(resid1~dat$x1))
-```
 
 
-## What about controlling for x1?
-
-Controlling for as residualization:
-
-```{r out.width=".8\\textwidth"}
-par(mfrow=c(1,2),oma=rep(0,4),mar=c(3,3,1,1),mgp=c(1.25,.5,0))
-with(dat,plot(x1,Y))
-abline(lm(Y~x1,data=dat))
-plot(dat$x1,resid1)
-abline(lm(resid1~dat$x1))
-```
-
-## What about controlling for x1?
-
-**How** should we control for x1? How to choose?
-
-```{r echo=TRUE}
-set.seed(12345)
-dat$Z <- new_exp2(dat$Z,dat$x1)
-e1 <-lm(Y~Z,data=dat)
-e2 <- lm(Y~Z+x1,data=dat)
-e3 <- lm(Y~Z+x1+I(x1^2),data=dat)
-e4 <- lm(Y~Z*x1+I(x1^2),data=dat)
-coef(e1)[["Z"]]
-coef(e2)[["Z"]]
-coef(e3)[["Z"]]
-preddat <- expand.grid(Z=unique(dat$Z),x1=unique(dat$x1))
-preddat$e4fit <- predict(e4,newdata=preddat)
-## Equal weight estimate
-with(preddat,mean(e4fit[Z==1]) - mean(e4fit[Z==0]))
-```
-
-Is this enough? What else might we do? Did we do a good job? How would we know? What does "controlling for" really mean?
 
 
-# Summary and Overview
-
-## Benefits of Randomized Designs
-
-Randomization makes $y_1, y_0, \bX \perp Z$. How to make use of this fact in a randomized experiment?
-
- 1. Interpretable comparisons (lack of omitted variable bias, confounding,
-    selection bias)
-      - Can I interpret differences in outcome as caused by $Z$ and not $X$?
-	Is it easy to confuse the effect of $Z$  with the  effects of $X$?
-      - How does  randomization do this? How  does randomization eliminate
-	**alternative explanations**?
- 2. Reliable statistical inferences (estimators and tests)
-      - The idea of **design-based** versus **model-based** statistical
-	inference (next few slides).
-
-## Design Based Approach: Estimate Averages
-
-  1. Notice that the observed $Y_i$ are a sample from  the (small, finite)
-     population of $(y_{i,1},y_{i,0})$.
-  2. Decide to focus on the average, $\bar{\tau}$, because sample averages,
-     $\hat{\bar{\tau}}$ are unbiased and consistent estimators of population
-     averages under random sampling (where no covariate determines the sample
-     inclusion probability or assignment to $Z_i$).
-  3. Estimate $\bar{\tau}$ with the observed difference in means.
-
-\centering
-  \includegraphics[width=.5\textwidth]{images/cartoonNeyman.pdf}
-
-## Design Based Approach: Estimate Averages
-
-\centering
-  \includegraphics[width=.9\textwidth]{images/cartoonNeyman.pdf}
-
-
-## Design Based Approach: Estimate Averages
-
-
-```{r}
-set.seed(12345)
-dat$Z <- randomizr::complete_ra(N=10,m=5)
-dat
-## The estimand: the ATE
-with(dat,mean(y1-y0))
-## An estimator
-with(dat,est1(Z,Y))
-```
-
-## What about when we have not randomized?
-
-We can try to adjust (for example by "controlling for". But adjustment raises new questions: how to adjust? how to assess our adjustment?)
-
-Ideas for a simpler way to say "We have held x1 constant?" as a way to discard alternative explanations based on x1?
-
-## Lingering Questions?
-
-# Appendix
-
-## Design Based Approach: Test Hypotheses
-
- 1. Make a guess about $\tau_i$.
- 2. Then measure surprise or consistency of data with this guess given the
-    design. (Given all of the ways this experiment could have  occurred, how
-    many look more extreme than what we observe? Does our observation look
-    typical or rare?)
-
-\centering
-  \includegraphics[width=.6\textwidth]{images/cartoonFisherNew1.pdf}
-
-## Design Based Approach: Test Hypotheses
-
-\centering
-  \includegraphics[width=\textwidth]{images/cartoonFisherNew1.pdf}
-
-## Design Based Approach: Test Hypotheses
-
-\centering
-  \includegraphics[width=\textwidth]{images/cartoonFisherNew2.pdf}
-
-## Approaches to creating interpretable comparisons:
-
-   - Randomized experiments (more precision from reducing heterogeneity in $Y$)
-   - Instrumental variables (with randomized $Z$ created $D$)
-   - Natural Experiments / Discontinuities (one $X$ creates $Z$) (includes RDD)
-   - Difference-in-Differences (reduce bias *and* increase precision from reducing heterogeneity in $Y$)
-   - Semi-/Non-parametric Covariance Adjustment (ex. Matching)
-   - Parametric covariance adjustment
 
 ## References
 
