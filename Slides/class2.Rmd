@@ -1,8 +1,7 @@
 ---
 title: |
-  | Causal Inference for Observational Studies
-  | Beyond the Basics
-  | Class 2
+  | Matching for Adjustment and Causal Inference
+  | Class 2: Controlling For, Holding Constant, Assessing Stratifications
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 author: Jake Bowers
 bibliography:
@@ -17,13 +16,14 @@ output:
   beamer_presentation:
     slide_level: 2
     keep_tex: true
-    latex_engine: xelatex
+    latex_engine: lualatex
     citation_package: biblatex
+    incremental: true
     template: icpsr.beamer
     includes:
         in_header:
            - defs-all.sty
-    md_extensions: +raw_attribute
+    md_extensions: +raw_attribute-tex_math_single_backslash+autolink_bare_uris+ascii_identifiers+tex_math_dollars
 header-includes:
   - \setbeameroption{hide notes}
 ---
@@ -31,1013 +31,406 @@ header-includes:
 <!-- To show notes  -->
 <!-- https://stackoverflow.com/questions/44906264/add-speaker-notes-to-beamer-presentations-using-rmarkdown -->
 
-```{r optionschunk, echo=FALSE, include=FALSE, cache=FALSE}
-# Some customization.  You can alter or delete as desired (if you know what you are doing).
-# knitr settings to control how R chunks work.
-rm(list=ls())
-
-require(knitr)
-
-## This plus size="\\scriptsize" from https://stackoverflow.com/questions/26372138/beamer-presentation-rstudio-change-font-size-for-chunk
-knitr::knit_hooks$set(mysize = function(before, options, envir) {
-			      if (before)
-				      return(options$size)
-                              else return("\\normalsize")
-})
-
-knit_hooks$set(plotdefault = function(before, options, envir) {
-		       if (before) par(mar = c(3, 3, .1, .1),oma=rep(0,4),mgp=c(1.5,.5,0))
-})
-
-opts_chunk$set(
-	       tidy='styler',
-	       echo=TRUE,
-	       results='markup',
-	       strip.white=TRUE,
-	       fig.path='figs/fig',
-	       cache=FALSE,
-	       highlight=TRUE,
-	       width.cutoff=132,
-	       size='\\scriptsize',
-	       out.width='.7\\textwidth',
-	       fig.retina=FALSE,
-	       message=FALSE,
-	       comment=NA,
-	       mysize=TRUE,
-	       plotdefault=TRUE)
-
-options(digits=4,
-	scipen=8,
-	width=132,
-	show.signif.stars=FALSE)
-```
-
-```{r loadlibs,include=FALSE, echo=FALSE}
-library(dplyr)
-library(ggplot2)
-library(sandwich)
-library(lmtest)
-library(estimatr)
-library(sensitivitymv)
-library(sensitivitymw)
-library(sensitivitymult)
-library(rbounds)
-library(experiment)
-library(coin)
-```
-
-```{r makedirs, echo=FALSE, include=FALSE}
-if(!dir.exists('figs')) dir.create('figs')
-
-## Make a local library directory
-if(!dir.exists(here::here('libraries'))){
-        dir.create(here::here('libraries'))
-}
-```
-
-
-```{r devlibs,  eval=FALSE, include=FALSE, echo=FALSE}
-## Run this next just once.
-library('devtools')
-library('withr')
-with_libpaths(here::here('libraries'), install_github("markmfredrickson/RItools"), 'pre')
-```
-
-```{r loadlibs2, echo=FALSE}
-library('RItools',lib.loc = here::here('libraries'))
+```{r echo=FALSE, include=FALSE, cache=FALSE}
+library(here)
+source(here::here("Exercises/rmd_setup.R"))
+library(tidyverse)
 library(optmatch)
-library(nbpMatching)
+library(RItools)
 ```
 
-# Overview
+# Overview and Review
 
-## Doing Matching, Assessing Designs, Estimating Effects
+## Experiments, Potential Outcomes, and Treatment Effects
 
-  1. **Review** Adjustment by stratification; Matching to generate optimal
-     stratifications; Assessing success of stratified research designs in
-     adjustment; The As-If-Randomized mode of statistical inference for
-     stratified research designs (treat a matched design as a block-randomized
-     experiment).
-  2. **Matching with more than one treatment**  Multivariate optimal
-     \textbf{nonbipartite} matching review using the \texttt{nbpMatching}
-     package for R: producing matched research designs using matching on
-     scalars, propensity scores, and Mahalanobis distances \autocite[Chap 11 \&
-     12]{rosenbaum2010design} and \autocite{lu2011optimal}.
-  3. **Balance assessment after non-bipartite matching.** Multivariate balance
-     assessment using null hypothesis testing.
-  4. **Focusing and customizing non-bipartite matched designs** Decisions and
-     strategies that are part of research design (matching on missingness of
-     covariates and `fill.NAs`; `exactMatch`; `caliper`; `min.controls`;
-     `effectiveSampleSize`; combining propensity and Mahalanobis scores with
-     scalar distances)
-  6. **Sensitivity analysis** Engaging with the "as-if  randomized" assumption
-     productively (Rosenbaum style)
+  1. Causal inference in randomized experiments and the idea of only partially
+     observed **potential outcomes**. The idea that we can use what we observe to learn about what we cannot observe.
+  2. Statistical inference for causal effects in randomized experiments via the
+     Fisher and Neyman approaches \autocite[Chap 2]{rosenbaum2010},
+     \autocite[Chap 1-3]{gerbergreen2012}: Estimation, Estimators, Tests, Testing.
+  3. Why are randomized experiments special? Unbiased estimators. The ability to assess bias. The ability to exclude alternative explanations. Tests with known error rates. The ability to assess error rates of tests.
+  4. What does "controlling for" do in a linear model when we do not have a
+     randomized experiment? How can we make the case that we are "controlling
+     for" enough?
 
-Materials for practice can be downloaded from <http://jakeboweers.org/IPM2019>
-and <https://github.com/bowers-illinois-edu/short-course-causal>.
+## Overly Ambitious Plan
 
+  - 00:00 -- 00:30  ---  Introductions: Name, Affiliation/Organization, Interest
+    (Substantive or Methodological). Be thinking about (for later) a project
+    that you are working on that involves some form of comparison of
+    intervention with outcome, perhaps involving some causal inference.
+  - 00:30 -- 01:00 ---  Lecture by Jake to introduce concepts of potential outcomes, treatment effects, unbiased estimation, and encourage
+    questions and answers.
+  - 01:00 -- 01:10 --- Break
+  - 01:10 -- 01:30 --- Questions about the lecture and/or readings
+  - 01:30 -- 02:00 --- Tell us about a project and/or data set that you might want to use in this class to practice and learn.
+  - 02:00 -- 03:00 --- Break and Exercise 1: Describe your data.
+  - 03:00 -- 03:10 --- Break
+  - 03:10 -- 03:30 --- Jake discuss the problem of adjustment in observational studies as compared to experiments
+  - 03:30 -- 04:00 --- Open Discussion on any topic.
 
-# Review
+## Notation and Concepts for Counterfactual Causal Inference
 
-## An Adjustment Strategy to Address Alternative Explanations Effectively
+  - *Treatment* or *Intevention*  $Z_i=1$ for treatment and $Z_i=0$ for control
+    for units $i$. (We mostly assume that all units **could have** $Z_i=1$ or
+    $Z_i=0$. That it is not impossible for any unit to have either value.) (Q:
+    What is a unit? Examples of interventions?)
 
-How to strengthen evidence about the claim that Metrocable caused a decrease in crime?
+  - Each unit has a pair of *potential outcomes* $(y_{i,Z_i=1},y_{i,Z_i=0})$
+    (also written  $(y_{i,1},y_{i,0})$ ) (given SUTVA).
+    - Without the SUTVA assumption, and with 4 units, with two having $Z_i=1$, unit $i=1$ would have the following potential outcomes: $(y_{i,1100},y_{i,1010},y_{i,1001},y_{i,0101},y_{i,0011})$
+  - *Causal Effect under SUTVA*  when $y_{i,1} \ne y_{i,0}$, $\tau_i   =
+    f(y_{i,1},y_{i,0})$ ex. $\tau_i =  y_{i,1} - y_{i,0}$. (Examples of Interfering Units and Not Interfering Units)
 
- 1. **List main alternative explanations** (could crime have caused Metrocable
-    stations; socio-economic status differences; \ldots). Can we operationalize
-    these explanations?
- 2. **Stratify data to minimize heterogeneity within set.** If education does
-    not vary within set, then we have "adjusted for" education by conditioning
-    on the set. The `optmatch` package for R finds sets that minimize the
-    weighted sum of distances across the sets. (See also `rcbalance`, `DiPs`,
-    `bigmatch`, `designmatch`, `quickmatch`).
-    1. Create distance matrices using `match_on` (and `caliper` and
-       `exactMatch`) (Scalar distances on  especially important variables like
-       baseline outcomes; Multivariate distances in terms of other covariates
-       via Mahalanobis or Propensity scores distances.)
-    2. Find stratifications using `fullmatch`.
+  - *Fundamental Problem of (Counterfactual) Causality* We only see one
+    potential outcome $Y_i = Z_i * y_{i,1} + (1-Z_i) y_{i,0}$ (Examples?)
 
-## Example: Setup the distance matrices
+  - *Covariates*,  $\bX=\begin{bmatrix} x_{11} & \ldots & x_{1k} \\ \vdots &
+    \vdots & \vdots \\  x_{n1} & \ldots & x_{nk} \end{bmatrix}$ is a matrix
+    containing  background information about the units that might predict
+    $(y_{i,1},y_{i,0})$ or $Z$ (but that don't predict $Z$ if $Z$ is randomized
+    as in an experiment).
 
-```{r loadmeddat,  echo=FALSE}
-load(url("http://jakebowers.org/Data/meddat.rda"))
-meddat<- mutate(meddat,
-		HomRate03=(HomCount2003/Pop2003)*1000,
-		HomRate08=(HomCount2008/Pop2008)*1000)
-row.names(meddat) <- meddat$nh
-```
+## The link between observation and learning about causal claims
 
-```{r}
-## Make one of the covariates have missing data to demonstrate how to match on it
+We can learn about causal claims by observing the world [@brady2008cae]:
+
+- **Persistent association** ``We always/mostly see $Y=1$ when $X=1$ and $Y=0$ when $X=0$.''
+- **Counterfactual Difference** ``If  $X$ had not been this value, then $Y$ would not have been that value.''
+- **Difference after manipulation** ``When we change $X$ from one value to another value, then $Y$ changes from one value to another value.'' (establishes causal priority of $X$ over $Y$, implied that $Y$ would not have changed.).
+- **Difference after operation of a mechanism** ``Once upon a time $A$ changed $X$, and then one day $X$ changed $B$, and because of that $B$ changed $C$, and finally $C$ changed $Y$.''
+
+All approaches are useful. This week we are focusing on the counterfactual approach and somewhat on the persistent association.
+
+## How to interpret "X causes Y" in counterfactual terms?
+
+The counterfactual approach requires that we can imagine units with and without $X$ (or say, $X=1$ and $X=0$).
+
+ -  We can establish that X causes Y without knowing the mechanism. The mechanism
+    can be complex, and it can involve probability: X causes Y sometimes because of
+A and sometimes because of B.
+ - "X causes Y" can mean "With X, probability of Y is higher than would be
+   without X." or "Without X there is no Y." Either is compatible with the
+counterfactual idea.
+ - Correlation is not causation: Favorite examples?
+ - "X causes Y" is a statement about what didn't happen: "If X had not
+   operated, occurred, then Y would not have occurred." (More about the
+fundamental problem of counterfactual causation later)
+
+## Example: Honey and Colds
+
+- Your friend says that eating raw honey (a traditional remedy) reduces the duration of colds.
+- Say we observe the duration of a cold among people who took honey and the duration of a cold among people who did not and we saw that the duration was shorter among those taking honey. What kinds of alternative explanations might we come up with for this result (other than the idea that honey shortened the duration of the cold)?
+- How might a randomized design help us here?
+
+## Example: What does randomization provide?
+
+```{r, echo=FALSE, results="hide"}
 set.seed(12345)
-whichmissing <- sample(1:45,5)
-meddat$nhPopD[whichmissing] <- NA
-thecovs <- unique(c(names(meddat)[c(5:7,9:24)],"HomRate03"))
-balfmla<-reformulate(thecovs,response="nhTrt")
-datNoNA <- fill.NAs(balfmla, data=meddat)
-stopifnot(all.equal(row.names(datNoNA),row.names(meddat)))
-datNoNA$id <- meddat$nh
-datNoNA$HomRate08 <- meddat$HomRate08
-covs <- c("nhPopD","nhPopD.NA","nhAboveHS","HomRate03")
-balfmla <- update(balfmla,.~.+nhPopD.NA)
-mhdist <- match_on(balfmla,data=datNoNA, method="rank_mahalanobis")
-## See Gelman on Separation in Logistic Regression
-psmod <- arm::bayesglm(balfmla,data=datNoNA,family=binomial(link="logit"))
-psmod2 <- glm(balfmla,data=datNoNA,family=binomial(link="logit"))
-stopifnot(any(abs(coef(psmod))<10))
-psdist <- match_on(psmod,data=datNoNA)
-## Make a scalar distance
-tmp <- datNoNA$HomRate03
-names(tmp) <- rownames(datNoNA)
-absdist <- match_on(tmp, z = datNoNA$nhTrt,data=datNoNA)
+honeydat <- data.frame(x1=c(1,1,2,3,1,0,0,0,0,2),
+    x2=sample(1:9,size=10,replace=TRUE))
+honeydat$Zlat <- with(honeydat,.5*x1 + runif(10))
+honeydat$Z <- as.numeric(honeydat$Z > median(honeydat$Z))
+## honeydat$y0 <- with(honeydat,x1+x2+Z+rpois(10,lambda=5))
+honeydat$y0 <- with(honeydat, x1 + .25*x1^2+rpois(10,lambda=8))
+summary(lm(y0~x1+x2,data=honeydat))
+## cor(honeydat[,c("x1","x2","Z","y0")])
+honeydat$Zlat <- NULL
+honeydat$y1 <- with(honeydat,y0 - c(1,1,2,3,1,0,0,0,0,2))
+honeydat$Y <- with(honeydat,y1*Z + y0*(1-Z))
+with(honeydat,mean(Y[Z==1]) - mean(Y[Z==0]))
+honeydat$tau <- honeydat$y1 - honeydat$y0
+honeydat$id <- 1:10
+dat <- honeydat[,c("id","x1","x2","y0","y1","tau")]
 ```
-## Example: Create a stratification
 
-Using `calipers` and `min.controls` and `max.controls` to improve the design.
+Imagine these were the underlying potential outcomes and that x1 -> y0 and that x2 is indep of outcomes.
 
 ```{r}
-## Inspect the distance matrices to choose calipers if desired
-quantile(as.vector(psdist),seq(0,1,.1))
-quantile(as.vector(mhdist),seq(0,1,.1))
-quantile(as.vector(absdist),seq(0,1,.1))
-fm1 <- fullmatch(psdist + caliper(psdist,8) + caliper(absdist,1)
-		  + caliper(mhdist,60),
-		  min.controls=1/3, #0 # default
-		  max.controls=5, #Inf # default
-		  data=datNoNA,tol=.00001)
-summary(fm1,min.controls=0,max.controls=Inf,propensity.model=psmod)
+kable(dat)
+message("Average (additive) causal effect is: ", with(honeydat, mean(y1-y0)))
+```
+
+Let us run a randomized experiment and see how we do:
+
+## An RCT:
+
+What is happening here? How would we know whether `complete_ra` worked as it should?
+
+```{r, echo=TRUE}
+library(randomizr)
+set.seed(12345)
+dat$Z <- randomizr::complete_ra(N=10,m=5)
+dat$Y <- with(dat,Z*y1 + (1-Z)*y0)
+kable(dat)
 ```
 
 
-## An Adjustment Strategy to Address Alternative Explanations
+## Estimating the ATE in an RCT:
 
- 3. **Assess the stratification in substantive terms** If we look within the
-    sets, are the differences we see substantively concerning or trivial?
-
-
-
-```{r echo=FALSE}
-datNoNA[names(fm1),"fm1"] <- fm1
-setmeanDiffs <- datNoNA %>% filter(!is.na(fm1)) %>% group_by(fm1) %>%
-  summarise(Y=mean(HomRate08[nhTrt==1])-mean(HomRate08[nhTrt==0]),
-            nb=n(),
-            nTb = sum(nhTrt),
-            nCb = sum(1-nhTrt),
-	    baselinediffs = mean(HomRate03[nhTrt==1])-mean(HomRate03[nhTrt==0]),
-	    minbaselines = min(HomRate03),
-	    maxbaseline = max(HomRate03)
-            ) %>% arrange(abs(baselinediffs))
-setmeanDiffs
-```
-
-## An Adjustment Strategy to Address Alternative Explanations
-
- 4. **Assess the stratification by comparison to a model of a block-randomized
-    experiment** Does our research design look like a block-randomized
-    experiment in terms of covariate balance? If so, move onto step 4.
-    Otherwise, work to improve the research design by (a) changing scores; (b)
-    combining scores (for example, using calipers); (c) excluding units (using
-    calipers); (d) exact matching on subgroups; (e) reducing variation in
-    set-size.
-
-## An Adjustment Strategy to Address Alternative Explanations
-
- 5. **Estimate effects and test hypothesis as-if-block-randomized** Estimators
-    and tests refer to the finite "population" of the study pool and the fixed
-    stratification in the same way common in the analysis of block-randomized
-    experiments.
-
-```{r  estandtest,  cache=TRUE}
-datNoNA <-  datNoNA %>%  filter(!is.na(fm1)) %>% group_by(fm1) %>%
-	mutate(trtprob=mean(nhTrt), nbwt=nhTrt/trtprob + (1-nhTrt)/(1-trtprob))
-
-estate <-  lm_robust(HomRate08~nhTrt,data=datNoNA,weights=nbwt)
-estate
-
-##  Check if preceding results robust
-datNoNA$nhTrtF  <- factor(datNoNA$nhTrt)
-ranktest1  <-  wilcox_test(HomRate08~nhTrtF|fm1,data=datNoNA,
-		       distribution=approximate(nresample=10000))
-ranktest1
-```
-
-## An Adjustment Strategy to Address Alternative Explanations
-
- 6. **Assess the sensitivity of the analysis to the assumptions of
-    as-if-randomized** The design is not a randomized design. Is this likely to
-    cause small or large changes in the substantive interpretation of our
-    results? (R packages `sensitivitymv`, `sensitivitymw`, `sensitivitymult`,
-    `rbounds`)
-
-
-# Non-Bipartite Matching for Multi-valued Treatments
-
-## How do perceptions of place influence attitudes?
-
-\textcite{wong2012jop} set out to measure perceptions of environments using an
-internet survey of Canadians during 2012 which each respondent drew a free-hand
-map of their "local community" and then reported their understanding of the
-demographic breakdown of this place.
-
-```{r echo=FALSE, results='hide', cache=TRUE}
-## White English Speaking Canadians only
-load(url("http://jakebowers.org/ICPSR/canadamapdat.rda"))
-## summary(canadamapdat)
-```
-\centering
-\igrphx{TwoMapsToronto.png}
-
-
-## Capturing perceptions
-
-Here are 50 maps drawn by people based in Toronto.
-
-\centering
-\igrphx{TorontoAllCommunities1.png}
-
-## Capturing perceptions
-
-And here is the question people were asked (groups in random order).
-
-\centering
-\igrphx{MLCCPerceptionsQuestion.pdf}
-
-## Capturing perceptions
-
-White Canadian respondents' reports about "visible minorities" in their hand drawn "local communities".
-
-\centering
-```{r plotpercs, echo=FALSE}
-par(mfrow=c(1,2),pty="s")
-with(canadamapdat,scatter.smooth(vm.da,vm.community.norm2,col="gray",
-                                 ylab="Perceptions",xlab="Census Neighborhood (DA)",
-                                 xlim=c(0,1),ylim=c(0,1),lpars=list(lwd=2)))
-with(canadamapdat,scatter.smooth(vm.csd,vm.community.norm2,col="gray",
-                                 ylab="Perceptions",xlab="Census Municipality (CSD)",
-                                 xlim=c(0,1),ylim=c(0,1),lpars=list(lwd=2)))
-##summary(canadamapdat$vm.community.norm2)
-```
-
-## How to make the case for perceptions?
-
-If we could randomly assign different perceptions to people, we could claim
-that differences of perceptions matter (above and beyond, and independent of,
-objective characteristics of the context).
-
-\medskip
-
-What is an observational design that would do this? Compare people with the same objective
-context (and maybe same covariate values) who differ in perceptions.
-
-\medskip
-
-But objective context is continuous: rather than matching $m$ "treated"
-to $n-m$ "controls", we want to compare all $n$ with all $n$ respondents.
-
-```{r cleandat, echo=FALSE}
-## Exclude people who did not offer a perception or an outcome
-wrkdat<-canadamapdat[!is.na(canadamapdat$vm.community.norm2) &
-		     !is.na(canadamapdat$social.capital01),]
-wrkdat$vmdaPct <- wrkdat$vm.da * 100 ## express in pct
-```
-
-## Create $n \times n$ distance matrices
-
-Our main design here matches people with similar neighborhood proportions of visible minorities.
-
-```{r distmats}
-scalar.dist<-function(v){
-  ## Utility function to make n x n abs dist matrices
-  outer(v,v,FUN=function(x,y){ abs(x-y) })
-}
-
-vmdaDist<-scalar.dist(wrkdat$vmdaPct)
-dimnames(vmdaDist)<-list(row.names(wrkdat), row.names(wrkdat))
-## The nbpmatching way (Mahalanobis \equiv standardized in one dimension) takes a while:
-##obj.com.dist.mat2<-distancematrix(gendistance(wrkdat[,"vmdaPct",drop=FALSE]))
-## compare to tmp<-scalar.dist(wrkdat$vmdaPct/sd(wrkdat$vmdaPct))
-wrkdat$vmdaPct[1:4]
-diff(wrkdat$vmdaPct[1:4])
-vmdaDist[1:4,1:4]
-```
-
-## Non-bipartite match
-
-```{r nbp1, cache=TRUE}
-vmdaDistMat <- distancematrix(vmdaDist)
-nbp1match<-nonbimatch(vmdaDistMat)
-nbp1<-get.sets(nbp1match$matches,remove.unpaired=TRUE)
-wrkdat[names(nbp1),"nbp1"]<-nbp1
-nbp1[1:5]
-table(is.na(wrkdat$nbp1)) ## recall the "ghost message"
-```
-
-## Inspect the solution
-
-Did  we "adjust for" `vmdaPct`?
-```{r }
-wrkdat[order(wrkdat$nbp1),c("nbp1","vmdaPct","vm.community.norm2")][1:6,]
-## table(wrkdat$nbp1)
-nbp1vmdiffs<-tapply(wrkdat$vmdaPct,wrkdat$nbp1,function(x){ abs(diff(x)) })
-nbp1percdiffs<-tapply(wrkdat$vm.community.norm2,wrkdat$nbp1,function(x){ abs(diff(x)) })
-summary(nbp1vmdiffs)
-```
-
-Is there any variability left in our explanatory variable? (Perceptions  or
-`vm.community.norm2`?)
-
-```{r}
-nbp1percdiffs<-tapply(wrkdat$vm.community.norm2,wrkdat$nbp1,function(x){ abs(diff(x)) })
-summary(nbp1percdiffs)
-```
-
-```{r echo=FALSE, warning=FALSE, message=FALSE}
-source(url("http://jakebowers.org/Matching/nonbimatchingfunctions.R"))
-```
-
-## Inspect the solution
-
-We want no variation within set in terms of `vmdaPct`; would prefer at least
-some variation in terms of `vm.community.norm2`.
-
-\centering
-```{r echo=FALSE, out.width=".7\\textwidth"}
-nbmplot(wrkdat,yvar="vmdaPct",xvar="vm.community.norm2",strata="nbp1",points=FALSE,
-        ylim=range(wrkdat$vmdaPct))
-```
-
-## Assess balance
-
-No treatment and control groups to compare. But we can still compare the **relationships** between the adjusted variable (`vmdaPct`) and other covariates conditional on pair.
-
-```{r balnbp1, cache=TRUE }
-thecovs<-c("age","income.coded","education","x.years","sex",
-           "csd.pop","vm.csd","community_area_km")
-balfmla<-reformulate(thecovs,response="vmdaPct")
-xb1<-xBalance(balfmla,strata=list(unstrat=NULL,nbp1=~nbp1), report="all",data=wrkdat)
-```
-
-## Assess balance
-
-No treatment and control groups to compare. But we can still compare the **relationships** between the adjusted variable (`vmdaPct`) and other covariates conditional on pair.
-
-```{r balnbp1a}
-xb1$overall[,]
-xb1$results[,c("z","p"),"nbp1"]
-```
-
-## Improve balance using penalties and dropping observations
-
-  For example, (a) require matches within Province, (b) do not compare people
-  in small towns to people in large towns, (c) do not compare people who drew
-  big maps to people who drew small maps, (d) drop the 8 least well matched
-  observations. (Choosing 8 here arbitrarily.)
-
-```{r echo=FALSE}
-rescale01<-function(x){
-  (x-min(x,na.rm=TRUE))/(max(x,na.rm=TRUE)-min(x,na.rm=TRUE))
-}
-```
-
-```{r results="hide"}
-csdpopDist<-scalar.dist(wrkdat$csd.pop)
-dimnames(csdpopDist)<-list(row.names(wrkdat),row.names(wrkdat))
-
-## Since we have some missing values on community area, and we would like to
-## match people who are both missing, we will give it a very large value.
-wrkdat$commarea<-ifelse(is.na(wrkdat$community_area_km),
-			max(wrkdat$community_area_km,na.rm=TRUE)*10,
-			wrkdat$community_area_km)
-
-areaDist<-scalar.dist(log(wrkdat$commarea))
-dimnames(areaDist)<-list(row.names(wrkdat),row.names(wrkdat))
-
-csdpopDist01<-rescale01(csdpopDist)
-areaDist01<-rescale01(areaDist)
-
-summary(as.vector(csdpopDist01))
-summary(as.vector(areaDist01))
-summary(as.vector(vmdaDist))
-
-maxvmdaDist<-max(as.vector(vmdaDist))
-```
-
-## Improve balance using penalties and dropping observations
-
-```{r cache=TRUE}
-vmdaPen1<-vmdaDist+(maxvmdaDist*csdpopDist01)+(maxvmdaDist*areaDist01)
-vmdaDist[1:5,1:5]
-csdpopDist01[1:5,1:5]
-areaDist01[1:5,1:5]
-vmdaPen1[1:5,1:5]
-```
-
-## Dropping some observations
-
-```{r cache=TRUE}
-## now decide how many to drop
-vmdaPhPen<-make.phantoms(vmdaPen1,8,maxval = max(as.vector(vmdaPen1))*10)
-```
-
-## Improve balance using penalties and dropping observations
-
-```{r penalties, cache=TRUE}
-vmdaPhPenMat <- distancematrix(vmdaPhPen)
-nbp2match<-nonbimatch(vmdaPhPenMat)
-nbp2<-get.sets(nbp2match$matches,remove.unpaired=TRUE)
-wrkdat[names(nbp2),"nbp2"]<-nbp2
-```
-
-## Assess this new match
-
-Is this match better or worse (in terms of balance? in terms of within-set distances?)
-
-```{r echo=FALSE,results="hide"}
-xb2<-xBalance(balfmla,strata=list(unstrat=NULL,nbp1=~nbp1,nbp2=~nbp2),
-	      report="all",data=wrkdat)
-xb2$overall[2:3,]
-xb2$results[,"p",c("nbp1","nbp2")]
-```
-
-## Assess this new match
-
-```{r echo=FALSE,out.width=".8\\textwidth"}
-nbmplot(wrkdat,yvar="vmdaPct",xvar="vm.community.norm2",strata="nbp2",points=FALSE,ylim=range(wrkdat$vmdaPct))
-```
-
-## Assess the new match
-
-```{r}
-nbp2vmdiffs<-tapply(wrkdat$vmdaPct,wrkdat$nbp2,function(x){ abs(diff(x)) })
-nbp2percdiffs<-tapply(wrkdat$vm.community.norm2,wrkdat$nbp2,function(x){ abs(diff(x)) })
-summary(nbp2vmdiffs)
-summary(nbp2percdiffs)
-```
-
-## Evidence against the null of no effects?
-
-Now, test the hypothesis of no relationship between perceptions
-`vm.community.norm2` and `social capital`.
-
-```{r eval=TRUE,echo=FALSE,results="hide"}
-## These are the same test in this case
-test1<-independence_test(social.capital01~vm.community.norm2|nbp2,
-			 data=wrkdat[!is.na(wrkdat$nbp2),], teststat="quadratic")
-test2<-xBalance(vm.community.norm2~social.capital01,
-		strata=list(nbp2=~nbp2), data=wrkdat,
-		report=c("adj.mean.diffs","chisquare.test","z.scores","p.values"))
-test1
-test2$overall
-```
-
-
-## Describe the differences within pairs
-
-Does the person who perceives more visible minorities in their community tend
-to be higher (or lower) in `social.capital` than the other person in the pair?
-
-```{r echo=FALSE}
-rank.pairs<-function (x, block) { ## Identify the low and high subj in each pair
-  unsplit(lapply(split(x, block), function(x) {
-    rank(x)
-  }), block)
-}
-```
-
-```{r rankwithinpairs}
-wrkdat$scRank<-with(wrkdat,rank.pairs(social.capital01,nbp2))
-wrkdat$vmCRank<-with(wrkdat,rank.pairs(vm.community.norm2,nbp2))
-wrkdat[order(wrkdat$nbp2),c("nbp2","social.capital01","scRank","vm.community.norm2","vmCRank")][1:6,]
-with(wrkdat,tapply(scRank,vmCRank,mean))
-```
-
-## Summarize mean differences within pairs
-
-If perceptions matter for social capital above and beyond objective context
-then we would expect pairs differing greatly in subjective context to display
-greater differences in social capital than pairs that differ a little.
-
-
-```{r echo=FALSE,results="hide"}
-align.by.block<-function (x, block, fn = mean, thenames=NULL) { ## By default, this rescales each observation to be the distance from the group mean.
-  newx<-unsplit(lapply(split(x, block), function(x) {
-    x - fn(x)
-  }), block)
-  if(!is.null(names)){ names(newx)<-thenames }
-  return(newx)
-}
-```
-
-```{r ates, cache=TRUE}
-wrkdat$scMD<-with(wrkdat,align.by.block(social.capital01,nbp2))
-wrkdat$vmcn2MD<-with(wrkdat,align.by.block(vm.community.norm2,nbp2))
-wrkdat[order(wrkdat$nbp2),c("social.capital01","scRank","scMD","vm.community.norm2","vmcn2MD","vmCRank","nbp2")][1:4,]
-## notice that aligning or pair-mean-centering the data preserves the within
-## set relationships
-## summary(tapply(wrkdat$scMD,wrkdat$nbp2,function(x){ abs(diff(x)) }))
-## summary(tapply(wrkdat$social.capital01,wrkdat$nbp2,function(x){ abs(diff(x)) }))
-lm1<-lm(scMD~vmcn2MD,data=wrkdat[!is.na(wrkdat$nbp2),])
-coefci(lm1,vcov=vcovHC(lm1,type="HC2"))
-coeftest(lm1,vcov.=vcovHC(lm1,type="HC2"))
-lm2 <- lm_robust(scMD~vmcn2MD,data=wrkdat[!is.na(wrkdat$nbp2),])
-lm2
-lm3 <- lm_robust(social.capital01~vm.community.norm2,fixed_effects=~nbp2,data=wrkdat)
-lm3
-table(wrkdat$vmCRank,exclude=c())
-lm4 <- lm_robust(social.capital01~I(vmCRank-1),fixed_effects=~nbp2,data=wrkdat)
-lm4
-```
-## Summarize mean differences within pairs
-
-If perceptions matter for social capital above and beyond objective context
-then we would expect pairs differing greatly in subjective context to display
-greater differences in social capital than pairs that differ a little.
-
-```{r}
-coefci(lm1,vcov=vcovHC(lm1,type="HC2"))
-coeftest(lm1,vcov.=vcovHC(lm1,type="HC2"))
-lm2
-lm3
-pairdiffs <- wrkdat %>% filter(!is.na(vmCRank)&!is.na(social.capital01)&!is.na(nbp2)) %>%
-       group_by(vmCRank) %>% summarize(mnsc=mean(social.capital01))
-wrkdat[order(wrkdat$nbp2),c("social.capital01","scRank","scMD","vm.community.norm2","vmcn2MD","vmCRank","nbp2")][1:4,]
-lm4
-```
-
-
-
-## Summarize mean differences within pairs
-
-```{r}
-summary(wrkdat$vmcn2MD)
-summary(wrkdat$scMD)
-```
-
-Within matched pair, the person who perceives more visible minorities within set tends to report
-lower social capital than the person who perceives fewer visible minorities
-within set.
-
-\medskip
-
-The largest difference is about `r round(max(wrkdat$vmcn2MD,na.rm=TRUE),2)`. A linear model
-predicts that social capital would differ by about `r coef(lm1)[[2]]*.48` for such a difference. This is about
-`r coef(lm1)[[2]]*.48/sd(wrkdat$scMD,na.rm=TRUE)` of a standard deviation
-of the social capital scale. Or about
-`r coef(lm1)[[2]]*.48/abs(diff(range(wrkdat$scMD,na.rm=TRUE)))` of the range.
-
-
-## Summarize mean differences within pairs
-
-Here is a look at the within-pair differences in perceptions of visible minorities as well as social capital.
-
-```{r smoothplot, out.width=".7\\textwidth", echo=FALSE}
-with(wrkdat,scatter.smooth(vmcn2MD,scMD,span=.3,cex=.7,col="gray",pch=19,lpars=list(lwd=2)))
-abline(h=0,lwd=.5)
-```
-
-## Summary of matching without groups
-
- - Workflow in general is the same as matching with groups (covariates,
-   distance matrices, optimization to select a stratification, assessment of
-   the stratification by comparison to an experiment)
- - Estimation is more flexible --- could look simply at "higher versus lower"
-   within  pair, or could average over scores.
-
-# Rosenbaum Style Sensitivity Analysis
-
-
-```{r loaddat, echo=FALSE, cache=TRUE}
-rm(list=ls())
-load(url("http://jakebowers.org/Data/meddat.rda"))
-meddat$id <- row.names(meddat)
-meddat<- mutate(meddat, HomRate03=(HomCount2003/Pop2003)*1000,
-                HomRate08=(HomCount2008/Pop2008)*1000,
-                HomRate0803=( HomRate08 - HomRate03))
-## mutate strips off row names
-row.names(meddat) <- meddat$id
-options(show.signif.stars=FALSE)
-```
-
-## Start with a matched design
-
-Using a pairmatch here:
+Here are two proposals for estimating the ATE. How would we know whether either
+or both of them work well? (What do we want estimators to do for us?)
 
 ```{r echo=TRUE}
-meddat <- transform(meddat, pairm = pairmatch(nhTrt~HomRate03, data=meddat))
-thecovs <- unique(c(names(meddat)[c(5:7,9:24)],"HomRate03"))
-balfmla<-reformulate(thecovs,response="nhTrt")
-xb1 <- balanceTest(update(balfmla,.~.+strata(pairm)),data=meddat,report="chisquare.test")
-xb1$overall[,]
-```
-## Test the hypothesis of no effects on the change in crime
-
-Focusing on testing today because this style of sensitivity analysis focuses on $p$-values.
-
-```{r}
-xbtest3<-balanceTest(nhTrt~HomRate0803+strata(pairm),
-		  data=meddat[matched(meddat$pairm),],
-		  report="all")
-xbtest3$overall["pairm",]
-xbtest3$results[,,"pairm"]
-## Another equivalent way to do the test
-meddat$nhTrtF <- factor(meddat$nhTrt)
-ow1 <- oneway_test(HomRate0803~nhTrtF | pairm,data=meddat)
-pvalue(ow1)
-```
-
-## What about unobserved confounders?
-
-A high $p$-value from an omnibus balance tests gives us some basis to claim
-that our comparison contains as much confounding on *observed* covariates
-(those assessed by our balance test) as would be seen in a block-randomized
-experiment. That is, our treatment-vs-control comparison contains demonstrably
-little bias from the variables that we have balanced.
-
-```{r}
-xb1$overall[,]
-```
-
-\smallskip
-\pause
-
-But, we haven't said anything about *unobserved* covariates (which a truly
-randomized study would balance, but which our study does not).
-
-## Rosenbaum's sensitivity analysis is a formalized thought experiment
-
-> "In an observational study, a
-  sensitivity analysis replaces qualitative claims about whether unmeasured
-  biases are present with an objective quantitative statement about the
-  magnitude of bias that would need to be present to change the conclusions."
-  (Rosenbaum, sensitivitymv manual)
-
-
->  "The sensitivity analysis asks about the magnitude, gamma, of bias in
-  treatment assignment in observational studies that would need to be present
-  to alter the conclusions of a randomization test that assumed matching for
-  observed covariates removes all bias."  (Rosenbaum, sensitivitymv manual)
-
-
-
-```{r dosens, echo=FALSE,results="hide"}
-reshape_sensitivity<-function(y,z,fm){
-  ## A function to reformat fullmatches for use with sensmv/mw
-  ## y is the outcome
-  ## z is binary treatment indicator (1=assigned treatment)
-  ## fm is a factor variable indicating matched set membership
-  ## We assume that y,z, and fm have no missing data.
-  dat<-data.frame(y=y,z=z,fm=fm)[order(fm,z,decreasing=TRUE),]
-  numcols<-max(table(fm))
-  resplist<-lapply(split(y,fm),
-		   function(x){
-		     return(c(x,rep(NA, max(numcols-length(x),0))))
-		   })
-  respmat<-t(simplify2array(resplist))
-  return(respmat)
+est1 <- function(Z,Y){
+    mean(Y[Z==1]) - mean(Y[Z==0])
 }
-```
-
-## An example of sensitivity analysis with `senmv`.
-
-
-The workflow: First, reshape the matched design into the appropriate shape (one treated unit in column 1, controls in columns 2+).^[Notice that this software requires 1:K matches although K can vary.]
-
-```{r}
-## The pairmatch
-respmat<-with(meddat[matched(meddat$pairm),],reshape_sensitivity(HomRate0803,nhTrt,pairm))
-respmat[1:4,]
-## The fullmatch version
-meddat <- transform(meddat,fm=fullmatch(nhTrt~HomRate03+nhAboveHS+nhPopD,data=meddat,min.controls=1))
-respmat2<-with(meddat[matched(meddat$fm),],reshape_sensitivity(HomRate0803,nhTrt,fm))
-respmat2[10:14,]
-```
-
-## An example of sensitivity analysis: the search for Gamma
-
-The workflow: Second, assess sensitivity of the test to different levels of
-$\Gamma$ (odds of treatment by the treated units). $\Gamma=1$ means that the
-treated and control units had equal odds of treatment within strata (i.e. a
-well randomized experiment) --- this is what we assume in our "as-if
-randomized" analysis above.
-
-```{r}
-sensG1<-senmv(-respmat,method="t",gamma=1)
-sensG2<-senmv(-respmat,method="t",gamma=2)
-sensG1$pval
-2*sensG1$pval # notice this is same as original test
-pvalue(ow1)
-```
-
-But this is what we'd see if an unoberved covariate doubled odds of treatment
-within set (and very strongly predicted the outcome.)
-
-```{r}
-sensG2$pval
-```
-
-
-##  Why $\Gamma$?
-
-How can an unobserved covariate confound our causal inferences? \textcite{rosenbaum2002observational} proposes a **model** that can help us reason about that which we cannot observe. He starts with a \textit{treatment odds ratio} for two units $i$ and $j$
-
-\begin{center}
-\begin{align} \label{eq: treatment odds ratio}
-\frac{\left(\frac{\pi_i}{1 - \pi_i} \right)}{\left(\frac{\pi_j}{1 - \pi_j} \right)} \ \forall \ i,j \ \text{with } \mathbf{x}_i = \mathbf{x}_j \notag \\
-\implies \notag \\
-& \frac{\pi_i (1 - \pi_j)}{\pi_j (1 - \pi_i)} \ \forall \ i,j \ \text{with } \mathbf{x}_i = \mathbf{x}_j.
-\end{align}
-\end{center}
-This allows us to write down a logistic model that links treatment odds, $\frac{\pi_i}{(1 - \pi_i)}$, to the *observed and unobserved* covariates $(\mathbf{x}_i, u_i)$,
-
-\begin{center}
-\begin{equation}
-\label{eq: unobserved confounding}
-\text{log} \left(\frac{\pi_i}{1 - \pi_i} \right) = \kappa(\mathbf{x}_i) + \gamma u_i,
-\end{equation}
-\end{center}
-
-where $\kappa(\cdot)$ is an unknown function and $\gamma$ is an unknown parameter.
-
-\note{
-\begin{center}
-\textbf{Remember}:
-\end{center}
-A logarithm is simply the power to which a number must be raised in order to get some other number. In this case we're dealing with natural logarithms. Thus, we can read $\text{log} \left(\frac{\pi_i}{1 - \pi_i} \right)$ as asking: $\mathrm{e}$ to the power of what gives us $\left(\frac{\pi_i}{1 - \pi_i} \right)$? And the answer is $\mathrm{e}$ to the power of $\kappa(\mathbf{x}_i) + \gamma u_i$. If $\mathbf{x}_i = \mathbf{x}_j$, then $\text{log} \left(\frac{\pi_i}{1 - \pi_i} \right) = \gamma u_i$, which means that $\mathrm{e}^{\gamma u_i} = \left(\frac{\pi_i}{1 - \pi_i} \right)$.
+est2 <- function(Z,Y){
+    coef(lm(Y~Z))[["Z"]]
 }
 
-## Why $\Gamma$?
-
-Say, we rescale $u$ to $[0,1]$, then we can write the original ratio of treatment odds using the logistic model and the unobserved covariate $u$:
-
-\begin{center}
-\begin{equation}
-\frac{\pi_i (1 - \pi_j)}{\pi_j (1 - \pi_i)} = \mathrm{e}^{\gamma(u_i - u_j)} \ \text{if} \ \mathbf{x}_i = \mathbf{x}_j.
-\end{equation}
-\end{center}
-
-Since the minimum and maximum possible value for $u_i - u_j$ are $-1$ and $1$,
-for any fixed $\gamma$ the upper and lower bounds on the treatment odds ratio
-are:
-
-\begin{center}
-\begin{equation}
-\label{eq: treatment odds ratio bounds gamma}
-\frac{1}{\mathrm{e}^{\gamma}} \leq \frac{\pi_i (1 - \pi_j)}{\pi_j (1 - \pi_i)} \leq \mathrm{e}^{\gamma}.
-\end{equation}
-\end{center}
-
-If we use $\Gamma$ for  $\mathrm{e}^{\gamma}$, then we can express \eqref{eq: treatment odds ratio bounds gamma} as \eqref{eq: treatment odds ratio} by substituting $\frac{1}{\Gamma}$ for $\mathrm{e}^{-\gamma}$ and $\Gamma$ for $\mathrm{e}^{\gamma}$.
-
-## Why $\Gamma$?
-
-\ldots so we can write the odds of treatment in terms of $\Gamma$ (the effect
-of the unobserved confounder(s) $u$ on the odds of treatment) for any two units $i$ and $j$ with the same
-covariates (i.e. in the same matched set):
-
-\begin{center}
-\begin{equation}
-\frac{1}{\Gamma} \leq \frac{\pi_i (1 - \pi_j)}{\pi_j (1 - \pi_i)} \leq \Gamma \ \forall \ i,j \ \text{with } \mathbf{x}_i = \mathbf{x}_j
-\end{equation}
-\end{center}
-
-So when $\pi_i = \pi_j$ then $\Gamma=1$: the treatment probabilities are the same for the two units --- just as we would expect in a randomized study.
-
-## An example of sensitivity analysis: the search for Gamma
-
-So, here we see that $\Gamma=1$ is what is assumed by our ordinary
-as-if-randomized tests.  But $\Gamma=2$ decreases the information against the
-null of no effects.
-
-```{r}
-sensG1<-senmv(-respmat,method="t",gamma=1)
-sensG2<-senmv(-respmat,method="t",gamma=2)
-sensG1$pval
-2*sensG1$pval # notice
-pvalue(ow1)
-sensG2$pval
+with(dat,est1(Z=Z,Y=Y))
+with(dat,est2(Z=Z,Y=Y))
 ```
 
+## How does randomization help us trust our estimators?
 
-## An example of sensitivity analysis: the search for Gamma
+```{r, echo=TRUE}
+## The truth:
+with(dat,mean(y1-y0))
 
-The workflow: Second, assess sensitivity at different levels of $\Gamma$ (here
-using two different test statistics).
+new_exp <- function(Z){
+    ## This next shuffles Z
+    newZ <- sample(Z)
+    return(newZ)}
 
-```{r}
-somegammas<-seq(1,5,.1)
-sensTresults<-sapply(somegammas,function(g){
-		     c(gamma=g,senmv(-respmat,method="t",gamma=g)) })
-sensHresults<-sapply(somegammas,function(g){
-		     c(gamma=g,senmv(-respmat,gamma=g)) })
-```
-
-## An example of sensitivity analysis: the search for Gamma
-
-The workflow: Second, assess sensitivity at different levels of $\Gamma$ (here
-using two different test statistics). Notice the difference?
-
-```{r echo=FALSE, out.width=".8\\textwidth"}
-par(mar=c(3,3,2,1))
-plot(x = sensTresults['gamma',],
-     y = sensTresults['pval',],
-     xlab = "Gamma", ylab = "P-Value",
-     main = "Sensitivity Analysis",ylim=c(0,.2))
-points(x = sensHresults['gamma',],
-     y = sensHresults['pval',],pch=2)
-abline(h = 0.05)
-text(sensTresults['gamma',20],sensTresults['pval',20],label="T stat (Mean diff)")
-text(sensHresults['gamma',20],sensHresults['pval',20],label="Influential point resistent mean diff")
-```
-
-## An example of sensitivity analysis: the search for Gamma
-
-Or you can try to directly find the $\Gamma$ for a given $\alpha$ level test.
-
-
-```{r }
-findSensG<-function(g,a,method){
-  senmv(-respmat,gamma=g,method=method)$pval-a
+new_est <- function(newZ,y0,y1,the_est){
+    newY <- newZ * y1 + (1-newZ)*y0
+    result <- the_est(Z=newZ,Y=newY)
 }
-res1<-uniroot(f=findSensG,method="h",lower=1,upper=6,a=.05)
-res1$root
-res2<-uniroot(f=findSensG,method="t",lower=1,upper=6,a=.05)
-res2$root
+
+set.seed(1235)
+dist_est1 <- with(dat, replicate(100, new_est(newZ=new_exp(Z),y0=y0,y1=y1,the_est=est1)))
+mean(dist_est1)
+dist_est1 <- with(dat, replicate(1000, new_est(newZ=new_exp(Z),y0=y0,y1=y1,the_est=est1)))
+mean(dist_est1)
+dist_est1 <- with(dat, replicate(10000, new_est(newZ=new_exp(Z),y0=y0,y1=y1,the_est=est1)))
+mean(dist_est1)
 ```
 
-## More ways to search for $\Gamma$
+## How does randomization help us trust our estimators?
 
-Or with a pairmatch we could use the \texttt{rbounds} package:
+What did randomization provide here?
 
-```{r }
-hlsens(respmat[,2],respmat[,1])
+ 1. Grounds for repetition (i.e. we **knew** how to repeat the generation of $Z$),
+ 2. No need to mention `x1` (we could check to see if we should worry about x1).
+ 3. an unbiased estimator.
+
+## What about if we didn't know exactly how Z was assigned?
+
+Imagine that `x1` causes `Z` (here, Z is randomized but x1 changes Z before revealing y0 or y1):
+
+```{r biasexample, cache=TRUE, echo=TRUE}
+new_exp2 <- function(Z,x1){
+    newZ1 <- sample(Z)
+    # newZ <- newZ1*rbinom(10,size=1,prob=(x1+1)/4)
+    newZ <- pnorm(x1+newZ1)>pnorm(median(x1+newZ1))
+    return(as.numeric(newZ))
+}
+with(dat,mean(y1-y0))
+with(dat,est1(new_exp2(Z,x1),Y))
+
+set.seed(1235)
+dist_est1a <- with(dat, replicate(10000, new_est(newZ=new_exp2(Z,x1),y0=y0,y1=y1,the_est=est1)))
+summary(dist_est1a)
+## And recall our previous distribution of our estimator across randomizations
+summary(dist_est1)
 ```
 
-## More ways to search for $\Gamma$
+## What about if we didn't know exactly how Z was assigned?
 
-Or with a pairmatch we could use the \texttt{rbounds} package:
+Imagine that `x1` causes `Z` (here, Z is randomized but x1 changes Z before reveals y0 or y1):
 
 ```{r}
-psens(respmat[,2],respmat[,1])
+plot(density(dist_est1),ylim=c(0,.8))
+lines(density(na.omit(dist_est1a)),col="blue")
+abline(v=with(dat,mean(y1-y0)))
+points(c(mean(dist_est1a,na.rm=TRUE),mean(dist_est1)),c(0,0),pch=c(17,18),cex=2,col=c("blue","black"))
 ```
 
-## Interpreting sensitivity analyses
+## What about if we didn't know how Z was assigned at all?
 
+How would we assess bias if we didn't know that x1 caused Z?
 
- As an aid to interpreting sensitivity analyses,
-  \textcite{rosenbaum2009amplification} propose a way decompose $\Gamma$ into two
-  pieces: $\Delta$ gauges the relationship between an unobserved
-  confounder at the outcome (it records the maximum effect of the unobserved
-  confounder on the odds of a positive response (imagining a binary outcome))
-  and $\Lambda$ gauges the maximum relationship between the unobserved
-  confounder and treatment assignment.
+ - We cannot simply shuffle Z. Because we don't know how Z arose.
+ - Do we know how x1 was generated? If so, we could re-generate x1 and *hope* that our x1 to Z function is right
+ - We could repeatedly re-generate Y itself if we **knew** how it was created.
+ - We could resample the entire dataset if we **knew** how it was sampled.
 
-```{r amplify, echo=FALSE}
-lambdas <- seq(round(res1$root,1)+.1,2*res1$root,length=100)
-ampres1<-amplify(round(res1$root,1), lambda=lambdas)
-ampres2<-amplify(2, lambda=lambdas)
-```
-```{r echo=FALSE, out.width=".8\\textwidth"}
-par(mar=c(3,3,1,1),mgp=c(1.5,.5,0))
-plot(as.numeric(names(ampres1)),ampres1,
-     xlab=expression(paste(Lambda," (maximum selection effect of confounder)")),
-     ylab=expression(paste(Delta," (maximum outcome effect of confounder)")),
-     main=expression(paste("Decomposition of ", Gamma, "=4.4")))
-##lines(as.numeric(names(ampres2)),ampres2,type="b")
+## What about controlling for x1?
+
+If we knew that x1 causes both Z and Y, then perhaps we can "control for it"? What does this do?
+
+```{r echo=TRUE}
+set.seed(12345)
+dat$Z <- new_exp2(dat$Z,dat$x1)
+e1 <-lm(Y~Z,data=dat)
+e2 <- lm(Y~Z+x1,data=dat)
+coef(e1)[["Z"]]
+coef(e2)[["Z"]]
 ```
 
+Recall the true ATE:
 
-## Summary of sensitivity analysis
+```{r}
+with(dat,mean(y1-y0))
+```
 
- - We know that our research designs involve some confounding from unobserved
-   covariates. The question is about how big of a problem these biases could
-   be. Sensitivity analysis formalizes this problem, and also formalizes a way
-   to reason about the impact of the unobserved biases on our results.
- - Notice what this approach offers: we might be able to talk about the
-   sensitivity to hidden biases of research designs **before** we go into the
-   field.
 
- - What questions are raised by this mode of sensitivity analysis? What do you
-   wish it could do that it doesn't do?
+## What about controlling for x1?
 
-# Summary Overall
+What does it mean when we "control for" x1?
 
-## Summary
+```{r}
+with(dat,plot(x1,Y,pch=c(1,19)[Z+1],col=c("black","grey")[Z+1]))
+abline(a=coef(e2)[[1]],b=coef(e2)[["x1"]])
+abline(a=coef(e2)[[1]]+1,b=coef(e2)[["x1"]])
+text(y=c(coef(e2)[[1]],coef(e2)[[1]]+1),x=c(0,0),labels=c("Z=0","Z=1"))
+```
 
- 1. Creating matched designs to enhance the interpretability of comparisons:
-    a.  of two groups using stratification (optimal, full matching without replacement)
-    b.  of more than two groups using stratification (but in pairs --- so that the
-    comparison can be of (i) the higher versus the lower scoring unit in a
-    pair or (ii) can involve a model (say a linear model) relating bigger or
-    smaller differences within pair to bigger or smaller differences in the
-    outcome. (optimal, pair matching, without replacement)
-    c. Notice that non-bipartite matching is useful for research design ---
-    for choosing what units you will want to compare (or assign, in the case
-    of an experiment)
- 2. Applied the "as-if randomized" approach to the statistical analysis of
-    observational studies.
- 3. Interrogated the "as-if randomized" assumption.
+## What about controlling for x1?
 
-## Other resources
+Controlling for as residualization:
 
- - \citealp{rosenbaum2010design}
- - \citealp{rosenbaum2002observational}
- - \citealp{rosenbaum2017}
- - \citealp{gerbergreen2012}
- - \citealp{dunning2012}
- - \citealp{imbensrubin2015}
- - \citealp{morwin:2007:coun}
+```{r echo=TRUE}
+resid1 <- residuals(lm(Y~x1,data=dat))
+resid2 <- residuals(lm(Z~x1,data=dat))
+e2new <- lm(resid1~resid2)
+coef(e2new)[[2]]
+stopifnot(all.equal(coef(e2new)[[2]], coef(e2)[["Z"]]))
+```
 
-See also work by Pearl: \cite{pearl2018book}, \cite{pearl2016causal}
+```{r out.width=".5\\textwidth"}
+par(mfrow=c(1,2),oma=rep(0,4),mar=c(3,3,1,1),mgp=c(1.25,.5,0))
+with(dat,plot(x1,Y))
+abline(lm(Y~x1,data=dat))
+plot(dat$x1,resid1)
+abline(lm(resid1~dat$x1))
+```
 
-Also: The Atlantic Causal Inference Conference (ACIC).
 
-## Open Discussion
+## What about controlling for x1?
+
+Controlling for as residualization:
+
+```{r out.width=".8\\textwidth"}
+par(mfrow=c(1,2),oma=rep(0,4),mar=c(3,3,1,1),mgp=c(1.25,.5,0))
+with(dat,plot(x1,Y))
+abline(lm(Y~x1,data=dat))
+plot(dat$x1,resid1)
+abline(lm(resid1~dat$x1))
+```
+
+## What about controlling for x1?
+
+**How** should we control for x1? How to choose?
+
+```{r echo=TRUE}
+set.seed(12345)
+dat$Z <- new_exp2(dat$Z,dat$x1)
+e1 <-lm(Y~Z,data=dat)
+e2 <- lm(Y~Z+x1,data=dat)
+e3 <- lm(Y~Z+x1+I(x1^2),data=dat)
+e4 <- lm(Y~Z*x1+I(x1^2),data=dat)
+coef(e1)[["Z"]]
+coef(e2)[["Z"]]
+coef(e3)[["Z"]]
+preddat <- expand.grid(Z=unique(dat$Z),x1=unique(dat$x1))
+preddat$e4fit <- predict(e4,newdata=preddat)
+## Equal weight estimate
+with(preddat,mean(e4fit[Z==1]) - mean(e4fit[Z==0]))
+```
+
+Is this enough? What else might we do? Did we do a good job? How would we know? What does "controlling for" really mean?
+
+
+# Summary and Overview
+
+## Benefits of Randomized Designs
+
+Randomization makes $y_1, y_0, \bX \perp Z$. How to make use of this fact in a randomized experiment?
+
+ 1. Interpretable comparisons (lack of omitted variable bias, confounding,
+    selection bias)
+      - Can I interpret differences in outcome as caused by $Z$ and not $X$?
+	Is it easy to confuse the effect of $Z$  with the  effects of $X$?
+      - How does  randomization do this? How  does randomization eliminate
+	**alternative explanations**?
+ 2. Reliable statistical inferences (estimators and tests)
+      - The idea of **design-based** versus **model-based** statistical
+	inference (next few slides).
+
+## Design Based Approach: Estimate Averages
+
+  1. Notice that the observed $Y_i$ are a sample from  the (small, finite)
+     population of $(y_{i,1},y_{i,0})$.
+  2. Decide to focus on the average, $\bar{\tau}$, because sample averages,
+     $\hat{\bar{\tau}}$ are unbiased and consistent estimators of population
+     averages under random sampling (where no covariate determines the sample
+     inclusion probability or assignment to $Z_i$).
+  3. Estimate $\bar{\tau}$ with the observed difference in means.
+
+\centering
+  \includegraphics[width=.5\textwidth]{images/cartoonNeyman.pdf}
+
+## Design Based Approach: Estimate Averages
+
+\centering
+  \includegraphics[width=.9\textwidth]{images/cartoonNeyman.pdf}
+
+
+## Design Based Approach: Estimate Averages
+
+
+```{r}
+set.seed(12345)
+dat$Z <- randomizr::complete_ra(N=10,m=5)
+dat
+## The estimand: the ATE
+with(dat,mean(y1-y0))
+## An estimator
+with(dat,est1(Z,Y))
+```
+
+## What about when we have not randomized?
+
+We can try to adjust (for example by "controlling for". But adjustment raises new questions: how to adjust? how to assess our adjustment?)
+
+Ideas for a simpler way to say "We have held x1 constant?" as a way to discard alternative explanations based on x1?
+
+## Lingering Questions?
+
+# Appendix
+
+## Design Based Approach: Test Hypotheses
+
+ 1. Make a guess about $\tau_i$.
+ 2. Then measure surprise or consistency of data with this guess given the
+    design. (Given all of the ways this experiment could have  occurred, how
+    many look more extreme than what we observe? Does our observation look
+    typical or rare?)
+
+\centering
+  \includegraphics[width=.6\textwidth]{images/cartoonFisherNew1.pdf}
+
+## Design Based Approach: Test Hypotheses
+
+\centering
+  \includegraphics[width=\textwidth]{images/cartoonFisherNew1.pdf}
+
+## Design Based Approach: Test Hypotheses
+
+\centering
+  \includegraphics[width=\textwidth]{images/cartoonFisherNew2.pdf}
+
+## Approaches to creating interpretable comparisons:
+
+   - Randomized experiments (more precision from reducing heterogeneity in $Y$)
+   - Instrumental variables (with randomized $Z$ created $D$)
+   - Natural Experiments / Discontinuities (one $X$ creates $Z$) (includes RDD)
+   - Difference-in-Differences (reduce bias *and* increase precision from reducing heterogeneity in $Y$)
+   - Semi-/Non-parametric Covariance Adjustment (ex. Matching)
+   - Parametric covariance adjustment
 
 ## References
-
-# Supplementary Slides
-
-## Another estimation approach
-
-\autocite{smith:1997} presents a multi-level modelling approach to taking
-matched sets into account. The weights implied here are a bit different from
-the weights that we've discussed before (although with pairs they might be more
-or less the same). What is the data model? What additional assumptions are involved
-here?
-
-```{r lmer, cache=TRUE, warning=FALSE}
-library(lme4)
-wrkdat$vmCbi<-ave(wrkdat$vm.community.norm2,wrkdat$nbp2)
-## Following Bafumi and Gelman in using set means
-lmer1<-lmer(social.capital01~vm.community.norm2+vmCbi+(1|nbp2),data=wrkdat)
-confint(lmer1)["vm.community.norm2",]
-## Notice that we may have less information than we thought (some clustered of observation by DA).
-table(table(wrkdat$dauid))
-## So maybe:
-lmer2<-lmer(social.capital01~vm.community.norm2+vmCbi+(1|nbp2)+(1|dauid),data=wrkdat)
-confint(lmer2)["vm.community.norm2",]
-```
-
-
-## Confidence Intervals
-
-We can also look at an example involving point-estimates for bias of at most
-$\Gamma$ and confidence intervals assuming an additive effect of treatment.
-Notice also that that when $\Gamma$ is greater than 1, we have a range of
-point estimates consistent with that $\Gamma$.
-
-```{r cis}
-respmatPm<-with(droplevels(meddat[matched(meddat$pairm),]),reshape_sensitivity(HomRate0803,nhTrt,pairm))
-(sensCItwosidedG1<-senmwCI(-respmatPm,method="t",one.sided=FALSE))
-t.test(respmat[,2],respmat[,1],paired=TRUE)$conf.int
-(sensCIonesidedG1<-senmwCI(-respmatPm,method="t",one.sided=TRUE))
-(sensCItwosidedG2<-senmwCI(-respmatPm,method="t",one.sided=FALSE,gamma=2))
-(sensCIonesidedG2<-senmwCI(-respmatPm,method="t",one.sided=TRUE,gamma=2))
-```
-
-\note{
- Notice that the
-two-sided intervals have lower bounds that are lower than the one-sided
-intervals. }
-
 

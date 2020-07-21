@@ -11,6 +11,12 @@
 *.snm
 *.out
 *.toc
+*.vrb
+*.run.xml
+*.synctex*
+*_cache*
+*.dvi
 .Rhistory
 *.pro
 .Rproj.user
+renv/
