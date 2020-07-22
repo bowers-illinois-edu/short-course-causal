@@ -1,0 +1,141 @@
+---
+title: |
+  | Matching for Adjustment and Causal Inference
+  | Class 3: Propensity Scores, Calipers, Exact Matching, Combining Distance Matrices
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: Jake Bowers
+bibliography:
+ - ../BIB/references.bib
+fontsize: 10pt
+geometry: margin=1in
+graphics: yes
+biblio-style: authoryear-comp
+biblatexoptions:
+  - natbib=true
+output:
+  beamer_presentation:
+    slide_level: 2
+    keep_tex: true
+    latex_engine: lualatex
+    citation_package: biblatex
+    incremental: true
+    template: icpsr.beamer
+    includes:
+        in_header:
+           - defs-all.sty
+    md_extensions: +raw_attribute-tex_math_single_backslash+autolink_bare_uris+ascii_identifiers+tex_math_dollars
+header-includes:
+  - \setbeameroption{hide notes}
+---
+
+<!-- To show notes  -->
+<!-- https://stackoverflow.com/questions/44906264/add-speaker-notes-to-beamer-presentations-using-rmarkdown -->
+
+```{r echo=FALSE, include=FALSE, cache=FALSE}
+library(here)
+## You may need to change this next line to the following if you are using the EIM repo
+## source(here::here("rmd_setup.R"))
+source(here::here("Exercises/rmd_setup.R"))
+library(tidyverse)
+library(optmatch)
+library(RItools)
+library(estimatr)
+```
+
+# Overview and Review
+
+## Last Time
+
+1. Yet more evidence that adjustment for background covariates using the linear
+   model ("controlling for") is difficult: difficult to explain, difficult to
+   justify and assess, etc.. Too many specifications to choose from, too
+   difficult to assess the influence of functional form assumptions (let alone
+   extrapolation and interpolation) with many covariates. Although we will use
+   the linear model for estimation  we will move away from it for adjustment.
+2. Stratification is an old and simple idea: hold constant by holding constant
+   directly --- breaking continuous variables into pieces, or just estimating
+   effects within groups. This is easy to explain. The adjustment is
+   transparent.
+3. Block-randomized experiments are well known and methods for estimating
+   overall ATE from block-randomized studies are also well established: so
+   stratification based approaches need not leave us with many imprecise
+   treatment effects, for example. So, we can use the general techniques of
+   combining block-specific or stratum-specific effects by weighting from that
+   literature. This leaves us with two kinds of weights (a) block-size weights
+   and (b) precision weights (which add the ratio of treated to control to its
+   measure of information contributed to the overall estimate from a given
+   block).
+4. We can assess the success of a stratification by comparing it directly to a
+   randomized experiment --- leading to a hypothesis test or a balance test
+   (based on randomization as the standard of comparison).
+5. We can assess the success of a stratification just by inspecting the blocks.
+6. Optimal full matching (optimal following @rosenbaum2010, Chap 8 discussion
+   and cites therein) creates stratifications that minimize differences between
+   treated and control units --- this side-steps questions about cut-points or
+   about numbers of groups. The number of sets is optimal in so far as it
+   minimizes overall within set differences.
+7. To create a stratified research design (something like a block-randomized
+   experiment), we first need a distance matrix --- something that records the
+   similarities/differences between each treated and each control unit. Last
+   time we used (1) distances on a single variable and (2) we used a
+   Mahalanobis distance to represent multivariate distance in a space of more
+   than one covariate.
+
+## Today: Propensity distances, exact matching, calipers, combining distance matrices
+
+1. Another way to combine covariates is the propensity score.
+2. When we have a categorical or binary covariate that is important sometimes
+   we want to exactly stratify on it --- leading to exact matching.
+3. Sometimes we want to restrict the possible matches --- and to allow the
+   matching algorithm to exclude certain units from the research design
+   entirely. This is the role of calipers.
+4. We can combine distance matrices in order to make a strong argument about
+   our research design.
+
+## Overly Ambitious Plan
+
+  - 00:00 -- 00:30 --- Review
+  - 00:30 -- 01:30 ---  Lecture by Jake with lots of questions from the class
+  - 01:30 -- 01:40 --- Break
+  - 01:40 -- 02:00 --- Questions about the lecture and/or readings
+  - 02:00 -- 03:00 --- Break and Exercise 2 and maybe Exercise 3.
+  - 03:00 -- 04:00 --- Discussion of questions arising from the exercises and
+    questions lingering from reading, or lecture, or open discussion on any
+    topic.
+
+## "Controlling For" versus "Holding Constant"
+
+These two phrases imply differ adjustments:
+
+```{r}
+load(url("http://jakebowers.org/Data/meddat.rda"))
+## These next are equivalent ways to get rates per 1000 from counts
+## meddat$HomRate03<-with(meddat, (HomCount2003/Pop2003)*1000)
+## meddat$HomRate08<-with(meddat, (HomCount2008/Pop2008)*1000)
+meddat <- transform(meddat, HomRate03 = (HomCount2003 / Pop2003) * 1000)
+meddat <- transform(meddat, HomRate08 = (HomCount2008 / Pop2008) * 1000)
+```
+
+## Imagine a desire to adjust for many covariates
+
+
+## Combining matices
+
+ 1. Create a distance matrix:
+
+```{r}
+## First set up scalar matching following the help page on match_on
+tmp <- meddat$nhAboveHS
+names(tmp) <- rownames(meddat)
+absdist <- match_on(tmp, z = meddat$nhTrt)
+absdist[1:3,1:4]
+```
+## Next time:
+
+ - Matching when we have more than one group (non-bipartite matching)
+
+## Remaining questions?
+
+
+## References
+
