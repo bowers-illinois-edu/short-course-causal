@@ -1,0 +1,65 @@
+---
+title: 'Exercise 3: Using Optimal, Full Matching'
+author: 'Jake Bowers'
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+header-includes:
+  - \usepackage{bm}
+output:
+  pdf_document:
+    number_sections: true
+    fig_caption: yes
+    fig_height: 8
+    fig_width: 8
+    latex_engine: xelatex
+    citation_package: biblatex
+    keep_tex: true
+fontsize: 10pt
+geometry: margin=1in
+graphics: yes
+mainfont: "Helvetica"
+bibliography: classbib.bib
+biblio-style: "authoryear-comp,natbib"
+---
+
+<!-- This is a comment -->
+<!-- Make this document using library(rmarkdown); render("exploration1.Rmd") -->
+<!-- \input{mytexsymbols} -->
+
+```{r setup, echo=FALSE, results=FALSE, include=FALSE, cache=FALSE}
+library(here)
+source(here("rmd_setup.R"))
+```
+
+ 1. Covariate adjustment within the linear model by removing linear
+    relationships is difficult to describe and defend while adjustment using
+    stratification is easier to desribe and defend. ("Did you hold $X$
+    constant?" "Yes. I estimated the effect within groups of units that were
+    constant on $X$.") However, stratification by hand requires new choices and
+    raises new questions: "Why did you cut that variable into two pieces rather
+    than three?" (for only one example). Try using `fullmatch` and `match_on`
+    to create a stratification on one variable that does not require an a priori choice of
+    cut-points.
+
+2. Use `xBalance` to assess the extent to which your stratification created Z
+   to Y relationships that would have been usual or expected in a randomized
+   experiment.
+
+3. Look within your matched sets (following the code in `class2.Rmd` where we
+   `group_by()` the strata and produce data summaries within the sets: did you
+   successfully reduce differences in $X$? Are there any sets where $X$
+   differences between treated and control units appear particularly high (and
+   thus worthy of more scrutiny)?
+
+4. Now try creating a stratified research design that stratifies on more than
+   one covariate by using a Mahalanobis distance. Assess the success of this
+   design in balancing the covariates that you used for the matching using
+   `xBalance`. Also assess the design more qualitatively by looking at the sets
+   and differences between treated and control units within set: does any set
+   look particularly imbalanced? Would it be particularly hard to justify using
+   this research design to report causal effects?
+
+5. Estimate the effect of your intervention conditional on the new stratified
+   research design.
+
+# References
+

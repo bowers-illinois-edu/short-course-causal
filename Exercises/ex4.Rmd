@@ -1,0 +1,47 @@
+---
+title: 'Exercise 4: Using Optimal, Full Matching 2'
+author: 'Jake Bowers'
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+header-includes:
+  - \usepackage{bm}
+output:
+  pdf_document:
+    number_sections: true
+    fig_caption: yes
+    fig_height: 8
+    fig_width: 8
+    latex_engine: xelatex
+    citation_package: biblatex
+    keep_tex: true
+fontsize: 10pt
+geometry: margin=1in
+graphics: yes
+mainfont: "Helvetica"
+bibliography: classbib.bib
+biblio-style: "authoryear-comp,natbib"
+---
+
+<!-- This is a comment -->
+<!-- Make this document using library(rmarkdown); render("exploration1.Rmd") -->
+<!-- \input{mytexsymbols} -->
+
+```{r setup, echo=FALSE, results=FALSE, include=FALSE, cache=FALSE}
+library(here)
+source(here("rmd_setup.R"))
+```
+
+ 1. In `class3.Rmd` we created a match on a propensity score using only two
+ covariates. Can you improve on this design by adding other covariates or
+ functions of them? (You can improve on a design by (a) making it more
+ consistent with some known standard of good design (like increasing the
+ $p$-value in `xBalance`) and/or (b) making it easier to defend in substantive
+ terms (i.e. the comparisons exclude relevant alternative explanations) and/or
+ (c) making it easier to detect signal from noise (i.e.  increasing statistical
+ power by not dropping so many observations).
+
+OR
+
+2. Improve your own matched design.
+
+# References
+
