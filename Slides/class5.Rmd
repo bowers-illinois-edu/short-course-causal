@@ -1,0 +1,74 @@
+---
+title: |
+  | Matching for Adjustment and Causal Inference
+  | Class 5: Sensitivity Analysis
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+author: Jake Bowers
+bibliography:
+ - ../BIB/references.bib
+fontsize: 10pt
+geometry: margin=1in
+graphics: yes
+biblio-style: authoryear-comp
+biblatexoptions:
+  - natbib=true
+output:
+  beamer_presentation:
+    slide_level: 2
+    keep_tex: true
+    latex_engine: lualatex
+    citation_package: biblatex
+    incremental: true
+    template: icpsr.beamer
+    includes:
+        in_header:
+           - defs-all.sty
+    md_extensions: +raw_attribute-tex_math_single_backslash+autolink_bare_uris+ascii_identifiers+tex_math_dollars
+header-includes:
+  - \setbeameroption{hide notes}
+---
+
+<!-- To show notes  -->
+<!-- https://stackoverflow.com/questions/44906264/add-speaker-notes-to-beamer-presentations-using-rmarkdown -->
+
+```{r echo=FALSE, include=FALSE, cache=FALSE}
+library(here)
+## You may need to change this next line to the following if you are using the EIM repo
+## source(here::here("rmd_setup.R"))
+source(here::here("Exercises/rmd_setup.R"))
+library(tidyverse)
+library(optmatch)
+library(RItools)
+library(estimatr)
+library(nbpMatching)
+```
+
+# Overview and Review
+
+## Last Time
+
+1. Yet more evidence that adjustment for background covariates using the linear
+   model ("controlling for") is difficult: difficult to explain, difficult to
+   justify and assess, etc.. Too many specifications to choose from, too
+   difficult to assess the influence of functional form assumptions (let alone
+   extrapolation and interpolation) with many covariates. Although we will use
+   the linear model for estimation  we will move away from it for adjustment.
+2. 
+
+## Today: Sensitivity Analysis
+
+1. Rosenbaum style sensitivity analysis
+2. @hosman style sensitivity analysis.
+3. Discussion of any other topic
+
+
+## Next time:
+
+ - Sensitivity analysis: How different might our results be if units differed
+   in their probability of treatment/selection/intervention **within strata**?
+
+## Remaining questions?
+
+
+## References
+
