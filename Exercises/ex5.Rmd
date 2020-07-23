@@ -30,7 +30,24 @@ library(here)
 source(here("rmd_setup.R"))
 ```
 
-1. 
+The primary goal of this exercise is for you to play around with non-bipartite
+matching. You can either use the Medellin data or your own data:
+
+1. If you are using the Medellin data, one idea would be to compare
+   neighborhoods that are as similar as possible in baseline homicide rate,
+   `HomRate03` but that differ as much as possible in `nhTrt` (receipt of a
+   Metrocable station). You can match on `HomRate03` first and then see how
+   many pairs differ in receipt of a Metrocable station. If very few pairs
+   differ, you could try to add a penalty for similarity on `nhTrt`. You could
+   also match on propensity or mahalanobis differences. Obviously the Medellin
+   data does not lend itself easily to non-bipartite matching.
+
+OR
+
+2. You could try something similar with your own data. The idea is to create
+   sets that differ little on some background covariates --- perhaps individual
+   covariates, perhaps scores/indices --- but that differ as much as possible
+   on the key explanatory or causal driver.
 
 # References
 

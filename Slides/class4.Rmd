@@ -49,16 +49,23 @@ library(nbpMatching)
 
 Deciding to stratify rather than remove linear relationships raised new
    questions about:
-   1. distance matrices (on single covariates, Mahalanobis
-   distances, propensity score distances),
-      - And in turn raised questions about the
-   separation problem in logistic regression (and why we prefer `bayesglm` to
-   `glm` when we create propensity scores).
-   2. calipers,
-   3. ratios of treated to control units,
-   4. exact matching.
 
-We did not talk about missing data on covariates (and the `fill.NAs` command in optmatch).
+   1. distance matrices (on single covariates, Mahalanobis distances,
+      propensity score distances),
+      - And in turn raised questions about the separation problem in logistic
+        regression (and why we prefer `bayesglm` to `glm` when we create
+        propensity scores).
+   2. calipers (as a way to control and reason about excluding units from the
+      design and to focus the design on certain important covariates),
+   3. ratios of treated to control units (as a way of improving statistical
+      power) (We didn't talk much about this in the end.),
+   4. exact matching (as a way to emphasize certain important covariates and to
+      speed up the algorithm by breaking the computational problem into smaller
+      pieces).
+
+We did not talk about missing data on covariates (and the `fill.NAs` command in
+optmatch). We also did not dive into the statistical power and set
+configuration relationship.
 
 ## Missing data and matching
 
@@ -73,7 +80,7 @@ row.names(meddat) <- meddat$nh
 
 What if `nhPopD` had some missing data?
 
-```{r}
+```{r md1, echo=TRUE}
 set.seed(12345)
 meddat$nhPopD[sample(1:45, 10)] <- NA
 summary(meddat$nhPopD)
@@ -81,7 +88,7 @@ summary(meddat$nhPopD)
 
 We would want to compare units who are equally likely to have `nhPopD` missing. So, we create a new variable:
 
-```{r}
+```{r md2, echo=TRUE}
 newdat <- fill.NAs(meddat[, c("nhAboveHS", "nhPopD")])
 head(newdat)
 stopifnot(all.equal(row.names(newdat), row.names(meddat)))
@@ -89,9 +96,11 @@ newdat <- cbind(newdat, meddat[, c("nhTrt", "HomRate08", "HomRate03")])
 head(newdat)
 ```
 
+## Missing data and matching
+
 And we include that variable in our balance testing and matching:
 
-```{r}
+```{r echo=TRUE}
 theglm <- arm::bayesglm(nhTrt ~ nhAboveHS + nhPopD + nhPopD.NA + HomRate03, data = newdat)
 psdist <- match_on(theglm, data = meddat)
 maxCaliper(theglm$linear.predictor, z = newdat$nhTrt, widths = c(.1, .5, 1))
@@ -116,13 +125,59 @@ So:
     will tend to use bounds to report on the range of possible answers in such
     cases.
 
+## Set sizes and precision.
+
+Since we will be estimating effects by weighting the within-set effects, the variance of set sizes (and ratios of treated-to-control units) influences the overall precision. Here, showing this by demonstration rather than diving into the details.
+
+
+```{r echo=TRUE}
+fm0a <- fullmatch(psdist, data = newdat)
+summary(fm0a, min.controls = 0, max.controls = Inf, propensity.model = theglm)
+
+fm0b <- fullmatch(psdist, data = newdat,min.controls=.5,max.controls=4)
+summary(fm0b, min.controls = 0, max.controls = Inf, propensity.model = theglm)
+
+effectiveSampleSize(fm0a)
+effectiveSampleSize(fm0b)
+```
+
+## Set sizes and precision.
+
+```{r echo=TRUE}
+meddat$fm0a <- fm0a
+meddat$fm0b <- fm0b
+
+get_se <- function(dat,thefm){
+    ## thefm is a character name of the matching factor
+    dat$thefm <- dat[[thefm]]
+    ## shuffle treatment so the true effect is always known (and 0)
+    ## dplyr is nice but it removes row.names.
+    ## optmatch needs rownames to keep track of matches.
+    ## So we have to add them back at the end of the data manipulation.
+    dat <- dat %>% group_by(thefm) %>% mutate(newZ=sample(nhTrt)) %>%  column_to_rownames('nh')
+    thelm <- lm_robust(HomRate08~newZ,fixed_effects=~thefm,data=dat,subset=!is.na(thefm))
+    return(thelm$std.error)
+}
+```
+
+```{r simses, cache=TRUE}
+set.seed(12345)
+res_fm0a <- replicate(100,get_se(meddat,"fm0a"))
+res_fm0b <- replicate(100,get_se(meddat,"fm0b"))
+
+summary(res_fm0a)
+summary(res_fm0b)
+```
+
+
+
 
 # Non-bipartite Matching: An Application with the Study of Race and Place
 
 ## How do perceptions of place influence attitudes?
 
 @wong2012jop set out to measure perceptions of environments using an
-internet survey of Canadians during 2012 which each respondent drew a free hand
+internet survey of Canadians during 2012 where each respondent drew a
 map of their "local community" and then reported their understanding of the
 demographic breakdown of this place.
 
@@ -169,7 +224,8 @@ with(canadamapdat, scatter.smooth(vm.csd, vm.community.norm2,
 ## summary(canadamapdat$vm.community.norm2)
 ```
 
-## Codebook: Mainly for Rmd file
+\note{
+Codebook: Mainly for Rmd file
 
 The variables are: age in years, income as a scale, sex in categories, a
 social.capital scale coded to run 0 to 1, country of ancestry in categories,
@@ -179,6 +235,7 @@ minority in the Census Dissemination Area (a small area containing 400--700
 persons), and vm.community.norm2 is the proportion of visible minorities
 reported by respondents in their map of their local community,
 community_area_km is the area within their drawing in square km.
+}
 
 ## How to make the case for perceptions?
 
@@ -205,10 +262,10 @@ wrkdat$vmdaPct <- wrkdat$vm.da * 100 ## express in pct
 
 ## Create $n \times n$ distance matrices
 
-Our main design compares white, English-speaking, Canadians people with similar
-neighborhood proportions of visible minorities.
+Our main design compares white, English-speaking, Canadians with similar
+neighborhood proportions of visible minorities (as measured by the Canadian Census in 2006).
 
-```{r }
+```{r echo=TRUE}
 scalar.dist <- function(v) {
   ## Utility function to make n x n abs dist matrices
   outer(v, v, FUN = function(x, y) {
@@ -228,7 +285,7 @@ vmdaDist[1:4, 1:4]
 
 ## Non-bipartite match
 
-```{r nbp1, cache=TRUE}
+```{r nbp1, echo=TRUE, cache=TRUE}
 vmdaDistMat <- distancematrix(vmdaDist)
 nbp1match <- nonbimatch(vmdaDistMat)
 nbp1 <- get.sets(nbp1match$matches, remove.unpaired = TRUE)
@@ -239,7 +296,7 @@ table(is.na(wrkdat$nbp1)) ## recall the "ghost message"
 
 ## Inspect the solution
 
-```{r }
+```{r nbpsol, echo=TRUE }
 wrkdat[order(wrkdat$nbp1), c("nbp1", "vmdaPct", "vm.community.norm2")][1:6, ]
 ## table(wrkdat$nbp1)
 nbp1vmdiffs <- tapply(wrkdat$vmdaPct, wrkdat$nbp1, function(x) {
@@ -282,10 +339,12 @@ xb1$results[, c("z", "p"), "nbp1"]
 
 ## Improve balance using penalties and dropping observations
 
-  For example, (a) require matches within Province, (b) do not compare people
-  in small towns to people in large towns, (c) do not compare people who drew
-  big maps to people who drew small maps, (d) drop the 8 least well matched
-  observations. (Choosing 8 arbitrarily to demonstrate.)
+  For example, we might want to:
+   -  require matches within Province,
+   -  avoid comparing people in small towns to people in large towns,
+   -  avoid comparing people who drew big maps to people who drew small maps,
+   -  drop the 8 least well matched observations. (Choosing 8 arbitrarily to
+      demonstrate.)
 
 ```{r echo=FALSE}
 rescale01 <- function(x) {
@@ -293,7 +352,7 @@ rescale01 <- function(x) {
 }
 ```
 
-```{r results="hide"}
+```{r nbpdists, echo=TRUE, results="hide"}
 csdpopDist <- scalar.dist(wrkdat$csd.pop)
 dimnames(csdpopDist) <- list(row.names(wrkdat), row.names(wrkdat))
 
@@ -541,7 +600,7 @@ the weights that we've discussed before (although with pairs they might be more
 or less the same). What is the data model? What additional assumptions are involved
 here?
 
-```{r lmer, cache=FALSE, warning=FALSE}
+```{r lmer, cache=TRUE, message=FALSE, warning=FALSE}
 library(lme4)
 wrkdat$vmCbi <- ave(wrkdat$vm.community.norm2, wrkdat$nbp1)
 lmer1 <- lmer(social.capital01 ~ vm.community.norm2 + vmCbi + (1 | nbp1), data = wrkdat)
@@ -564,7 +623,7 @@ Also: this has a lot of applications in experimental design (see `blockTools` an
 ## Today: Stratification with more than two groups --- Non-bipartite matching
 
 1. What is the general idea of creating pairs or sets that differ on one key
-   explanatory variable (or causal factor) but do not differ on others.  
+   explanatory variable (or causal factor) but do not differ on others.
 2. How do we assess this kind of stratification? What do balance tests mean? (How to interpret the output of `xBalance` in this case?)
 3. What do "effects" mean in this case? How to estimate them?
 
