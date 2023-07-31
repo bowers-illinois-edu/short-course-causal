@@ -28,7 +28,7 @@ opts_chunk$set(
   cache = FALSE,
   highlight = TRUE,
   width.cutoff = 132,
-  #size = "\\scriptsize",
+  # size = "\\scriptsize",
   size = "\\normalsize",
   out.width = ".8\\textwidth",
   fig.retina = FALSE,

@@ -18,12 +18,14 @@ output:
     keep_tex: true
     latex_engine: lualatex
     citation_package: biblatex
-    incremental: true
+    incremental: false
     template: icpsr.beamer
     includes:
         in_header:
            - defs-all.sty
     md_extensions: +raw_attribute-tex_math_single_backslash+autolink_bare_uris+ascii_identifiers+tex_math_dollars
+    pandoc_args: [ "--csl", "chicago-author-date.csl" ]
+colorlinks: true
 header-includes:
   - \setbeameroption{hide notes}
 ---
@@ -41,33 +43,78 @@ library(RItools)
 
 # Overview and Review
 
+## Overview of the class {.shrink}
+
+**At the end:** 
+
+- We estimate the TV ad caused an increase in vaccinations by 5 pct points and
+  that it would be surprising to see this size of effect if the ad had no
+  effect ($p=.001$).
+- Recall that we compare pairs of people with the same age, so differences in
+  age cannot explain the difference.
+- Any differences within pair in income are smaller than we would see in an
+  equivalent pair-randomized experiment.
+- Also, although we did not measure party ID, and surely Republicans and
+  Democrats of the same age are not equally likely to watch the ads,
+  Republicans have to be 5x more likely to watch the ad than Democrats (of the
+  same age) before we would estimate an effect of 0 or $p=.051$.
+
+See also \autocite{rabb2022pnas}.
+
+## Overview of the class {.shrink}
+
+- We **infer** about counterfactual causal mechanisms by **estimating** and
+  **testing**: *Causal inference (in this class) requires statistical
+  inference.*
+- Statistical inference requires **distributions** (we cannot know whether an
+  estimator is unbiased without an idea of a distribution, we cannot calculate
+  a $p$-value without a distribution, etc.)
+- Distributions require **thought experiments** about repetition: We *imagine*
+  that we could (a) re-draw random samples from a the same population or (b)
+  re-assign randomized treatment. (We can also imagine reusing our priors and
+  likelihood.)
+- We will use the fact that distributions of certain test statistics is **known
+  for randomized experiments** to (a) reason about whether we have a good
+  non-randomized research design, (b) analyze outcomes, and (c) reason about
+  sensitivity of results fo unobserved confounders.
+
+
+So: We will start with randomized experiments even though the rest of the
+course is about non-randomized studies.
+
+
 ## Experiments, Potential Outcomes, and Treatment Effects
 
   1. Causal inference in randomized experiments and the idea of only partially
-     observed **potential outcomes**. The idea that we can use what we observe to learn about what we cannot observe.
+     observed **potential outcomes**. The idea that we can use what we observe
+     to learn about what we cannot observe.
   2. Statistical inference for causal effects in randomized experiments via the
      Fisher and Neyman approaches \autocite[Chap 2]{rosenbaum2010},
-     \autocite[Chap 1-3]{gerbergreen2012}: Estimation, Estimators, Tests, Testing.
-  3. Why are randomized experiments special? Unbiased estimators. The ability to assess bias. The ability to exclude alternative explanations. Tests with known error rates. The ability to assess error rates of tests.
+     \autocite[Chap 1-3]{gerbergreen2012}: Estimation, Estimators, Tests,
+     Testing.
+  3. Why are randomized experiments special? Unbiased estimators. The ability
+     to assess bias. The ability to exclude alternative explanations. Tests
+     with known error rates. The ability to assess error rates of tests.
   4. What does "controlling for" do in a linear model when we do not have a
      randomized experiment? How can we make the case that we are "controlling
      for" enough?
 
+Note: You can download (and contribute to) course materials at \href{https://github.com/bowers-illinois-edu/short-course-causal}{https://github.com/bowers-illinois-edu/short-course-causal}
+
 ## Overly Ambitious Plan
 
-  - 00:00 -- 00:30  ---  Introductions: Name, Affiliation/Organization, Interest
-    (Substantive or Methodological). Be thinking about (for later) a project
-    that you are working on that involves some form of comparison of
-    intervention with outcome, perhaps involving some causal inference.
-  - 00:30 -- 01:00 ---  Lecture by Jake to introduce concepts of potential outcomes, treatment effects, unbiased estimation, and encourage
-    questions and answers.
-  - 01:00 -- 01:10 --- Break
-  - 01:10 -- 01:30 --- Questions about the lecture and/or readings
-  - 01:30 -- 02:00 --- Tell us about a project and/or data set that you might want to use in this class to practice and learn.
-  - 02:00 -- 03:00 --- Break and Exercise 1: Describe your data.
-  - 03:00 -- 03:10 --- Break
-  - 03:10 -- 03:30 --- Jake discuss the problem of adjustment in observational studies as compared to experiments
-  - 03:30 -- 04:00 --- Open Discussion on any topic.
+ - Introduction to Jake
+ - Introduction to the idea of the course: roadmap
+ - Introductions to you and a project that you might work on during the week.
+ - Jake introduces concepts:  potential outcomes, treatment effects, unbiased estimation, and encourages questions and answers.
+ - Coffee Break
+ - Questions about the lecture
+ - Exercise 1: Describe your data (and update R).
+ - Break
+ - Jake discuss the problem of adjustment in observational studies as compared to experiments
+ - Open Discussion and/or work on projects
+
+# Concepts and Notation for Causal Inference and Statistical Inference
 
 ## Notation and Concepts for Counterfactual Causal Inference
 
@@ -91,14 +138,21 @@ library(RItools)
     $(y_{i,1},y_{i,0})$ or $Z$ (but that don't predict $Z$ if $Z$ is randomized
     as in an experiment).
 
-## The link between observation and learning about causal claims
+## The observation and unobserved causal comparisons
 
-We can learn about causal claims by observing the world [@brady2008cae]:
+We can learn about unobserved but theorized causal mechanisms by observing the world [@brady2008cae]:
 
-- **Persistent association** ``We always/mostly see $Y=1$ when $X=1$ and $Y=0$ when $X=0$.''
-- **Counterfactual Difference** ``If  $X$ had not been this value, then $Y$ would not have been that value.''
-- **Difference after manipulation** ``When we change $X$ from one value to another value, then $Y$ changes from one value to another value.'' (establishes causal priority of $X$ over $Y$, implied that $Y$ would not have changed.).
-- **Difference after operation of a mechanism** ``Once upon a time $A$ changed $X$, and then one day $X$ changed $B$, and because of that $B$ changed $C$, and finally $C$ changed $Y$.''
+- **Persistent association** "We always/mostly see $Y=1$ when $X=1$ and $Y=0$
+  when $X=0$."
+- **Counterfactual Difference** "If  $X$ had not been this value, then $Y$
+  would not have been that value."
+- **Difference after manipulation** "When we change $X$ from one value to
+  another value, then $Y$ changes from one value to another value."
+  (establishes causal priority of $X$ over $Y$, implied that $Y$ would not have
+  changed.).
+- **Difference after operation of a mechanism** "Once upon a time $A$ changed
+  $X$, and then one day $X$ changed $B$, and because of that $B$ changed $C$,
+  and finally $C$ changed $Y$."
 
 All approaches are useful. This week we are focusing on the counterfactual approach and somewhat on the persistent association.
 
@@ -106,24 +160,19 @@ All approaches are useful. This week we are focusing on the counterfactual appro
 
 The counterfactual approach requires that we can imagine units with and without $X$ (or say, $X=1$ and $X=0$).
 
- -  We can establish that X causes Y without knowing the mechanism. The mechanism
-    can be complex, and it can involve probability: X causes Y sometimes because of
-A and sometimes because of B.
+ -  We can establish that X causes Y without knowing the mechanism. The
+   mechanism can be complex, and it can involve probability: X causes Y
+   sometimes because of A and sometimes because of B.
  - "X causes Y" can mean "With X, probability of Y is higher than would be
    without X." or "Without X there is no Y." Either is compatible with the
-counterfactual idea.
- - Correlation is not causation: Favorite examples?
- - "X causes Y" is a statement about what didn't happen: "If X had not
+   counterfactual idea.
+ - Of course: Correlation is not causation.
+ - "X causes Y" is a statement about *what didn't happen*: "If X had not
    operated, occurred, then Y would not have occurred." (More about the
-fundamental problem of counterfactual causation later)
+   fundamental problem of counterfactual causation later)
 
-## Example: Honey and Colds
-
-- Your friend says that eating raw honey (a traditional remedy) reduces the duration of colds.
-- Say we observe the duration of a cold among people who took honey and the duration of a cold among people who did not and we saw that the duration was shorter among those taking honey. What kinds of alternative explanations might we come up with for this result (other than the idea that honey shortened the duration of the cold)?
-- How might a randomized design help us here?
-
-## Example: What does randomization provide?
+Today: Show that a randomized experiment allows us to **learn about**
+unobserved counterfactual outcomes using statistical inference.
 
 ```{r, echo=FALSE, results="hide"}
 set.seed(12345)
@@ -144,12 +193,22 @@ honeydat$id <- 1:10
 dat <- honeydat[,c("id","x1","x2","y0","y1","tau")]
 ```
 
-Imagine these were the underlying potential outcomes and that x1 -> y0 and that x2 is indep of outcomes.
+
+## Example: Honey and Colds {.shrink}
+
+Your friend explains a causal mechanism that eating raw honey reduces the
+duration of colds. What kinds of **alternative** explanations might we come up
+with for this result?
+
+Imagine these were the underlying potential outcomes with $x_1$ and $x_2$
+representing two of those explanations and that $x_1 \rightarrow y_0$ and that
+$x_2 \not \rightarrow y_0$.
 
 ```{r}
 kable(dat)
-message("Average (additive) causal effect is: ", with(honeydat, mean(y1-y0)))
 ```
+
+The true, unobserved, average (additive) causal effect is: `r with(honeydat, mean(y1-y0))`.
 
 Let us run a randomized experiment and see how we do:
 
@@ -160,10 +219,60 @@ What is happening here? How would we know whether `complete_ra` worked as it sho
 ```{r, echo=TRUE}
 library(randomizr)
 set.seed(12345)
-dat$Z <- randomizr::complete_ra(N=10,m=5)
+dat$Z <- complete_ra(N=10,m=5)
 dat$Y <- with(dat,Z*y1 + (1-Z)*y0)
 kable(dat)
 ```
+
+
+## Assessing randomization
+
+We expect that the distributions of $x_1$ and $x_2$ would be (nearly) the same between the treated and control groups:
+
+\begin{center}
+\begin{tikzcd}[column sep=large]
+	  Z  \arrow[from=1-1,to=1-4] &    &    & Y \\
+	   x_1 \arrow[from=2-1,to=1-1] \arrow[from=2-1,to=1-4]
+\end{tikzcd}
+\end{center}
+
+Here, just looking at means:
+```{r, echo=TRUE}
+dat %>% group_by(Z) %>% reframe(mean(x1),mean(x2))
+```
+
+```{r, echo=TRUE}
+library(RItools)
+bal1 <- balanceTest(Z~x1+x2,data=dat)
+bal1$results[,1:4,]
+```
+
+## What **should** we expect from an experiment?
+
+...in regards covariate balance? Lets simulate to learn:
+
+```{r, echo=TRUE}
+
+new_exp <- function(Z){
+	newZ <- sample(Z)
+	return(newZ)
+}
+
+diff_means <- function(x,Z){
+	mean(x[Z==1]) - mean(x[Z==0])
+}
+
+all_cov_bal<- replicate(1000,diff_means(x=dat$x1,Z=new_exp(dat$Z)))
+
+summary(all_cov_bal)
+
+obs_cov_bal <- diff_means(dat$x1,dat$Z)
+obs_cov_bal
+
+```
+
+
+
 
 
 ## Estimating the ATE in an RCT:

@@ -18,12 +18,13 @@ output:
     keep_tex: true
     latex_engine: lualatex
     citation_package: biblatex
-    incremental: true
+    incremental: false
     template: icpsr.beamer
     includes:
         in_header:
            - defs-all.sty
     md_extensions: +raw_attribute-tex_math_single_backslash+autolink_bare_uris+ascii_identifiers+tex_math_dollars
+    pandoc_args: [ "--csl", "chicago-author-date.csl" ]
 header-includes:
   - \setbeameroption{hide notes}
 ---
@@ -31,7 +32,7 @@ header-includes:
 <!-- To show notes  -->
 <!-- https://stackoverflow.com/questions/44906264/add-speaker-notes-to-beamer-presentations-using-rmarkdown -->
 
-```{r echo=FALSE, include=FALSE, cache=FALSE}
+```{r setup, echo=FALSE, include=FALSE, cache=FALSE}
 library(here)
 ## You may need to change this next line to the following if you are using the EIM repo
 ## source(here::here("rmd_setup.R"))
@@ -209,7 +210,7 @@ increases.)
 theglm <- glm(nhTrt ~ nhPopD + nhAboveHS, data = meddat, family = binomial(link = "logit"))
 thepscore <- theglm$linear.predictor
 thepscore01 <- predict(theglm, type = "response")
-````
+```
 
 We tend to match on the linear predictor rather than the version required to
 range only between 0 and 1. Recall how distance matrices required choices of
@@ -245,7 +246,7 @@ mad(thepscore[meddat$nhTrt == 1])
 mad(thepscore[meddat$nhTrt == 0])
 (mad(thepscore[meddat$nhTrt == 1]) + mad(thepscore[meddat$nhTrt == 0])) / 2
 ## We can see the actual R function here: optmatch:::match_on_szn_scale
-optmatch:::match_on_szn_scale(thepscore, Tx = meddat$nhTrt)
+## optmatch:::match_on_szn_scale(thepscore, Tx = meddat$nhTrt)
 simpdist["101", c("401", "402", "403")]
 simpdist["101", c("401", "402", "403")] / .9137
 psdist["101", c("401", "402", "403")]
