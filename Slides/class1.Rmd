@@ -859,20 +859,6 @@ Randomization makes $y_1, y_0, \bX \perp Z$. How to make use of this fact in a r
 \centering
   \includegraphics[width=.9\textwidth]{images/cartoonNeyman.pdf}
 
-
-## Design Based Approach: Estimate Averages
-
-
-```{r}
-set.seed(12345)
-dat$Z <- randomizr::complete_ra(N=10,m=5)
-dat
-## The estimand: the ATE
-with(dat,mean(y1-y0))
-## An estimator
-with(dat,est1(Z,Y))
-```
-
 ## What about when we have not randomized?
 
 We can try to adjust (for example by "controlling for". But adjustment raises new questions: how to adjust? how to assess our adjustment?)
