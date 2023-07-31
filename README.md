@@ -1,6 +1,6 @@
-# Short Course on Causal Inference Beyond the Basics for IPM 2019
+# Short Course on Matching for Adjustment and Causal Inference
 
-This is the repository for a short course on causal inference taught at [EIM](https://ucu.edu.uy/es/eim) in July of 2020. Please let me know if you find these materials useful. Please use the Issues and/or Pull Requests to improve them for us all.
+This is the repository for a short course on causal inference taught at [EIM](https://ucu.edu.uy/es/eim) in July of 2023. Please let me know if you find these materials useful. Please use the Issues and/or Pull Requests to improve them for us all.
 
 ## License
 
