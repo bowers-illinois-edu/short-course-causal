@@ -20,3 +20,4 @@
 *.pro
 .Rproj.user
 renv/
+*.knit.md
