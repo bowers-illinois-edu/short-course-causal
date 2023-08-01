@@ -1,7 +1,7 @@
 ---
 title: |
   | Matching for Adjustment and Causal Inference
-  | Class 3: Propensity Scores, Calipers, Exact Matching, Combining Distance Matrices
+  | Class 2: Distance Matrices,Propensity Scores, Calipers, Exact Matching, Combining Distance Matrices
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 author: Jake Bowers
 bibliography:
@@ -45,18 +45,18 @@ library(estimatr)
 
 # Overview and Review
 
-## Last Time
+## Last Time {.allowframebreaks}
 
 1. Yet more evidence that adjustment for background covariates using the linear
    model ("controlling for") is difficult: difficult to explain, difficult to
    justify and assess, etc.. Too many specifications to choose from, too
    difficult to assess the influence of functional form assumptions (let alone
    extrapolation and interpolation) with many covariates. Although we will use
-   the linear model for estimation  we will move away from it for adjustment.
+   the linear model for estimation  we will avoid it for adjustment.
 2. Stratification is an old and simple idea: hold constant by holding constant
    directly --- breaking continuous variables into pieces, or just estimating
    effects within groups. This is easy to explain. The adjustment is
-   transparent.
+   transparent and occurs **without reference to outcomes**.
 3. Block-randomized experiments are well known and methods for estimating
    overall ATE from block-randomized studies are also well established: so
    stratification based approaches need not leave us with many imprecise
@@ -68,66 +68,36 @@ library(estimatr)
    block).
 4. We can assess the success of a stratification by comparing it directly to a
    randomized experiment --- leading to a hypothesis test or a balance test
-   (based on randomization as the standard of comparison).
-5. We can assess the success of a stratification just by inspecting the blocks.
-6. Optimal full matching (optimal following @rosenbaum2010, Chap 8 discussion
+   (based on randomization as the standard of comparison). We can use
+   `balanceTest` from `RItools` for this or, in the `coin` package
+   `independenceTest` does the same thing, or we can do it directly if we have
+   small numbers of observations.
+5. We can assess the success of a stratification just by inspecting the blocks
+   from the perspective of substantive and disciplinary knowledge.
+
+## Today: Propensity distances, exact matching, calipers, combining distance matrices
+
+1. Optimal full matching (optimal following @rosenbaum2010, Chap 8 discussion
    and cites therein) creates stratifications that minimize differences between
    treated and control units --- this side-steps questions about cut-points or
    about numbers of groups. The number of sets is optimal in so far as it
    minimizes overall within set differences.
-7. To create a stratified research design (something like a block-randomized
+2. To create a stratified research design (something like a block-randomized
    experiment), we first need a distance matrix --- something that records the
    similarities/differences between each treated and each control unit. Last
    time we used (1) distances on a single variable and (2) we used a
    Mahalanobis distance to represent multivariate distance in a space of more
    than one covariate.
-
-## Today: Propensity distances, exact matching, calipers, combining distance matrices
-
-1. Another way to combine covariates is the propensity score.
-2. When we have a categorical or binary covariate that is important sometimes
+3. One way to combine covariates is the Euclidean distance, another (scaled
+   version) is the Mahalanobis distance, another way to combine covariates is
+   the propensity score (which gives different weight to different covariates).
+4. When we have a categorical or binary covariate that is important sometimes
    we want to exactly stratify on it --- leading to exact matching.
-3. Sometimes we want to restrict the possible matches --- and to allow the
+5. Sometimes we want to restrict the possible matches --- and to allow the
    matching algorithm to exclude certain units from the research design
    entirely. This is the role of calipers.
-4. We can combine distance matrices in order to make a strong argument about
+6. We can combine distance matrices in order to make a strong argument about
    our research design.
-
-
-## The World of Matching Today
-
-This is an active and productive research area (i.e. lots of new ideas, not
-everyone agrees about everything). Here are just a few of the different
-approaches to creating strata or sets or selecting subsets. I'm excluding work
-that mostly focuses on finding optimal weights directly rather than first
-finding defensible/optimal stratified designs from this list, but that is also
-an area worth exploring.
-
- - The work on cardinality matching and fine balance
-   <http://jrzubizarreta.com/>
-   <https://cran.rstudio.com/web/packages/designmatch/> )
- - The work on speedier approximate full matching with more data  <http://fredriksavje.com/>
-   <https://github.com/fsavje/quickmatch>, <https://cran.r-project.org/web/packages/rcbalance/index.html>.
- - The work on using genetic algorithms to (1) find approximate strata
-   **with-replacement** <http://sekhon.berkeley.edu/matching/> and (2) to find
-   an approximation to a completely randomized study (i.e. best subset
-   selection) <http://cho.pol.illinois.edu/wendy/papers/bossor.pdf>
- - The work on coarsened exact matching <https://gking.harvard.edu/cem>
- - The work on entropy-balancing approach to causal effects <https://web.stanford.edu/~jhain/software.htm#ebal>.
- - The covariate-balancing propensity score (CBPS) <https://imai.princeton.edu/research/CBPS.html>.
-
-
-
-## Overly Ambitious Plan
-
-  - 00:00 -- 00:30 --- Review
-  - 00:30 -- 01:30 ---  Lecture by Jake with lots of questions from the class
-  - 01:30 -- 01:40 --- Break
-  - 01:40 -- 02:00 --- Questions about the lecture and/or readings
-  - 02:00 -- 03:00 --- Break and Exercise 3 and maybe Exercise 4.
-  - 03:00 -- 04:00 --- Discussion of questions arising from the exercises and
-    questions lingering from reading, or lecture, or open discussion on any
-    topic.
 
 
 ```{r}
@@ -137,6 +107,129 @@ meddat <- transform(meddat,
   HomRate08 = (HomCount2008 / Pop2008) * 1000
 )
 ```
+
+
+# Recap
+
+## Regression is not research design {.shrink}
+
+What does this mean?
+
+Research design occurs **before** estimation and testing. You can try out lots
+of ideas, simulate, discuss, pre-register your planned analysis and your
+design, all before you produce the estimate or test having to do with some
+causal effect. This means (1) you are not seeing the estimates and tests when
+you are looking for a good design and (2) standards for good design are not the
+same as the standards for good estimators and tests.
+
+When you present the result of a regression model after searching for a
+specification, readers wonder:
+
+1. is this just the best result out of
+thousands? Are most results like this? Or was this cherry picked?
+2. how many
+$p$-values were looked at before reporting this one with $p < .05$?
+
+\small{Recall
+that if we reject $H_0$ when $p < .05$, we are saying that it is ok for 5% of
+tests to mislead us --- to have $p < .05$ when there is no effect (when $H_0$
+is true). So, a $p < .05$ after one test means that either have a rare testing
+error (a false positive result) or that $H_0$ is false.  But an unadjusted $p <  .05$ after 100 tests is virtually
+certain to occur (with prob of .99) when $H_0$ is true: $p < .05$ is a signal of a false positive error not of a substantive signal about $H_0$. So we
+should not reject the null even if the $p < .05$ in this case. (See
+[EGAP Guide on Multiple Comparisons](https://egap.org/resource/10-things-to-know-about-multiple-comparisons/) ).
+}
+
+## Regression is not research design
+
+Say we want to describe the relationship between an outcome $y$, a focal explanatory
+variable, $z$ and a potential confounder $x$ as a linear and additive function:
+$y_i = \beta_0 + \beta_1 z_i + \beta_2 x_i$. What can we say about this?
+
+1. "The **math implies** that the difference in $y$ between any two values of $z$ that differ by 1 must be the same regardless of which two values and regardless of the values that we plug-in for $x$." (Correct)
+2. "The **math says** that relationship between differences in $z$ and differences in $y$ ($\frac{dy}{dz}$), is the same for all values of $z$ and $x$. This is a constant relation." (Correct)
+
+## Regression is not research design
+
+
+Say we fit that mathematical model, $y_i = \beta_0 + \beta_1 z_i + \beta_2 x_i$, to data. What can we say?
+
+```{r, echo=FALSE, out.width=".5\\textwidth"}
+load(here::here("day7_dat.rda"))
+lm_Y_x1 <- lm(Y ~ x1, data = dat)
+lm_Z_x1 <- lm(Z ~ x1, data = dat)
+dat$resid_Y_x1 <- resid(lm_Y_x1)
+dat$resid_Z_x1 <- resid(lm_Z_x1)
+lm2 <- lm(Y~Z+x1,data=dat)
+coef(lm2)
+```
+
+Here is a plot of Y-without-linear-x1 on X-without-linear-x1 with a slope of `r coef(lm2)[["Z"]]`.
+
+```{r, echo=FALSE, out.width=".5\\textwidth",warning=FALSE}
+g1 <- ggplot(dat,aes(x=resid_Z_x1,y=resid_Y_x1,color=x1))+geom_point()+geom_smooth(method="lm",se=FALSE)
+print(g1)
+```
+
+
+## Regression is not research design {.shrink}
+
+```{r, echo=FALSE, out.width=".8\\textwidth",warning=FALSE}
+g2 <- ggplot(dat,aes(x=x1,y=Y,color=factor(Z)))+geom_point()+
+	geom_abline(intercept=coef(lm2)[["(Intercept)"]],slope=coef(lm2)[["x1"]])+
+	geom_abline(intercept=(coef(lm2)[["(Intercept)"]]+coef(lm2)[["Z"]]),
+		    slope=coef(lm2)[["x1"]],color="turquoise")
+
+##print(g2)
+library(cowplot)
+plot_grid(g1,g2)
+```
+
+
+1. "Are we comparing $Y$ values with different $Z$ values but the same $x1$ value? Does our data fitting do the same thing as actually holding constant $x1$?" (No.)
+2. "Does fitting our mathematical model to data do the same thing as physically holding constant?" (No.)
+3. "Do predictions of $Y$ from our model for two values of $Z$ that are 1 apart differ by the same amount regardless of (a) which two values they are and (b) any value that we put in for $x$?" (Yes. This is because we decided to describe all of the relationships with a line.)
+
+
+## A 3D surface
+
+Notice that the lines have the same slope as you move across the plane.
+
+```{r, fig.keep="last"}
+library(rgl)
+n <- 20
+uniq_x <- seq(0,1,length=n)
+uniq_z <- seq(0,1,length=n)
+region <- expand.grid(x = uniq_x, z = uniq_z)
+y <- matrix((region$x + region$z), n, n)
+surface3d(x=uniq_x, y=uniq_z, z=y, back = 'line', front = 'line', col = 'red', lwd = 1.5, alpha = 0.4)
+axes3d()
+```
+
+## Recap summary:
+
+- Correct interpretation of mathematical linear models may involve the word
+  "constant" (after all, lines have constant slope, planes have constant slopes
+  (one slope per dimension)).
+- Mathematical linear models fit to data are not research designs. We learn
+  which linear model fits the data best (where "best" can be defined in least
+  squares ways for example), but we cannot learn whether confounding is linear
+  from fitting such a model.
+- Linear models estimate average treatment effects well (since OLS is a
+  mean-difference calculator) and friendly software designers provide tests of
+  the weak null of no average effects by default (that are valid given
+  assumptions about standard errors and CLTs).
+- Linear models are not research designs and should not be used as such.
+- Using linear models for adjustment might make sense if you are not worried
+  about and/or have investigated: extrapolation, interpolation, functional
+  form, influential points, and you have pre-specified your specification to
+  avoid multiple testing problems and/or maybe generate a specification curve
+  (of the millions of ways to specify the **adjustment part** of the linear
+  model).
+
+
+
+
 
 #  Matching on Many Covariates: Using Propensity Scores
 
