@@ -677,7 +677,7 @@ treated and control units)
 tmp <- meddat$nhAboveHS
 names(tmp) <- rownames(meddat)
 absdist <- match_on(tmp, z = meddat$nhTrt, data = meddat)
-absdist[1:3, 1:3]
+absdist[1:3, 1:5]
 abs(meddat$nhAboveHS[meddat$nhTrt == 1][1] - meddat$nhAboveHS[meddat$nhTrt == 0][1])
 ```
 
@@ -693,6 +693,11 @@ table(meddat$nhTrt, fm1)
 pm1 <- pairmatch(absdist, data = meddat)
 summary(pm1, min.controls = 0, max.controls = Inf)
 table(meddat$nhTrt, pm1, exclude = c())
+
+fm2 <- fullmatch(absdist, data = meddat,min.controls=1)
+summary(fm2, min.controls = 0, max.controls = Inf)
+table(meddat$nhTrt, fm2)
+print(fm2,grouped=TRUE)
 ```
 
 
@@ -1034,7 +1039,9 @@ summary(fmMh, min.controls = 0, max.controls = Inf)
 summary(unlist(matched.distances(fmMh,mhdist)))
 
 quantile(as.vector(mhdist),seq(0,1,.1))
-fmMh1 <- fullmatch(mhdist + caliper(mhdist,1) , data = meddat) #, min.controls = 1)
+mhdistCal1 <- mhdist + caliper(mhdist,2)
+mhdistCal1[1:5,1:5]
+fmMh1 <- fullmatch( mhdistCal1, data = meddat) #, min.controls = 1)
 summary(fmMh1, min.controls = 0, max.controls = Inf)
 summary(unlist(matched.distances(fmMh1,mhdist)))
 
@@ -1176,10 +1183,7 @@ fmPs <- fullmatch(psdist, data = meddat)
 summary(fmPs, min.controls = 0, max.controls = Inf,propensity.model=theglm)
 meddat$fmPs <- factor(fmPs)
 
-xb2 <- xBalance(nhTrt ~ nhPopD + nhAboveHS,
-  strata = list(fmPs = ~fmPs), data = meddat,
-  report = "all"
-)
+xb2 <- balanceTest(nhTrt ~ nhPopD + nhAboveHS+strata(fmPs), data = meddat)
 xb2$overall[, ]
 
 xb2a <- xBalance(nhTrt ~ nhPopD + nhAboveHS + HomRate03,
@@ -1223,6 +1227,7 @@ quantile(as.vector(psdist), seq(0, 1, .1))
 psdistCal <- psdist + caliper(psdist, 2)
 as.matrix(psdist)[5:10, 5:10]
 as.matrix(psdistCal)[5:10, 5:10]
+summary(psdistCal)
 ```
 ## Calipers
 
@@ -1298,6 +1303,7 @@ meddat$classLowHi <- ifelse(meddat$nhClass %in% c(2, 3), "hi", "lo")
 
 ```{r}
 dist2 <- psdist + exactMatch(nhTrt ~ classLowHi, data = meddat)
+summary(dist2)
 ## or mhdist <- match_on(balfmla,within=exactMatch(nhTrt~classLowHi,data=meddat),data=meddat,method="rank_mahalanobis")
 ## or fmEx1 <- fullmatch(update(balfmla,.~.+strata(classLowHi)),data=meddat,method="rank_mahalanobis")
 fmEx1 <- fullmatch(dist2, data = meddat, tol = .00001)
