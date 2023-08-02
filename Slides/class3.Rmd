@@ -138,6 +138,7 @@ hrCal <- quantile(as.vector(hrdist2), .9)
 ## to each other (the mahalanobis distance), and also baseline outcome.
 matchdist <- psdist + caliper(psdist, psCal) + caliper(mhdist, mhCal) + caliper(hrdist2, 2)
 as.matrix(matchdist)[1:3, 1:6]
+summary(matchdist)
 
 fm0 <- fullmatch(matchdist, data = meddat)
 summary(fm0, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
@@ -187,6 +188,13 @@ summary(fm2a, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
 
 fm4 <- fullmatch(matchdistPen, data = meddat)
 summary(fm4, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+```
+
+```{r}
+baltest1 <- balanceTest(update(balfmla,.~.+strata(fm0)+strata(fm1)),data=meddat)
+baltest1$overall
+plot(baltest1)
+baltest1$results[,"std.diff",]
 ```
 
 # Information and Balance: Matching structure and effective sample size
@@ -496,7 +504,7 @@ findbalance <- function(x, mhdist = mhdist, psdist = psdist, absdist = hrdist2, 
 ## Test the function
 thecovs <- unique(c(names(meddat)[c(5:7, 9:24)], "HomRate03"))
 balfmla <- reformulate(thecovs,response="nhTrt")
-findbalance(c(psCal, mhCal, 0, 2), thedat = meddat, psdist = psdist, mhdist = mhdist)
+findbalance(c(psCal, mhCal, 1, 2), thedat = meddat, psdist = psdist, mhdist = mhdist)
 ## Don't worry about errors for certain combinations of parameters
 maxmhdist <- max(as.vector(mhdist))
 minmhdist <- min(as.vector(mhdist))
@@ -707,7 +715,7 @@ distmat <- as.matrix(psdist)
 distmat_scaled <- round(distmat / mean(distmat), 2)
 dimnames(distmat_scaled) <- dimnames(thedistmat)
 ## Minimize distances but keep HomRate03 diffs below 2
-nearlist <- list(covs = as.matrix(meddat_new$HomRate03), pairs = 2)
+nearlist <- list(covs = as.matrix(meddat_new[,c("HomRate03","nhAboveHS")]), pairs = c(HomRate03=2,nnAboveHS=.3))
 ```
 
 ## Cardinality Matching Example {.allowframebreaks}
@@ -780,6 +788,7 @@ datB <- meddat %>%
   group_by(fm0) %>%
   summarise(
     Y = mean(HomRate08[nhTrt == 1]) - mean(HomRate08[nhTrt == 0]),
+    barY = mean(HomRate08),
     nb = n(),
     nbwt = unique(nb / nrow(meddat)),
     nTb = sum(nhTrt),
@@ -881,13 +890,13 @@ Why would we **model** the variability between sets? When might this be useful? 
 
 ```{r echo=TRUE, message=FALSE}
 ## This had troubles with convergence
-## library(lme4)
-## lmer1 <- lmer(HomRate08 ~ nhTrt + (1 | fm0),
-##   data = wdat,
-##   verbose = 2, start = 0,
-##   control = lmerControl(optimizer = "bobyqa", restart_edge = TRUE, optCtrl = list(maxfun = 10000))
-## )
-## summary(lmer1)$coef
+ library(lme4)
+ lmer1 <- lmer(HomRate08 ~ nhTrt + (1 | fm0),
+   data = wdat,
+   verbose = 2, start = 0,
+   control = lmerControl(optimizer = "bobyqa", restart_edge = TRUE, optCtrl = list(maxfun = 10000))
+ )
+ summary(lmer1)$coef
 ## Here is the more directly bayesian version of adjusting for the strata as random intercepts
 library(rstanarm)
 lmer2 <- stan_lmer(HomRate08 ~ nhTrt + (1 | fm0),
