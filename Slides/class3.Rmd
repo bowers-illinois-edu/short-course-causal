@@ -1,7 +1,7 @@
 ---
 title: |
   | Matching for Adjustment and Causal Inference
-  | Class 2: Distance Matrices,Propensity Scores, Calipers, Exact Matching, Combining Distance Matrices
+  | Class 3: Information, Estimation, Testing
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 author: Jake Bowers
 bibliography:
@@ -41,736 +41,26 @@ library(tidyverse)
 library(optmatch)
 library(RItools)
 library(estimatr)
+library(coin)
 ```
 
 # Overview and Review
 
-## Last Time {.allowframebreaks}
+## So Far {.allowframebreaks}
+
+1. **Regression is not research design**:  Linear additive adjustment must be
+   justified, extrapolation and influential points investigated, hard to do
+   without looking at outcomes and risking multiple testing problems.
+2. Stratification is research design (can be done without looking at outcomes,
+   can be **evaluated** without looking at outcomes.)
+3. We can create stratified designs by minimizing distances/differences: we can
+   focus on one or more covariates and can represent substantive ideas with
+   calipers, exact matching, and combinations of distance matrices for example:
+   `distMat <- psdist + caliper(agedist,10) + caliper(incomedist,100)`
+4. We can evaluate stratified designs (a) substantively (ex. worst differences
+   within set on key covariate) and (b) by comparison to an equivalent
+   randomized design.
 
-1. Yet more evidence that adjustment for background covariates using the linear
-   model ("controlling for") is difficult: difficult to explain, difficult to
-   justify and assess, etc.. Too many specifications to choose from, too
-   difficult to assess the influence of functional form assumptions (let alone
-   extrapolation and interpolation) with many covariates. Although we will use
-   the linear model for estimation  we will avoid it for adjustment.
-2. Stratification is an old and simple idea: hold constant by holding constant
-   directly --- breaking continuous variables into pieces, or just estimating
-   effects within groups. This is easy to explain. The adjustment is
-   transparent and occurs **without reference to outcomes**.
-3. Block-randomized experiments are well known and methods for estimating
-   overall ATE from block-randomized studies are also well established: so
-   stratification based approaches need not leave us with many imprecise
-   treatment effects, for example. So, we can use the general techniques of
-   combining block-specific or stratum-specific effects by weighting from that
-   literature. This leaves us with two kinds of weights (a) block-size weights
-   and (b) precision weights (which add the ratio of treated to control to its
-   measure of information contributed to the overall estimate from a given
-   block).
-4. We can assess the success of a stratification by comparing it directly to a
-   randomized experiment --- leading to a hypothesis test or a balance test
-   (based on randomization as the standard of comparison). We can use
-   `balanceTest` from `RItools` for this or, in the `coin` package
-   `independenceTest` does the same thing, or we can do it directly if we have
-   small numbers of observations.
-5. We can assess the success of a stratification just by inspecting the blocks
-   from the perspective of substantive and disciplinary knowledge.
-
-## Today: Propensity distances, exact matching, calipers, combining distance matrices
-
-1. Optimal full matching (optimal following @rosenbaum2010, Chap 8 discussion
-   and cites therein) creates stratifications that minimize differences between
-   treated and control units --- this side-steps questions about cut-points or
-   about numbers of groups. The number of sets is optimal in so far as it
-   minimizes overall within set differences.
-2. To create a stratified research design (something like a block-randomized
-   experiment), we first need a distance matrix --- something that records the
-   similarities/differences between each treated and each control unit. Last
-   time we used (1) distances on a single variable and (2) we used a
-   Mahalanobis distance to represent multivariate distance in a space of more
-   than one covariate.
-3. One way to combine covariates is the Euclidean distance, another (scaled
-   version) is the Mahalanobis distance, another way to combine covariates is
-   the propensity score (which gives different weight to different covariates).
-4. When we have a categorical or binary covariate that is important sometimes
-   we want to exactly stratify on it --- leading to exact matching.
-5. Sometimes we want to restrict the possible matches --- and to allow the
-   matching algorithm to exclude certain units from the research design
-   entirely. This is the role of calipers.
-6. We can combine distance matrices in order to make a strong argument about
-   our research design.
-
-
-```{r}
-load(url("http://jakebowers.org/Data/meddat.rda"))
-meddat <- transform(meddat,
-  HomRate03 = (HomCount2003 / Pop2003) * 1000,
-  HomRate08 = (HomCount2008 / Pop2008) * 1000
-)
-```
-
-
-# Recap
-
-## Regression is not research design {.shrink}
-
-What does this mean?
-
-Research design occurs **before** estimation and testing. You can try out lots
-of ideas, simulate, discuss, pre-register your planned analysis and your
-design, all before you produce the estimate or test having to do with some
-causal effect. This means (1) you are not seeing the estimates and tests when
-you are looking for a good design and (2) standards for good design are not the
-same as the standards for good estimators and tests.
-
-When you present the result of a regression model after searching for a
-specification, readers wonder:
-
-1. is this just the best result out of
-thousands? Are most results like this? Or was this cherry picked?
-2. how many
-$p$-values were looked at before reporting this one with $p < .05$?
-
-\small{Recall
-that if we reject $H_0$ when $p < .05$, we are saying that it is ok for 5% of
-tests to mislead us --- to have $p < .05$ when there is no effect (when $H_0$
-is true). So, a $p < .05$ after one test means that either have a rare testing
-error (a false positive result) or that $H_0$ is false.  But an unadjusted $p <  .05$ after 100 tests is virtually
-certain to occur (with prob of .99) when $H_0$ is true: $p < .05$ is a signal of a false positive error not of a substantive signal about $H_0$. So we
-should not reject the null even if the $p < .05$ in this case. (See
-[EGAP Guide on Multiple Comparisons](https://egap.org/resource/10-things-to-know-about-multiple-comparisons/) ).
-}
-
-## Regression is not research design
-
-Say we want to describe the relationship between an outcome $y$, a focal explanatory
-variable, $z$ and a potential confounder $x$ as a linear and additive function:
-$y_i = \beta_0 + \beta_1 z_i + \beta_2 x_i$. What can we say about this?
-
-1. "The **math implies** that the difference in $y$ between any two values of $z$ that differ by 1 must be the same regardless of which two values and regardless of the values that we plug-in for $x$." (Correct)
-2. "The **math says** that relationship between differences in $z$ and differences in $y$ ($\frac{dy}{dz}$), is the same for all values of $z$ and $x$. This is a constant relation." (Correct)
-
-## Regression is not research design
-
-
-Say we fit that mathematical model, $y_i = \beta_0 + \beta_1 z_i + \beta_2 x_i$, to data. What can we say?
-
-```{r, echo=FALSE, out.width=".5\\textwidth"}
-load(here::here("day7_dat.rda"))
-lm_Y_x1 <- lm(Y ~ x1, data = dat)
-lm_Z_x1 <- lm(Z ~ x1, data = dat)
-dat$resid_Y_x1 <- resid(lm_Y_x1)
-dat$resid_Z_x1 <- resid(lm_Z_x1)
-lm2 <- lm(Y~Z+x1,data=dat)
-coef(lm2)
-```
-
-Here is a plot of Y-without-linear-x1 on X-without-linear-x1 with a slope of `r coef(lm2)[["Z"]]`.
-
-```{r, echo=FALSE, out.width=".5\\textwidth",warning=FALSE}
-g1 <- ggplot(dat,aes(x=resid_Z_x1,y=resid_Y_x1,color=x1))+geom_point()+geom_smooth(method="lm",se=FALSE)
-print(g1)
-```
-
-
-## Regression is not research design {.shrink}
-
-```{r, echo=FALSE, out.width=".8\\textwidth",warning=FALSE}
-g2 <- ggplot(dat,aes(x=x1,y=Y,color=factor(Z)))+geom_point()+
-	geom_abline(intercept=coef(lm2)[["(Intercept)"]],slope=coef(lm2)[["x1"]])+
-	geom_abline(intercept=(coef(lm2)[["(Intercept)"]]+coef(lm2)[["Z"]]),
-		    slope=coef(lm2)[["x1"]],color="turquoise")
-
-##print(g2)
-library(cowplot)
-plot_grid(g1,g2)
-```
-
-
-1. "Are we comparing $Y$ values with different $Z$ values but the same $x1$ value? Does our data fitting do the same thing as actually holding constant $x1$?" (No.)
-2. "Does fitting our mathematical model to data do the same thing as physically holding constant?" (No.)
-3. "Do predictions of $Y$ from our model for two values of $Z$ that are 1 apart differ by the same amount regardless of (a) which two values they are and (b) any value that we put in for $x$?" (Yes. This is because we decided to describe all of the relationships with a line.)
-
-
-## A 3D surface
-
-Notice that the lines have the same slope as you move across the plane.
-
-```{r, fig.keep="last"}
-library(rgl)
-n <- 20
-uniq_x <- seq(0,1,length=n)
-uniq_z <- seq(0,1,length=n)
-region <- expand.grid(x = uniq_x, z = uniq_z)
-y <- matrix((region$x + region$z), n, n)
-surface3d(x=uniq_x, y=uniq_z, z=y, back = 'line', front = 'line', col = 'red', lwd = 1.5, alpha = 0.4)
-axes3d()
-```
-
-## Recap summary:
-
-- Correct interpretation of mathematical linear models may involve the word
-  "constant" (after all, lines have constant slope, planes have constant slopes
-  (one slope per dimension)).
-- Mathematical linear models fit to data are not research designs. We learn
-  which linear model fits the data best (where "best" can be defined in least
-  squares ways for example), but we cannot learn whether confounding is linear
-  from fitting such a model.
-- Linear models estimate average treatment effects well (since OLS is a
-  mean-difference calculator) and friendly software designers provide tests of
-  the weak null of no average effects by default (that are valid given
-  assumptions about standard errors and CLTs).
-- Linear models are not research designs and should not be used as such.
-- Using linear models for adjustment might make sense if you are not worried
-  about and/or have investigated: extrapolation, interpolation, functional
-  form, influential points, and you have pre-specified your specification to
-  avoid multiple testing problems and/or maybe generate a specification curve
-  (of the millions of ways to specify the **adjustment part** of the linear
-  model).
-
-
-
-
-
-#  Matching on Many Covariates: Using Propensity Scores
-
-
-## The propensity score
-
-Given covariates $\mathbf{x} (=(x_1, \ldots, x_k))$, and a
-treatment variable $Z$, $Z(u) \in \{0, 1\}$,  $\PP (Z \vert \mathbf{x})$ is known as the (true) \textbf{propensity score} (PS).
-$$ \phi( \mathbf{x} ) \equiv \log\left( \PP (Z=1 \vert \mathbf{x})/\PP (Z=0 \vert \mathbf{x}) \right)$$
-is also known as the PS.  In practice, one works
-with an estimated PS, $\hat{\PP} (Z \vert \mathbf{x})$ or
-$\hat{\phi}(\mathbf{x})$.
-
-Theoretically, propensity-score strata or matched sets both
-
- 1. reduce extrapolation; and
- 2. balance each of $x_1, \ldots, x_k$.
-
-They do this by making the comparison more "experiment-like", at least in terms of $x_1, \ldots, x_k$.
-
-Theory @rosrub83 also tells us that in the **absence of hidden bias**, such a stratification
-supports unbiased estimation of treatment effects.
-
-
-## Propensity scoring in practice
-
- - Fitted propensity scores help identify extrapolation.
- - In practice, stratification on $\hat{\phi}(\mathbf{x})$
-helps balance each of $x_1, \ldots, x_k$ compared to no stratification.
-
-
-There are \emph{lots of cases} in which adjustment with the propensity score alone fails to generate estimates that agree with those of randomized studies.
-
-There are various reasons for this, starting with:
-
- - lots of observational studies that don't measure quite enough $x$es or the right $x$es or the right $x$es in the right way
- - **hidden biases** --- propensity scores address bias on measured variables, not unmeasured ones.
-
-## Intuition about the propensity score
-
-A propensity score is the output of a function of covariates as they relate to
-$Z$ (the "treatment" or "intervention"). Why reduce the dimension of $\bm{x}$
-in this way rather than, say, using Mahalanobis distance?
-
-\medskip
-
-Recall that an experiment breaks the relationship between $Z$ and $\bm{x}=\{ x_1,x_2,\ldots \}$ but not between $\bm{x}$ and $Y$ or $y_1,y_0$.
-
-\includegraphics[width=.25\textwidth]{xyzdiagram.pdf}
-
-```{r tikzarrows, eval=FALSE, include=FALSE, engine='tikz', engine.opts=list(template="icpsr-tikz2pdf.tex")}
-\usetikzlibrary{arrows}
-\begin{tikzcd}[ampersand replacement=\&, column sep=small]
-  Z  \arrow[from=1-1,to=1-3] &                               & Y \\
-  &   \mathbf{x} \arrow[from=2-2,to=1-1, "\text{0 if Z rand}"] \arrow[from=2-2,to=1-3] &
-\end{tikzcd}
-```
-
-Making strata of units who are similar on the propensity score reduces (or removes)
-the relationship between $Z$ and the relevant $\mathbf{x}$ within strata (either the
-units have similar values for $\bm{x}$ or the particular $x$s which do not have a
-strong (linear, additive) relationship with $Z$).
-
-## Matching on the propensity score
-
-**Make the score** (Note that we will be using `brglm` or `bayesglm` in the
-future because of logit separation problems when the number of covariates
-increases.)
-
-```{r}
-theglm <- glm(nhTrt ~ nhPopD + nhAboveHS, data = meddat, family = binomial(link = "logit"))
-thepscore <- theglm$linear.predictor
-thepscore01 <- predict(theglm, type = "response")
-```
-
-We tend to match on the linear predictor rather than the version required to
-range only between 0 and 1. Recall how distance matrices required choices of
-distance metrics? We don't want to categorize two observations as "close" just
-because the logit function squashed them together near 0 or 1.
-
-```{r echo=FALSE, out.width=".7\\textwidth"}
-par(mfrow = c(1, 2), oma = rep(0, 4), mar = c(3, 3, 2, 0), mgp = c(1.5, .5, 0))
-boxplot(split(thepscore, meddat$nhTrt), main = "Linear Predictor (XB)")
-stripchart(split(thepscore, meddat$nhTrt), add = TRUE, vertical = TRUE)
-
-boxplot(split(thepscore01, meddat$nhTrt), main = "Inverse Link Function (g^-1(XB))")
-stripchart(split(thepscore01, meddat$nhTrt), add = TRUE, vertical = TRUE)
-```
-
-
-## Matching on the propensity score: What do the distance matrix entries mean?
-
-optmatch creates a scaled propensity score distance by default --- scaling by, roughly, the pooled median absolute deviation of the covariate (or here, the propensity score). So, the distance matrix entries are like standard deviations  --- standardized scores.
-
-```{r}
-## Create a distance matrix using the propensity scores
-psdist <- match_on(theglm, data = meddat)
-psdist[1:4, 1:4]
-```
-
-What do those distances mean?
-```{r}
-simpdist <- outer(thepscore, thepscore, function(x, y) {
-  abs(x - y)
-})
-mad(thepscore[meddat$nhTrt == 1])
-mad(thepscore[meddat$nhTrt == 0])
-(mad(thepscore[meddat$nhTrt == 1]) + mad(thepscore[meddat$nhTrt == 0])) / 2
-## We can see the actual R function here: optmatch:::match_on_szn_scale
-## optmatch:::match_on_szn_scale(thepscore, Tx = meddat$nhTrt)
-simpdist["101", c("401", "402", "403")]
-simpdist["101", c("401", "402", "403")] / .9137
-psdist["101", c("401", "402", "403")]
-```
-
-
-## Matching on the propensity score
-
-The following design balances the two covariates used in the creation of the
-propensity score well. It does not balance the baseline outcome well (not that
-we assumed it would, but demonstrating here that the covariates used for the
-creation of the design need not necessarily be all of those used to
-**evaluate** the design).
-
-```{r}
-fmPs <- fullmatch(psdist, data = meddat)
-summary(fmPs, min.controls = 0, max.controls = Inf,propensity.model=theglm)
-meddat$fmPs <- factor(fmPs)
-
-xb2 <- xBalance(nhTrt ~ nhPopD + nhAboveHS,
-  strata = list(fmPs = ~fmPs), data = meddat,
-  report = "all"
-)
-xb2$overall[, ]
-
-xb2a <- xBalance(nhTrt ~ nhPopD + nhAboveHS + HomRate03,
-  strata = list(fmPs = ~fmPs), data = meddat,
-  report = "all"
-)
-xb2a$overall[, ]
-```
-
-Compare to Mahalanobis distance:
-
-```{r}
-mh_dist <- match_on(nhTrt ~ nhPopD + nhAboveHS,
-  data = meddat,
-  method = "rank_mahalanobis"
-)
-fmMh <- fullmatch(mh_dist, data = meddat)
-summary(fmMh)
-xb3 <- xBalance(nhTrt ~ nhPopD + nhAboveHS + HomRate03,
-  strata = list(unstrat = NULL, fmPs = ~fmPs, fmMh = ~fmMh), data = meddat,
-  report = "all"
-)
-xb3$overall[, ]
-xb3$results[, "std.diff", ]
-```
-
-```{r}
-plot(xb3, ggplot = TRUE) + theme_classic()
-```
-
-# Matching Tricks of the Trade: Calipers, Exact Matching
-
-## Calipers
-
-The optmatch package allows calipers (which forbids certain pairs from being matched).^[You can implement penalties by hand.] Here, for example, we forbid comparisons which differ by more than 2 propensity score standardized distances.
-
-```{r}
-## First inspect the distance matrix itself: how are the distances distributed?
-quantile(as.vector(psdist), seq(0, 1, .1))
-## Next, apply a caliper (setting entries to Infinite)
-psdistCal <- psdist + caliper(psdist, 2)
-as.matrix(psdist)[5:10, 5:10]
-as.matrix(psdistCal)[5:10, 5:10]
-```
-## Calipers
-
-The optmatch package allows calipers (which forbid certain pairs from being matched).^[You can implement penalties by hand.] Here, for example, we forbid comparisons which differ by more than 2 standard deviations on the propensity score. (Notice that we also use the `propensity.model` option to `summary` here to get a quick look at the balance test:)
-
-```{r}
-fmCal1 <- fullmatch(psdist + caliper(psdist, 2), data = meddat, tol = .00001)
-summary(fmCal1, min.controls = 0, max.controls = Inf, propensity.model = theglm)
-pmCal1 <- pairmatch(psdist + caliper(psdist, 2), data = meddat, remove.unmatchables = TRUE)
-summary(pmCal1, propensity.model = theglm)
-```
-
-## Calipers
-
-Another example: We may want to match on mahalanobis distance but disallow any pairs with extreme propensity distance and/or extreme differences in baseline homicide rates (here using many covariates all together).
-
-
-```{r}
-## Create an R formulate object from vectors of variable names
-balfmla <- reformulate(c("nhPopD", "nhAboveHS"), response = "nhTrt")
-
-## Create a mahalanobis distance matrix (of rank transformed data)
-mhdist <- match_on(balfmla, data = meddat, method = "rank_mahalanobis")
-
-## Now make a matrix recording absolute differences between neighborhoods in
-## terms of baseline homicide rate
-tmpHom03 <- meddat$HomRate03
-names(tmpHom03) <- rownames(meddat)
-absdist <- match_on(tmpHom03, z = meddat$nhTrt, data = meddat)
-absdist[1:3, 1:3]
-quantile(as.vector(absdist), seq(0, 1, .1))
-quantile(as.vector(mhdist),seq(0,1,.1))
-## Now create a new distance matrix using two calipers:
-distCal <- psdist + caliper(mhdist, 9) + caliper(absdist, 2)
-as.matrix(distCal)[5:10, 5:10]
-## Compare to:
-as.matrix(mhdist)[5:10, 5:10]
-```
-
-## Calipers
-
-Now, use this new matrix for the creation of stratified designs --- but possibly excluding some units (also showing here the `tol` argument. The version with the tighter tolerance produces a solution with smaller overall distances)
-
-```{r}
-fmCal2a <- fullmatch(distCal, data = meddat, tol = .001)
-summary(fmCal2a, min.controls = 0, max.controls = Inf)
-fmCal2b <- fullmatch(distCal, data = meddat, tol = .00001)
-summary(fmCal2b, min.controls = 0, max.controls = Inf, propensity.model=theglm)
-
-meddat$fmCal2a <- fmCal2a
-meddat$fmCal2b <- fmCal2b
-
-fmCal2a_dists <- matched.distances(fmCal2a, distCal)
-fmCal2b_dists <- matched.distances(fmCal2b, distCal)
-
-mean(unlist(fmCal2a_dists))
-mean(unlist(fmCal2b_dists))
-```
-
-## Exact Matching
-
-We often have covariates that are categorical/nominal and for which we really care about strong balance. One approach to solve this problem is match **exactly** on one or more of such covariates. If `fullmatch` or `match_on` is going slow, this is also an approach to speed things up.
-
-```{r echo=FALSE}
-meddat$classLowHi <- ifelse(meddat$nhClass %in% c(2, 3), "hi", "lo")
-```
-
-```{r}
-dist2 <- psdist + exactMatch(nhTrt ~ classLowHi, data = meddat)
-## or mhdist <- match_on(balfmla,within=exactMatch(nhTrt~classLowHi,data=meddat),data=meddat,method="rank_mahalanobis")
-## or fmEx1 <- fullmatch(update(balfmla,.~.+strata(classLowHi)),data=meddat,method="rank_mahalanobis")
-fmEx1 <- fullmatch(dist2, data = meddat, tol = .00001)
-summary(fmEx1, min.controls = 0, max.controls = Inf, propensity.model=theglm)
-print(fmEx1, grouped = T)
-meddat$fmEx1 <- fmEx1
-```
-## Exact Matching
-
-```{r}
-ftable(Class = meddat$classLowHi, Trt = meddat$nhTrt, fmEx1, col.vars = c("Class", "Trt"))
-```
-
-## What about using many covariates? The separation problem in logistic regression
-
-What if we want to match on more than two covariates? Let's step through the following to discover a problem with logistic regression when the number of covariates is large relative to the size of the dataset.
-
-```{r echo=TRUE}
-library(splines)
-library(arm)
-thecovs <- unique(c(names(meddat)[c(5:7,9:24)],"HomRate03"))
-balfmla<-reformulate(thecovs,response="nhTrt")
-psfmla <- update(balfmla,.~.+ns(HomRate03,2)+ns(nhPopD,2)+ns(nhHS,2))
-glm0 <- glm(balfmla,data=meddat,family=binomial(link="logit"))
-glm1 <- glm(psfmla,data=meddat,family=binomial(link="logit"))
-bayesglm0 <- bayesglm(balfmla,data=meddat,family=binomial(link="logit"))
-bayesglm1 <- bayesglm(psfmla,data=meddat,family=binomial(link="logit"))
-psg1 <- predict(glm1,type="response")
-psg0 <- predict(glm0,type="response")
-psb1 <- predict(bayesglm1,type="response")
-psb0 <- predict(bayesglm0,type="response")
-```
-## The separation problem
-
-Logistic regression is excellent at discriminating between groups \ldots often **too excellent** for us \autocite{gelman2008weakly}. First evidence of this is big and/or missing coefficients in the propensity score model. See the coefficients below (recall that we are predicting `nhTrt` with these covariates in those models):
-
-```{r echo=FALSE}
-thecoefs <- rbind(glm0=coef(glm0)[1:20],
-      glm1=coef(glm1)[1:20],
-      bayesglm0=coef(bayesglm0)[1:20],
-      bayesglm1=coef(bayesglm1)[1:20]
-      )
-thecoefs[,1:5]
-```
-
-## The separation problem
-
-```{r, echo=FALSE, out.width=".9\\textwidth"}
-par(mfrow=c(1,2))
-matplot(t(thecoefs),axes=FALSE)
-axis(2)
-axis(1,at=0:19,labels=colnames(thecoefs),las=2)
-
-matplot(t(thecoefs),axes=FALSE,ylim=c(-15,10))
-axis(2)
-axis(1,at=0:19,labels=colnames(thecoefs),las=2)
-
-legend("topright",col=1:4,lty=1:4,legend=c("glm0","glm1","bayesglm0","bayesglm1"))
-```
-
-
-## The separation problem in logistic regression
-
-So, if we are interested in using the propensity score to compare observations in regards the multi-dimensional space of many covariates, we would probably prefer a dimensional reduction model like `bayesglm` over `glm`.
-
-```{r out.width=".9\\textwidth", echo=FALSE}
-par(mfrow=c(2,2),mar=c(3,3,2,.1))
-boxplot(psg0~meddat$nhTrt,main=paste("Logit",length(coef(glm0))," parms",sep=" "))
-stripchart(psg0~meddat$nhTrt,vertical=TRUE,add=TRUE)
-boxplot(psg1~meddat$nhTrt,main=paste("Logit",length(coef(glm1))," parms",sep=" "))
-stripchart(psg1~meddat$nhTrt,vertical=TRUE,add=TRUE)
-boxplot(psb0~meddat$nhTrt,main=paste("Shrinkage Logit",length(coef(bayesglm0))," parms",sep=" "))
-stripchart(psb0~meddat$nhTrt,vertical=TRUE,add=TRUE)
-boxplot(psb1~meddat$nhTrt,main=paste("Shrinkage Logit",length(coef(bayesglm1))," parms",sep=" "))
-stripchart(psb1~meddat$nhTrt,vertical=TRUE,add=TRUE)
-```
-
-# How to find a good matched design?
-
-## Searching for a good matched design
-
-Often we find ourselves hunting for a matched design by fiddling with different
-parameters, etc.. Here I show a couple of approaches that are a bit more
-systematic or at least may help organize the fiddling.
-
-## Design Search for both precision and balance
-
-Here I demonstrate searching for two calipers.
-
-```{r gridsearch, cache=FALSE}
-findbalance<-function(x,mhdist=mhdist,psdist=psdist,thedat=meddat){
-    ##message(paste(x,collapse=" "))
-    thefm<-try(fullmatch(psdist+caliper(mhdist,x[2])+caliper(psdist,x[1]),data=thedat,tol=.00001))
-
-    if(inherits(thefm,"try-error")){
-        return(c(x=x,d2p=NA,maxHR03diff=NA,n=NA,effn=NA))
-    }
-
-    thedat$thefm <- thefm
-
-    thexb<-try(xBalance(balfmla,strata=list(thefm=~thefm),
-            data=thedat,
-            report=c("chisquare.test","p.values")),silent=TRUE)
-
-    if(inherits(thexb,"try-error")){
-        return(c(x=x,d2p=NA,maxHR03diff=NA,n=NA,effn=NA))
-    }
-
-    maxHomRate03diff<-max(unlist(matched.distances(thefm,distance=absdist)))
-
-    return(c(x=x,d2p=thexb$overall["thefm","p.value"],
-            maxHR03diff=maxHomRate03diff,
-            n=sum(!is.na(thefm)),
-            effn=summary(thefm)$effective.sample.size))
-
-}
-
-```
-
-## Design Search for both precision and balance
-
-```{r eval=TRUE,echo=FALSE, cache=TRUE, warning=FALSE}
-## Test the function
-findbalance(c(3,3),thedat=meddat,psdist=psdist,mhdist=mhdist)
-## Don't worry about errors for certain combinations of parameters
-maxmhdist<-max(as.vector(mhdist))
-minmhdist<-min(as.vector(mhdist))
-maxpsdist<-max(as.vector(psdist))
-minpsdist<-min(as.vector(psdist))
-```
-
-```{r findbal, eval=FALSE}
-set.seed(123455)
-system.time({
-    results<-replicate(1000,findbalance(x=c(runif(1,minpsdist,maxpsdist),
-                runif(1,minmhdist,maxmhdist)),thedat=meddat,psdist=psdist,mhdist=mhdist))
-}
-)
-```
-
-```{r findbalpar, eval=TRUE, cache=TRUE, echo=FALSE}
-## If you have a mac or linux machine you can speed this up:
-library(parallel)
-system.time({
-    resultsList<-mclapply(1:1000,function(i){
-        findbalance(x=c(runif(1,minpsdist,maxpsdist),
-                runif(1,minmhdist,maxmhdist)),thedat=meddat,psdist=psdist,mhdist=mhdist)
-                },
-        mc.cores=detectCores())
-    resultsListNA<-sapply(resultsList,function(x){ any(is.na(x)) })
-    results<-simplify2array(resultsList[!resultsListNA])
-}
-)
-
-```
-
-
-## Which matched design might we prefer?
-
-Now, how might we interpret the results of this search for matched designs?
-Here are a few ideas.
-
-```{r }
-if(class(results)=="list"){
-    resAnyNA<-sapply(results,function(x){ any(is.na(x)) })
-    resNoNA<-simplify2array(results[!resAnyNA])
-} else {
-    resAnyNA<-apply(results,2,function(x){ any(is.na(x)) })
-    resNoNA<-simplify2array(results[,!resAnyNA])
-}
-apply(resNoNA,1,summary)
-highbalres<-resNoNA[,resNoNA["d2p",]>.5]
-apply(highbalres,1,summary)
-```
-
-## Which matched design might we prefer?
-
-The darker points have smaller maximum within set differences on the baseline outcome.
-
-```{r eval=TRUE, echo=FALSE}
-# color points more dark for smaller differences
-plot(resNoNA["d2p",],resNoNA["n",],
-    xlab='d2p',ylab='n',
-    col=gray(1- ( resNoNA["maxHR03diff",]/max(resNoNA["maxHR03diff",]))),
-    pch=19)
-
-## identify(resNoNA["d2p",],resNoNA["n",],labels=round(resNoNA["maxHR03diff",],3),cex=.7)
-```
-
-## Which matched design might we prefer?
-
-```{r canddesigns, eval=TRUE,echo=TRUE}
-interestingDesigns<- (resNoNA["d2p",]>.1 & resNoNA["n",]>=40 &
-    resNoNA["maxHR03diff",]<=10 & resNoNA["effn",] > 6)
-candDesigns <- resNoNA[,interestingDesigns,drop=FALSE]
-str(candDesigns)
-apply(candDesigns,1,summary)
-candDesigns<-candDesigns[,order(candDesigns["d2p",],decreasing=TRUE)]
-candDesigns <- candDesigns[,1]
-```
-
-## How would we use this information in `fullmatch`?
-
-```{r bigmatch}
-stopifnot(nrow(candDesigns)==1)
-fm4<-fullmatch(psdist+caliper(psdist,candDesigns["x1"])+caliper(mhdist,candDesigns["x2"]),data=meddat,tol=.00001)
-
-summary(fm4,min.controls=0,max.controls=Inf,propensity.model=bayesglm0)
-
-meddat$fm4<-NULL ## this line exists to prevent confusion with new fm4 objects
-meddat[names(fm4),"fm4"]<-fm4
-
-xb3<-xBalance(balfmla,strata=list(fm4=~fm4),
-	      data=meddat, report=c("all"))
-xb3$overall[,1:3]
-zapsmall(xb3$results["HomRate03",,])
-```
-
-## Another approach: more fine tuned optimization
-
-Here is another approach that tries to avoid searching the whole space. It focuses on getting close to a target $p$-value from the omnibus/overall balance test. Here we are just looking for one caliper value that gets us close to a particular target balance using one distance matrix.
-
-```{r eval=TRUE,cache=FALSE}
-matchAndBalance2<-function(x,distmat,alpha){
-	#x is a caliper widths
-	if(x>max(as.vector(distmat)) | x<min(as.vector(distmat))){ return(99999) }
-	thefm<-fullmatch(distmat+caliper(distmat,x),data=meddat,tol=.00001)
-	thexb<-xBalance(balfmla,
-			strata=data.frame(thefm=thefm),
-			data=meddat,
-			report=c("chisquare.test"))
-	return(thexb$overall[,"p.value"])
-}
-
-maxpfn<-function(x,distmat,alpha){
-	## here x is the targeted caliper width and x2 is the next wider
-	## caliper width
-	p1<-matchAndBalance2(x=x[1],distmat,alpha)
-	p2<-matchAndBalance2(x=x[2],distmat,alpha)
-	return(abs( max(p1,p2) - alpha) )
-}
-
-maxpfn(c(minpsdist,minpsdist+1),distmat=psdist,alpha=.25)
-#quantile(as.vector(psdist),seq(0,1,.1))
-#sort(as.vector(psdist))[1:10]
-```
-
-## Another approach: more fine tuned optimization
-
-```{r solnp, warning=FALSE, message=FALSE, cache=TRUE}
-library(Rsolnp)
-### This takes a long time
-results3<-gosolnp(fun=maxpfn,
-		  ineqfun=function(x,distmat,alpha){ x[2] - x[1] },
-		  ineqLB = 0,
-		  ineqUB = maxpsdist,
-		  LB=c(minpsdist,minpsdist+.01),
-		  UB=c(maxpsdist-.01,maxpsdist),
-		  n.restarts=2,
-		  alpha=.5,
-          distmat=psdist,
-		  n.sim=500,
-		  rseed=12345,
-		  control=list(trace=1)
-)
-
-results3$pars
-results3$values
-```
-
-## Another approach: more fine tuned optimization
-
-```{r}
-maxpfn(results3$pars,distmat=psdist,alpha=.25)
-matchAndBalance2(results3$pars[1],distmat=psdist,alpha=.25)
-```
-
-## Back to matching on a scalar: Inspecting the Design from a substantive perspective
-
-Do any of these sets look like the differences are too big within the set?
-
-```{r}
-absHomMatch <- fullmatch(absdist, data = meddat)
-meddat$absHomMatch <- absHomMatch
-setdiffsHM <- meddat %>%
-  group_by(absHomMatch) %>%
-  summarize(
-    mndiffs =
-      mean(HomRate03[nhTrt == 1]) -
-        mean(HomRate03[nhTrt == 0]),
-    mnHomRate03 = mean(HomRate03),
-    minHomRate03 = min(HomRate03),
-    maxHomRate03 = max(HomRate03)
-  )
-setdiffsHM
-```
 
 ## Decision Points in Creating Matched Designs
 
@@ -783,6 +73,996 @@ setdiffsHM
  - How well does the resulting research design compare to an equivalent block-randomized study (`xBalance`)?
  - (Possibly) How much statistical power does this design provide for the quantity of interest?
  - Other questions to ask about a research design aiming to help clarify comparisons.
+
+```{r}
+load(url("http://jakebowers.org/Data/meddat.rda"))
+meddat <- transform(meddat,
+  HomRate03 = (HomCount2003 / Pop2003) * 1000,
+  HomRate08 = (HomCount2008 / Pop2008) * 1000
+)
+row.names(meddat) <- meddat$nh
+```
+
+## Example: {.allowframebreaks}
+
+```{r echo=TRUE}
+thecovs <- unique(c(names(meddat)[c(5:7, 9:24)], "HomRate03"))
+balfmla <- reformulate(thecovs[-c(1, 14)], response = "nhTrt")
+thebglm <- arm::bayesglm(balfmla, data = meddat, family = binomial(link = "logit"))
+mhdist <- match_on(balfmla, data = meddat)
+psdist <- match_on(thebglm, data = meddat)
+```
+
+Showing here 3 different ways to get a scalar distance:
+```{r echo=TRUE}
+## This is just standardized and centered
+hrdist1 <- match_on(nhTrt ~ HomRate03, data = meddat)
+
+## Distance in terms of homicide rate itself
+tmp <- meddat$HomRate03
+names(tmp) <- rownames(meddat)
+hrdist2 <- match_on(tmp, z = meddat$nhTrt, data = meddat)
+
+## By Hand absolute distance after centering and standardizing
+tmp <- scale(meddat$HomRate03)[, 1]
+names(tmp) <- rownames(meddat)
+hrdist3 <- match_on(tmp, z = meddat$nhTrt, data = meddat)
+
+hrdist1[1:3, 1:6]
+hrdist2[1:3, 1:6]
+hrdist3[1:3, 1:6]
+
+## They are all just linear transforms. hrdist2 allows us to talk about homicide rates when we make calipers.
+cor(hrdist1[1,],hrdist2[1,])
+cor(hrdist1[1,],hrdist3[1,])
+```
+
+```{r echo=TRUE}
+psCal <- quantile(as.vector(psdist), .9)
+mhCal <- quantile(as.vector(mhdist), .9)
+hrCal <- quantile(as.vector(hrdist2), .9)
+
+## Create a distance matrix reflecting how the covariates relate to treatment,
+## to each other (the mahalanobis distance), and also baseline outcome.
+matchdist <- psdist + caliper(psdist, psCal) + caliper(mhdist, mhCal) + caliper(hrdist2, 2)
+as.matrix(matchdist)[1:3, 1:6]
+
+fm0 <- fullmatch(matchdist, data = meddat)
+summary(fm0, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+fm1 <- fullmatch(matchdist, data = meddat, min.controls = 1)
+summary(fm1, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+fm3 <- fullmatch(matchdist, data = meddat, mean.controls = .9)
+summary(fm3, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+
+fm0dists <- unlist(matched.distances(fm0, matchdist))
+fm1dists <- unlist(matched.distances(fm1, matchdist))
+
+## Next is an example of using a penalty rather than a caliper
+maxdist <- max(matchdist[!is.infinite(matchdist)])
+
+psdist01 <- psdist / max(as.matrix(psdist))
+mhdist01 <- (mhdist - min(as.matrix(mhdist))) / (max(as.matrix(mhdist)) - min(as.matrix(mhdist)))
+hrdist201 <- (hrdist2 - min(as.matrix(hrdist2))) / (max(as.matrix(hrdist2)) - min(as.matrix(hrdist2)))
+
+summary(as.vector(psdist01))
+summary(as.vector(mhdist01))
+summary(as.vector(hrdist201))
+```
+
+## Example using Penalties
+
+You can also use penalties rather than calipers:
+
+```{r penalties, echo=TRUE}
+## The larger the differences in psdist, mhdist, and hrdist, the worse the
+## matches (by maxdist).
+matchdistPen <- psdist + psdist01 * maxdist + mhdist01 * maxdist + hrdist201 * maxdist
+
+## We could also say, "distances larger than some value are really bad":
+matchdistPen2 <- psdist + psdist01 * maxdist + mhdist01 * maxdist + (hrdist2 > 2) * maxdist * 100
+
+as.matrix(matchdist)[5:10, 1:8]
+matchdistPen[5:10, 1:8]
+matchdistPen2[5:10, 1:8]
+
+## Notice that mean.controls=22/23 drops observations.
+fm2 <- fullmatch(matchdistPen, data = meddat, min.controls = .5, mean.controls = 23 / 22)
+summary(fm2, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+
+## Notice that mean.controls=22/23 drops observations.
+fm2a <- fullmatch(matchdistPen2, data = meddat, min.controls = .5, mean.controls = 23 / 22)
+summary(fm2a, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+
+fm4 <- fullmatch(matchdistPen, data = meddat)
+summary(fm4, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+```
+
+# Information and Balance: Matching structure and effective sample size
+
+
+## Showing matches
+
+Fullmatching offers us more choices:
+
+\centering
+```{r out.width=".8\\textwidth", echo=FALSE}
+## perhaps try this https://briatte.github.io/ggnet/#example-2-bipartite-network next time
+library(igraph)
+blah0 <- outer(fm0, fm0, FUN = function(x, y) {
+  as.numeric(x == y)
+})
+blah1 <- outer(fm1, fm1, FUN = function(x, y) {
+  as.numeric(x == y)
+})
+blah2 <- outer(fm2, fm2, FUN = function(x, y) {
+  as.numeric(x == y)
+})
+blah2a <- outer(fm2a, fm2a, FUN = function(x, y) {
+  as.numeric(x == y)
+})
+par(mfrow = c(2, 2), mar = c(3, 3, 3, 1))
+plot(graph_from_adjacency_matrix(blah0, mode = "undirected", diag = FALSE),
+  vertex.color = c("white", "green")[meddat$nhTrt + 1], main = "Min Ctrls=0, Max Ctrls=Inf"
+)
+plot(graph_from_adjacency_matrix(blah1, mode = "undirected", diag = FALSE),
+  vertex.color = c("white", "green")[meddat$nhTrt + 1], main = "Min Ctrls=1, Max Ctrls=Inf"
+)
+plot(graph_from_adjacency_matrix(blah2, mode = "undirected", diag = FALSE),
+  vertex.color = c("white", "green")[meddat$nhTrt + 1], main = "Penalties,Min Ctrls=.5, Mean Ctrls=23/22"
+)
+plot(graph_from_adjacency_matrix(blah2a, mode = "undirected", diag = FALSE),
+  vertex.color = c("white", "green")[meddat$nhTrt + 1], main = "Pen V 2,MinCtrls=.5, MeanCtrls=23/22"
+)
+```
+
+##  Tracking effective sample size
+
+In 2-sample comparisons, total sample size can be a misleading as a measure of information content.  Example:
+\begin{itemize}
+\item say $Y$ has same variance, $\sigma^{2}$,in the Tx and the Ctl population.
+\item Ben H. samples 10 Tx and 40 Ctls, and
+\item Jake B. samples 25 Tx and 25 Ctls
+\end{itemize}
+--- so that total sample sizes are the same.  However,
+
+\begin{eqnarray*}
+  V_{BH}(\bar{y}_{t} - \bar{y}_{c}) &=& \frac{\sigma^{2}}{10} + \frac{\sigma^{2}}{40}=.125\sigma^{2}\mbox{;}\\
+  V_{JB}(\bar{y}_{t} - \bar{y}_{c}) &=& \frac{\sigma^{2}}{25} + \frac{\sigma^{2}}{25}=.08\sigma^{2}.\\
+\end{eqnarray*}
+
+Similarly, a matched triple is roughly $[(\sigma^{2}/1 + \sigma^{2}/2)/(\sigma^{2}/1 + \sigma^{2}/1)]^{-1}= 1.33$ times as informative as a matched pair.
+
+## Details
+
+Use pooled 2-sample t statistic SE formula to compare 1-1 vs 1-2 matched sets' contribution to variance:
+
+$$
+\begin{array}{c|c}
+  \atob{1}{1} & \atob{1}{2} \\
+M^{-2}\sum_{m=1}^{M} (\sigma^{2}/1 + \sigma^{2}/1) & M^{-2}\sum_{m=1}^{M} (\sigma^{2}/1 + \sigma^{2}/2) \\
+\frac{2\sigma^{2}}{M} & \frac{1.5\sigma^{2}}{M} \\
+\end{array}
+$$
+
+So 20 matched pairs is comparable to 15 matched triples.
+
+(Correspondingly, h-mean of $n_{t},n_{c}$ for a pair is 1, while for a triple it's $[(1/1 + 1/2)/2]^{-1}=4/3$.)
+
+The variance of the `Z`-coeff in `y~Z + match` is
+$$
+ \frac{2 \sigma^{2}}{\sum_{s} h_{s}}, \hspace{3em} h_{s} = \left( \frac{n_{ts}^{-1} + n_{cs}^{-1} }{2}  \right)^{-1} ,
+$$
+
+assuming the OLS model and homoskedastic errors.  (This is b/c the anova formulation is equivalent to harmonic-mean weighting, under which $V(\sum_{s}w_{s}(\bar{v}_{ts} - \bar v_{cs})) = \sum_{s} w_{s}^{2}(n_{ts}^{-1} + n_{cs}^{-1}) \sigma^{2} = \sigma^{2} \sum_{s} w_{s}^{2} 2 h_{s}^{-1} = 2\sigma^{2} \sum_{s}w_{s}/\sum_{s}h_{s} = 2\sigma^{2}/\sum_{s} h_{s}$.)
+
+For matched pairs, of course, $h_{s}=1$.  Harmonic mean of 1, 2 is $4/3$. Etc.
+
+
+## Matching so as to maximize effective sample size {.allowframebreak}
+
+```{r echo=TRUE, tidy=FALSE}
+stratumStructure(fm1)
+stratumStructure(fm0)
+effectiveSampleSize(fm1)
+effectiveSampleSize(fm0)
+meddat$fm1 <- fm1
+meddat$fm0 <- fm0
+wtsfm1 <- meddat %>%
+  filter(!is.na(fm1)) %>%
+  group_by(fm1) %>%
+  summarise(
+    nb = n(),
+    nTb = sum(nhTrt),
+    nCb = nb - nTb,
+    hwt = (2 * (nCb * nTb) / (nTb + nCb))
+  )
+wtsfm1
+sum(wtsfm1$hwt)
+stratumStructure(fm1)
+mean(unlist(matched.distances(fm1, matchdist)))
+```
+## Matching so as to maximize effective sample size {.allowframebreak}
+
+```{r echo=TRUE}
+wtsfm0 <- meddat %>%
+  filter(!is.na(fm0)) %>%
+  group_by(fm0) %>%
+  summarise(
+    nb = n(),
+    nTb = sum(nhTrt), nCb = nb - nTb,
+    hwt = (2 * (nCb * nTb) / (nTb + nCb))
+  )
+wtsfm0
+sum(wtsfm0$hwt)
+stratumStructure(fm0)
+mean(unlist(matched.distances(fm0, matchdist)))
+```
+
+Notice for `fm0` we weight the 12-to-1 match by `2*(1 * 11)/(11+1)=1.83` and the 1-to-16 match by `2*(16*1)/(16+1)=1.88`.
+
+In a pairmatch all of the sets have weight `2*(1*1)/(1+1) = 2/2=1`.
+
+```{r}
+pm1 <- pairmatch(matchdist, data = meddat, remove.unmatchables = TRUE)
+summary(pm1, propensity.model = thebglm)
+mean(unlist(matched.distances(pm1, matchdist)))
+effectiveSampleSize(pm1)
+```
+
+## Why does it matter?
+
+Or see here: Higher effective sample size $\rightarrow$ lower standard error.
+
+```{r echo=TRUE}
+stratumStructure(fm2)
+stratumStructure(fm4)
+effectiveSampleSize(fm2)
+effectiveSampleSize(fm4)
+
+lm_fm2 <- lm_robust(HomRate08 ~ nhTrt, fixed_effects = ~fm2, data = meddat, subset = !is.na(fm2))
+lm_fm4 <- lm_robust(HomRate08 ~ nhTrt, fixed_effects = ~fm4, data = meddat, subset = !is.na(fm4))
+
+lm_fm2$std.error
+lm_fm4$std.error
+```
+
+## How to find a good design?: Design Search for both precision and balance {.allowframebreaks}
+
+Here I demonstrate searching for two calipers and `min.controls` using a grid of possible caliper values.
+
+```{r gridsearch, echo=TRUE, cache=FALSE}
+findbalance <- function(x, mhdist = mhdist, psdist = psdist, absdist = hrdist2, thedat = meddat, thebalfmla = balfmla) {
+  ## message(paste(x,collapse=" "))
+  thefm <- try(fullmatch(psdist + caliper(mhdist, x[2]) +
+    caliper(psdist, x[1]) + caliper(absdist, x[4]), min.controls = x[3], data = thedat, tol = .00001))
+
+  if (inherits(thefm, "try-error")) {
+    return(c(x = x, d2p = NA, maxHR03diff = NA, n = NA, effn = NA))
+  }
+
+  thedat$thefm <- thefm
+
+  thexb <- try(balanceTest(update(thebalfmla, . ~ . + strata(thefm)), data = thedat), silent = TRUE)
+
+  if (inherits(thexb, "try-error")) {
+    return(c(x = x, d2p = NA, maxHR03diff = NA, n = NA, effn = NA))
+  }
+
+  maxHomRate03diff <- max(unlist(matched.distances(thefm, distance = hrdist2)))
+
+  return(c(
+    x = x, d2p = thexb$overall["thefm", "p.value"],
+    maxHR03diff = maxHomRate03diff,
+    n = sum(!is.na(thefm)),
+    effn = summary(thefm)$effective.sample.size
+  ))
+}
+```
+
+## Design Search for both precision and balance
+
+```{r eval=TRUE,echo=TRUE, cache=TRUE, warning=FALSE}
+## Test the function
+findbalance(c(psCal, mhCal, 0, 2), thedat = meddat, psdist = psdist, mhdist = mhdist)
+## Don't worry about errors for certain combinations of parameters
+maxmhdist <- max(as.vector(mhdist))
+minmhdist <- min(as.vector(mhdist))
+maxpsdist <- max(as.vector(psdist))
+minpsdist <- min(as.vector(psdist))
+```
+
+```{r findbal, echo=TRUE, eval=FALSE}
+set.seed(123455)
+system.time({
+  resultsTemp <- replicate(10, findbalance(x = c(
+    runif(1, minpsdist, maxpsdist),
+    runif(1, minmhdist, maxmhdist),
+    sample(seq(0, 1, length = 100), size = 1),
+    runif(1, min(hrdist2), max(hrdist2))
+  ), thedat = meddat, psdist = psdist, mhdist = mhdist))
+})
+## Notice that balanceTest has trouble when number of covariates is too large (it returns a p=.4530)
+```
+
+```{r findbalpar, eval=TRUE, cache=TRUE, echo=FALSE, warning=FALSE, message=FALSE}
+## If you have a mac or linux machine you can speed this up:
+library(parallel)
+system.time({
+  resultsList <- mclapply(1:1000, function(i) {
+    findbalance(x = c(
+      runif(1, minpsdist, maxpsdist),
+      runif(1, minmhdist, maxmhdist),
+      sample(seq(0, 1, length = 100), size = 1),
+      runif(1, min(hrdist2), max(hrdist2))
+    ), thedat = meddat, psdist = psdist, mhdist = mhdist)
+  },
+  mc.cores = detectCores()
+  )
+  resultsListNA <- sapply(resultsList, function(x) {
+    any(is.na(x))
+  })
+  results <- simplify2array(resultsList[!resultsListNA])
+})
+```
+
+
+## Which matched design might we prefer? {.allowframebreaks}
+
+Now, how might we interpret the results of this search for matched designs?
+Here are a few ideas.
+
+```{r check_out_results, echo=TRUE}
+if (any(class(results) == "list")) {
+  resAnyNA <- sapply(results, function(x) {
+    any(is.na(x))
+  })
+  resNoNA <- simplify2array(results[!resAnyNA])
+} else {
+  resAnyNA <- apply(results, 2, function(x) {
+    any(is.na(x))
+  })
+  resNoNA <- simplify2array(results[, !resAnyNA])
+}
+apply(resNoNA, 1, summary)
+highbalres <- resNoNA[, resNoNA["d2p", ] > .5]
+apply(highbalres, 1, summary)
+```
+
+## Which matched design might we prefer?
+
+The darker points have smaller maximum within set differences on the baseline outcome.
+
+```{r eval=TRUE, echo=FALSE,out.width=".8\\textwidth"}
+par(mfrow = c(1, 2), pty = "m", mgp = c(1.5, .5, 0))
+# color points more dark for smaller differences
+plot(resNoNA["d2p", ], resNoNA["n", ],
+  xlab = "d2p", ylab = "n",
+  col = gray(1 - (resNoNA["maxHR03diff", ] / max(resNoNA["maxHR03diff", ]))),
+  pch = 19
+)
+
+# identify(resNoNA["d2p",],resNoNA["n",] ,labels=round(resNoNA["maxHR03diff",],3),cex=.7)
+## resNoNA[, c(5, 114, 125, 308, 514, 737)]
+plot(resNoNA["d2p", ], resNoNA["effn", ],
+  xlab = "d2p", ylab = "effective n",
+  col = gray(1 - (resNoNA["maxHR03diff", ] / max(resNoNA["maxHR03diff", ]))),
+  pch = 19
+)
+```
+
+
+## Which matched design might we prefer?
+
+```{r canddesigns, eval=TRUE,echo=TRUE}
+interestingDesigns <- (resNoNA["d2p", ] > .3 & resNoNA["n", ] >= 40 &
+  resNoNA["maxHR03diff", ] < 10 & resNoNA["effn", ] > 17)
+candDesigns <- resNoNA[, interestingDesigns, drop = FALSE]
+str(candDesigns)
+apply(candDesigns, 1, summary)
+candDesigns <- candDesigns[, order(candDesigns["d2p", ], decreasing = TRUE)]
+candDesigns <- candDesigns[, 1]
+```
+
+## How would we use this information in `fullmatch`?
+
+```{r bigmatch, echo=TRUE}
+stopifnot(nrow(candDesigns) == 1)
+fm4 <- fullmatch(psdist + caliper(psdist, candDesigns["x1"]) + caliper(mhdist, candDesigns["x2"]) + caliper(hrdist2,candDesigns["x4"]), min.controls=candDesigns["x3"], data = meddat, tol = .00001)
+summary(fm4, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+meddat$fm4 <- NULL ## this line exists to prevent confusion with new fm4 objects
+meddat[names(fm4), "fm4"] <- fm4
+xb3 <- balanceTest(update(balfmla, . ~ . + strata(fm0) + strata(fm1) + strata(fm2) + strata(fm4)),
+  data = meddat
+)
+xb3$overall[, 1:3]
+zapsmall(xb3$results["HomRate03", , ])
+```
+
+## Another approach: Optimization {.allowframebreaks}
+
+Here is another approach that tries to avoid searching the whole space. It focuses on getting close to a target $p$-value from the omnibus/overall balance test and ignores effective sample size. Here we are just looking for one caliper value that gets us close to a particular target balance using one distance matrix. But, of course we care about **both** effective sample size **and** omnibus balance test results.
+
+```{r, echo=TRUE,eval=TRUE,cache=FALSE, warning=FALSE}
+matchAndBalance2 <- function(x, distmat, alpha) {
+  # x is a caliper widths
+  if (x > max(as.vector(distmat)) | x < min(as.vector(distmat))) {
+    return(99999)
+  }
+  thefm <- fullmatch(distmat + caliper(distmat, x), data = meddat, tol = .00001)
+  balfmla_to_use <- update(balfmla, . ~ . + strata(thefm))
+  thexb <- balanceTest(balfmla_to_use, data = data.frame(cbind(meddat, thefm)))
+  return(thexb$overall["thefm", "p.value"])
+}
+
+maxpfn <- function(x, distmat, alpha) {
+  ## here x is the targeted caliper width and x2 is the next wider
+  ## caliper width
+  p1 <- matchAndBalance2(x = x[1], distmat, alpha)
+  p2 <- matchAndBalance2(x = x[2], distmat, alpha)
+  return(abs(max(p1, p2) - alpha))
+}
+
+maxpfn(c(minpsdist, minpsdist + 5), distmat = psdist, alpha = .25)
+maxpfn(c(minpsdist + .31, minpsdist + 1), distmat = psdist, alpha = .25)
+## Try basically no caliper:
+maxpfn(c(maxpsdist - .01, maxpsdist), distmat = psdist, alpha = .25)
+# quantile(as.vector(psdist),seq(0,1,.1))
+# sort(as.vector(psdist))[1:10]
+```
+
+## Another approach: more fine tuned optimization
+
+```{r solnp, echo=TRUE, warning=FALSE, message=FALSE, cache=TRUE}
+### This takes a long time
+library(Rsolnp)
+results3 <- gosolnp(
+  fun = maxpfn,
+  ineqfun = function(x, distmat, alpha) {
+    x[2] - x[1]
+  },
+  ineqLB = 0,
+  ineqUB = maxpsdist,
+  LB = c(minpsdist + .31, minpsdist + .32),
+  UB = c(maxpsdist - .01, maxpsdist),
+  n.restarts = 2,
+  alpha = .5,
+  distmat = psdist,
+  n.sim = 500,
+  rseed = 12345,
+  control = list(trace = 1)
+)
+
+results3$pars
+results3$values
+```
+
+## Another approach: more fine tuned optimization
+
+Results of the optimization search:
+
+```{r echo=TRUE}
+maxpfn(results3$pars, distmat = psdist, alpha = .25)
+## This is the d2 p-value for the chosen caliper
+matchAndBalance2(results3$pars[1], distmat = psdist, alpha = .25)
+```
+
+
+## Cardinality Matching Example {.allowframebreaks}
+
+Another approach to matching combines different constraints --- attempting to,
+for example minimize the sum of distances between units within set while also
+maximizing the number of units in the design. See the citations in the
+`designmatch` package for papers explaining and applying these ideas.
+
+```{r designmatchsetup, echo=TRUE, eval=TRUE, waring=FALSE, message=FALSE, cache=TRUE}
+library(designmatch)
+## library(gurobi)
+
+## Let's match on the propensity score
+meddat$pscore <- thebglm$linear.predictors
+## designmatch needs the observations on the data to be in order of treatment assignment
+meddat_new <- meddat[order(meddat$nhTrt, decreasing = TRUE), ]
+z <- as.vector(meddat_new$nhTrt)
+Xmat <- model.matrix(~pscore, data = meddat_new)
+thedistmat <- distmat(z, Xmat, digits = 2)
+
+thecovs <- unique(c(names(meddat)[c(6:7, 9:24)], "HomRate03"))
+balfmla <- reformulate(thecovs, response = "nhTrt")
+
+psdist_new <- match_on(nhTrt ~ pscore, data = meddat_new)
+distmat <- as.matrix(psdist)
+distmat_scaled <- round(distmat / mean(distmat), 2)
+dimnames(distmat_scaled) <- dimnames(thedistmat)
+## Minimize distances but keep HomRate03 diffs below 2
+nearlist <- list(covs = as.matrix(meddat_new$HomRate03), pairs = 2)
+```
+
+## Cardinality Matching Example {.allowframebreaks}
+
+
+```{r echo=TRUE}
+## solverlist <- list(name='gurobi',approximate=0,t_max=2000,trace=1)
+solverlist <- list(name = "highs", approximate = 1, t_max = 1000)
+res <- bmatch(
+  t_ind = z,
+  dist_mat = thedistmat,
+  near = nearlist,
+  solver = solverlist,
+  subset_weight = 1
+)
+
+## library(cobalt)
+## bal.tab(res,balfmla,data=meddat_new)
+```
+
+```{r}
+#' Convert the output into a factor variable for use in analysis
+nmatch_to_df <- function(obj, origid) {
+  ## We want a factor that we can merge onto our
+  ## existing dataset. Here returning a data.frame so that
+  ## we can merge --- seems less error prone than using
+  ## rownames even if it is slower.
+  matchesdat <- data.frame(
+    bm = obj$group_id,
+    match_id = c(obj$t_id, obj$c_id)
+  )
+  matchesdat$id <- origid[matchesdat$match_id]
+  return(matchesdat)
+}
+
+## The nmatch_to_df function creates a column labeled "bm" which contains
+## indicators of match/pair membership
+res_df <- nmatch_to_df(res, origid = meddat$nh)
+res_df$nh <- res_df$id
+meddat2 <- left_join(meddat, res_df, by = "nh")
+meddat2 <- droplevels(meddat2)
+meddat2$dm1 <- meddat2$bm
+row.names(meddat2) <- row.names(meddat)
+```
+
+
+```{r designmatcheval}
+## Compare to optmatch pairmatch
+pm1 <- pairmatch(psdist, data = meddat2)
+meddat2$pm1 <- pm1
+
+xbdm <- balanceTest(nhTrt ~ HomRate03 + nhAboveHS + nhHS + nhRent + nhOwn + nhSepDiv + nhMarDom + nhAgeYoung + nhSisben + nhPopD + nhQP03 + nhPV03 + nhTP03 +
+  strata(dm1) + strata(pm1), data = meddat2)
+xbdm$overall
+
+xbdm$results[, "std.diff", ]
+```
+
+
+# Estimation
+
+## Overview: Estimate and Test "as if block-randomized" {.allowframebreaks}
+
+What are we estimating? Most people would say ACE=$\bar{\tau}=\bar{y}_1 - \bar{y}_0$. What estimator estimates this without bias?
+
+```{r echo=TRUE}
+meddat[names(fm0), "fm0"] <- fm0
+datB <- meddat %>%
+  filter(!is.na(fm0)) %>%
+  group_by(fm0) %>%
+  summarise(
+    Y = mean(HomRate08[nhTrt == 1]) - mean(HomRate08[nhTrt == 0]),
+    nb = n(),
+    nbwt = unique(nb / nrow(meddat)),
+    nTb = sum(nhTrt),
+    nCb = sum(1 - nhTrt),
+    pb = mean(nhTrt),
+    pbwt = pb * (1 - pb),
+    hbwt1 = pbwt * nb,
+    hbwt2 = pbwt * nbwt,
+    hbwt3 = (2 * (nCb * nTb) / (nTb + nCb))
+  )
+```
+
+```{r echo=TRUE}
+datB
+
+## Notice that all of these different ways to express the harmonic mean weight are the same.
+datB$hbwt101 <- datB$hbwt1 / sum(datB$hbwt1)
+datB$hbwt201 <- datB$hbwt2 / sum(datB$hbwt2)
+datB$hbwt301 <- datB$hbwt3 / sum(datB$hbwt3)
+stopifnot(all.equal(datB$hbwt101, datB$hbwt201))
+stopifnot(all.equal(datB$hbwt101, datB$hbwt301))
+```
+
+## Using the weights: Set size weights
+
+First, we could estimate the set-size weighted ATE. Our estimator uses the
+size of the sets to estimate this quantity.
+
+```{r echo=TRUE}
+## The set-size weighted version
+atewnb <- with(datB, sum(Y * nb / sum(nb)))
+atewnb
+```
+
+## Using the weights: Set size weights
+
+Sometimes it is convenient to use `lm` (or the more design-friendly `lm_robust`) because there are R functions for design-based standard errors and confidence intervals.
+
+```{r usinglm,echo=TRUE,message=FALSE, warning=FALSE}
+meddat$id <- row.names(meddat)
+meddat$nhTrtF <- factor(meddat$nhTrt)
+## See Gerber and Green section 4.5 and also Chapter 3 on block randomized experiments. Also Hansen and Bowers 2008.
+## Here just making a new dataset with no missing data for ease of use later.
+wdat <- meddat %>%
+  filter(!is.na(fm0)) %>%
+  group_by(fm0) %>%
+  mutate(
+    pb = mean(nhTrt),
+    nbwt = nhTrt / pb + (1 - nhTrt) / (1 - pb),
+    gghbwt = 2 * (n() / nrow(meddat)) * (pb * (1 - pb)), ## GG version,
+    gghbwt2 = 2 * (nbwt) * (pb * (1 - pb)), ## GG version,
+    nb = n(),
+    nTb = sum(nhTrt),
+    nCb = nb - nTb,
+    hbwt1 = (2 * (nCb * nTb) / (nTb + nCb)),
+    hbwt2 = nbwt * (pb * (1 - pb))
+  )
+
+row.names(wdat) <- wdat$id ## dplyr strips row.names
+wdat$nhTrtF <- factor(wdat$nhTrtF)
+lm0b <- lm_robust(HomRate08 ~ nhTrt, data = wdat, weight = nbwt)
+lm0b
+```
+
+## Using the weights: precision weights
+
+Set-size weighting is easy to explain but may differ in terms of precision:
+
+```{r echo=TRUE}
+atewhb <- with(datB, sum(Y * hbwt1 / sum(hbwt1)))
+atewhb
+lm1 <- lm_robust(HomRate08 ~ nhTrt + fm0, data = wdat)
+summary(lm1)$coef[2, ]
+summary(lm0b)$coef[2, ]
+## Notice that fixed_effects is same as indicator variables is same as weighting
+lm1a <- lm_robust(HomRate08 ~ nhTrt, fixed_effects = ~fm0, data = wdat)
+summary(lm1a)$coef[1, ]
+```
+
+## Precision weighting
+
+Block-mean centering is another approach although notice some precision gains
+for not "estimating fixed effects" --- in quotes because there is nothing to
+estimate here --- set or block-means are fixed quantities and need not be
+estimated in this framework.
+
+```{r echo=TRUE}
+wdat$HomRate08Cent <- with(wdat, HomRate08 - ave(HomRate08, fm0))
+wdat$nhTrtCent <- with(wdat, nhTrt - ave(nhTrt, fm0))
+
+lm2 <- lm_robust(HomRate08Cent ~ nhTrtCent, data = wdat)
+summary(lm2)$coef[2, ]
+```
+
+## What about random effects?
+
+Notice that one problem we have here is too few sets. Maybe better to use a fully Bayesian version if we wanted to do this.
+Why would we **model** the variability between sets? When might this be useful? How might we evaluate this approach?
+
+```{r echo=TRUE, message=FALSE}
+## This had troubles with convergence
+## library(lme4)
+## lmer1 <- lmer(HomRate08 ~ nhTrt + (1 | fm0),
+##   data = wdat,
+##   verbose = 2, start = 0,
+##   control = lmerControl(optimizer = "bobyqa", restart_edge = TRUE, optCtrl = list(maxfun = 10000))
+## )
+## summary(lmer1)$coef
+## Here is the more directly bayesian version of adjusting for the strata as random intercepts
+library(rstanarm)
+lmer2 <- stan_lmer(HomRate08 ~ nhTrt + (1 | fm0),
+  data = wdat, seed = 12345
+)
+```
+
+```{r printlmer2mod, echo=TRUE}
+# print(lmer2)
+summary(lmer2,
+  pars = c("nhTrt"),
+  probs = c(0.025, 0.975),
+  digits = 4
+)
+```
+
+
+## Which estimator to choose? {.allowframebreaks}
+
+The  block-sized weighted approach is unbiased. But unbiased is not the only
+indicator quality in an estimator.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(DeclareDesign)
+
+thepop <- declare_population(wdat)
+theassign <- declare_assignment(blocks = fm0, block_m_each = table(
+  fm0,
+  nhTrt
+), legacy = TRUE)
+po_fun <- function(data) {
+  data$Y_Z_1 <- data$HomRate08
+  data$Y_Z_0 <- data$HomRate08
+  data
+}
+thepo <- declare_potential_outcomes(handler = po_fun)
+thereveal <- declare_reveal(Y, Z) ## how does assignment reveal potential outcomes
+thedesign <- thepop + theassign + thepo + thereveal
+
+oneexp <- draw_data(thedesign)
+## Test
+origtab <- with(wdat, table(trt = nhTrt, b = fm0))
+all.equal(origtab, with(oneexp, table(trt = Z, b = fm0)))
+```
+
+```{r setup_ests, echo=TRUE,message=FALSE, warning=FALSE, cache=FALSE}
+estimand1 <- declare_inquiry(ACE = mean(Y_Z_1 - Y_Z_0))
+
+est1 <- declare_estimator(Y ~ Z,
+  .method = difference_in_means,
+  label = "E1: Ignoring Blocks",
+  inquiry = "ACE"
+)
+est2 <- declare_estimator(Y ~ Z,
+  fixed_effects = ~fm0,
+  .method = lm_robust,
+  label = "E2: precision weights fe1",
+  inquiry = "ACE"
+)
+est3 <- declare_estimator(Y ~ Z + fm0,
+  .method = lm_robust,
+  label = "E3: precision weights fe2",
+  inquiry = "ACE"
+)
+
+nbwt_est_fun <- function(data) {
+  data$newnbwt <- with(data, (Z / pb) + ((1 - Z) / (1 - pb)))
+  obj <- lm_robust(Y ~ Z, data = data, weights = newnbwt)
+  res <- tidy(obj) %>% filter(term == "Z")
+  return(res)
+}
+
+hbwt_est_fun <- function(data) {
+  data$newnbwt <- with(data, (Z / pb) + ((1 - Z) / (1 - pb)))
+  data$newhbwt <- with(data, newnbwt * (pb * (1 - pb)))
+  obj <- lm_robust(Y ~ Z, data = data, weights = newhbwt)
+  res <- tidy(obj) %>% filter(term == "Z")
+  return(res)
+}
+
+est4 <- declare_estimator(handler = label_estimator(nbwt_est_fun), inquiry = estimand1, label = "E4: direct block size weights")
+est5 <- declare_estimator(handler = label_estimator(hbwt_est_fun), inquiry = estimand1, label = "E5: direct precision weights")
+
+direct_demean_fun <- function(data) {
+  data$Y <- with(data, Y - ave(Y, fm0))
+  data$Z <- with(data, Z - ave(Z, fm0))
+  obj <- lm_robust(Y ~ Z, data = data)
+  data.frame(
+    term = "Z",
+    estimate = obj$coefficients[[2]],
+    std.error = obj$std.error[[2]],
+    statistic = obj$statistic[[2]],
+    p.value = obj$p.value[[2]],
+    conf.low = obj$conf.low[[2]],
+    conf.high = obj$conf.high[[2]],
+    df = obj$df[[2]],
+    outcome = "Y"
+  )
+}
+
+est6 <- declare_estimator(handler = label_estimator(direct_demean_fun), inquiry = estimand1, label = "E6: Direct Demeaning")
+
+# library(lme4)
+library(lmerTest)
+lmer_est_fun <- function(data) {
+  thelmer <- lmer(Y ~ Z + (1 | fm0),
+    data = data,
+    control = lmerControl(restart_edge = TRUE, optCtrl = list(maxfun = 1000))
+  )
+  obj <- summary(thelmer)
+  cis <- confint(thelmer, parm = "Z")
+  data.frame(
+    term = "Z",
+    estimate = obj$coefficients[2, 1],
+    std.error = obj$coefficients[2, 2],
+    statistic = obj$coefficients[2, 3],
+    p.value = obj$coefficients[2, 5],
+    conf.low = cis[1, 1],
+    conf.high = cis[1, 2],
+    df = obj$coefficients[2, 4],
+    outcome = "Y"
+  )
+}
+
+
+est7 <- declare_estimator(handler = label_estimator(lmer_est_fun), inquiry = estimand1, label = "E7: Random Effects")
+```
+
+```{r combine_design_and_ests}
+thedesign_plus_est <- thedesign + estimand1 + est1 + est2 + est3 + est4 + est5 + est6 + est7
+```
+
+## Diagnosands and diagnosis
+
+```{r diagnose, echo=TRUE,message=FALSE, warning=FALSE, cache=TRUE}
+set.seed(12345)
+
+thediagnosands <- declare_diagnosands(
+  bias = mean(estimate - estimand),
+  rmse = sqrt(mean((estimate - estimand)^2)),
+  power = mean(p.value < .05),
+  coverage = mean(estimand <= conf.high & estimand >= conf.low),
+  mean_estimate = mean(estimate),
+  sd_estimate = sd(estimate),
+  mean_se = mean(std.error),
+  mean_estimand = mean(estimand)
+)
+
+library(future)
+library(future.apply)
+plan(multicore) ## only works easily on Mac/Linux machines
+diagnosis <- diagnose_design(thedesign_plus_est,
+  sims = 1000, bootstrap_sims = 0,
+  diagnosands = thediagnosands
+)
+save(diagnosis, file = "day10diag.rda")
+plan(sequential)
+```
+
+## Results of the Simulation
+
+```{r ressim, echo=FALSE}
+reshape_diagnosis(diagnosis, digits = 4)[, -c(1:2, 4)]
+```
+
+```{r}
+thesims <- get_simulations(diagnosis)
+thesims %>% filter(estimator == "E7: Random Effects")
+```
+
+
+# Testing Hypotheses by Randomization Inference in a Block-Randomized Trial
+
+## Testing Approach: By Hand
+
+```{r}
+newexp <- function(trt, b) {
+  newtrt <- unsplit(lapply(split(trt, b), sample), b)
+  return(newtrt)
+}
+
+mdwt1 <- function(y, trt, b) {
+  datB <- data.frame(y, trt, b) %>%
+    group_by(b) %>%
+    summarise(ateb = mean(y[trt == 1]) - mean(y[trt == 0]), nb = n(), .groups = "keep")
+  ate_nbwt <- with(datB, sum(ateb * nb / sum(nb)))
+  return(ate_nbwt)
+}
+
+mdwt2 <- function(y, trt, b) {
+  datB <- data.frame(y, trt, b) %>%
+    group_by(b) %>%
+    summarise(
+      ateb = mean(y[trt == 1]) - mean(y[trt == 0]),
+      nb = n(),
+      nTb = sum(trt),
+      nCb = sum(1 - trt),
+      pb = mean(trt),
+      pbwt = pb * (1 - pb),
+      hbwt1 = pbwt * nb,
+      hbwt3 = (2 * (nCb * nTb) / (nTb + nCb)), .groups = "keep"
+    )
+  ate_hbwt <- with(datB, sum(ateb * hbwt1 / sum(hbwt1)))
+  return(ate_hbwt)
+}
+```
+
+## Testing by hand
+
+```{r testing, echo=TRUE}
+wdat <- meddat %>% filter(!is.na(meddat$fm0))
+
+obsmd1 <- with(wdat, mdwt1(y = HomRate08, trt = nhTrt, b = fm0))
+obsmd2 <- with(wdat, mdwt2(y = HomRate08, trt = nhTrt, b = fm0))
+
+origtab <- with(wdat, table(trt = nhTrt, b = fm0))
+testtab <- with(wdat, table(trt = newexp(trt = nhTrt, b = fm0), b = fm0))
+all.equal(origtab, testtab)
+```
+
+## Testing by hand
+
+```{r, echo=TRUE}
+set.seed(12345)
+nulldist1 <- replicate(1000, with(wdat, mdwt1(y = HomRate08, trt = newexp(trt = nhTrt, b = fm0), b = fm0)))
+set.seed(12345)
+nulldist2 <- replicate(1000, with(wdat, mdwt2(y = HomRate08, trt = newexp(trt = nhTrt, b = fm0), b = fm0)))
+
+p1 <- mean(nulldist1 <= obsmd1)
+p2 <- mean(nulldist2 <= obsmd2)
+
+var(nulldist1)
+var(nulldist2)
+
+2 * min(mean(nulldist1 <= obsmd1), mean(nulldist1 >= obsmd1))
+2 * min(mean(nulldist2 <= obsmd2), mean(nulldist2 >= obsmd2))
+```
+
+```{r}
+plot(density(nulldist1))
+lines(density(nulldist2), lty = 2)
+```
+
+
+
+## Testing Approach: Faster
+
+These are faster because they use the Central Limit Theorem --- under the belief that our current data are large enough (informative enough) that our reference distribution would be well approximated by a Normal distribution.
+
+```{r echo=TRUE}
+## This uses the precision or harmonic mean weighting approach
+xbTest1 <- balanceTest(nhTrt ~ HomRate08 + strata(fm0), data = wdat)
+xbTest1$results[, , "fm0"]
+```
+
+## Testing Approach: Faster
+
+The `coin` package does something similar --- it also allows for permutation based distributions using the `approximate()` function.
+
+```{r echo=TRUE}
+wdat$nhTrtF <- factor(wdat$nhTrt)
+meanTestAsym <- oneway_test(HomRate08 ~ nhTrtF | fm0, data = wdat, distribution = "asymptotic")
+set.seed(12345)
+meanTestPerm <- oneway_test(HomRate08 ~ nhTrtF | fm0, data = wdat, distribution = approximate(nresample = 1000))
+
+pvalue(meanTestAsym)
+pvalue(meanTestPerm)
+
+rankTestAsym <- wilcox_test(HomRate08 ~ nhTrtF | fm0, data = wdat, distribution = "asymptotic")
+set.seed(12345)
+rankTestPerm <- wilcox_test(HomRate08 ~ nhTrtF | fm0, data = wdat, distribution = approximate(nresample = 1000))
+
+pvalue(rankTestAsym)
+pvalue(rankTestPerm)
+```
+
+Notice the two distributions:
+
+```{r}
+rdistwc_perm <- rperm(rankTestPerm, n = 10000)
+rdistwc_asymp <- rperm(rankTestAsym, n = 10000)
+
+plot(density(rdistwc_perm))
+lines(density(rdistwc_asymp), col = "blue")
+abline(v = statistic(rankTestAsym))
+```
+
+## Summary {.shrink}
+
+ - A good research design allows us to interpret comparisons (or relationships)
+   with some clarity (i.e. "My est. of $Z \rightarrow Y$ at least does not
+   reflect age. Nor does it mostly reflect noise"). i.e. at least some way to
+   address alternative explanations and reasonable statistical power (high
+   probability of detecting an effect when an effect exists).
+ - Different stratifications pose different combinations of information (i.e.
+   statistical power) and clarity.
+ - Since we create a research design without looking at outcomes, we are free
+   to explore the space of possible designs.
+ - We are not limited to only distance matrices (and combinations thereof),
+   calipers, and exact matching. We could also specify certain criteria --- to
+   think of finding the design as a constrained optimization problem (which is
+   what `designmatch` does).
+ - Once we have a defensible design, we estimate and test following the design
+   --- just as we would in a randomized experiment.
+ - We can investigate our choices of estimators (and test) using simulation.
+
+ 
 
 
 
