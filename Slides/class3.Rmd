@@ -42,6 +42,7 @@ library(optmatch)
 library(RItools)
 library(estimatr)
 library(coin)
+library(designmatch)
 ```
 
 # Overview and Review
@@ -60,6 +61,17 @@ library(coin)
 4. We can evaluate stratified designs (a) substantively (ex. worst differences
    within set on key covariate) and (b) by comparison to an equivalent
    randomized design.
+5. New challenges:
+    - (From Rosenbaum Chapter "Chapter 9 Basic Tools of Multivariate
+      Matching"): Ordinary Mahalanobis distances can trick us into thinking
+      that observations are farther apart than it should be so he suggests a
+      rank-based version.
+    - Propensity scores produced using logit models with many covariates and
+      few observations can make it hard to find matches (because of the
+      "separation problem" in logistic regression).
+    - Problems of memory for large matching problems. (Use `exactMatch` or
+      `caliper` or the `bigmatch` package etc..)
+    - How to decide on a single design?
 
 
 ## Decision Points in Creating Matched Designs
@@ -232,6 +244,54 @@ In 2-sample comparisons, total sample size can be a misleading as a measure of i
 
 Similarly, a matched triple is roughly $[(\sigma^{2}/1 + \sigma^{2}/2)/(\sigma^{2}/1 + \sigma^{2}/1)]^{-1}= 1.33$ times as informative as a matched pair.
 
+
+## Set sizes and precision.
+
+Since we will be estimating effects by weighting the within-set effects, the variance of set sizes (and ratios of treated-to-control units) influences the overall precision. Here, showing this by demonstration rather than diving into the details.
+
+```{r echo=TRUE}
+
+
+fm0a <- fullmatch(psdist, data = meddat)
+summary(fm0a, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+
+fm0b <- fullmatch(psdist, data = meddat,min.controls=.5,max.controls=4)
+summary(fm0b, min.controls = 0, max.controls = Inf, propensity.model = thebglm)
+
+effectiveSampleSize(fm0a)
+effectiveSampleSize(fm0b)
+```
+
+## Set sizes and precision.
+
+```{r echo=TRUE}
+meddat$fm0a <- fm0a
+meddat$fm0b <- fm0b
+
+get_se <- function(dat,thefm){
+    ## thefm is a character name of the matching factor
+    dat$thefm <- dat[[thefm]]
+    ## shuffle treatment so the true effect is always known (and 0)
+    ## dplyr is nice but it removes row.names.
+    ## optmatch needs rownames to keep track of matches.
+    ## So we have to add them back at the end of the data manipulation.
+    dat <- dat %>% group_by(thefm) %>% mutate(newZ=sample(nhTrt)) %>%  column_to_rownames('nh')
+    thelm <- lm_robust(HomRate08~newZ,fixed_effects=~thefm,data=dat,subset=!is.na(thefm))
+    return(thelm$std.error)
+}
+```
+
+```{r simses, cache=TRUE}
+set.seed(12345)
+res_fm0a <- replicate(100,get_se(meddat,"fm0a"))
+res_fm0b <- replicate(100,get_se(meddat,"fm0b"))
+
+summary(res_fm0a)
+summary(res_fm0b)
+```
+
+
+
 ## Details
 
 Use pooled 2-sample t statistic SE formula to compare 1-1 vs 1-2 matched sets' contribution to variance:
@@ -326,6 +386,77 @@ lm_fm2$std.error
 lm_fm4$std.error
 ```
 
+
+
+# Missing data and matching
+
+## Missing data and matching
+
+We did not talk about missing data on covariates (and the `fill.NAs` command in
+optmatch). We also did not dive into the statistical power and set
+configuration relationship.
+
+## Missing data and matching
+
+```{r echo=FALSE, cache=TRUE}
+load(url("http://jakebowers.org/Data/meddat.rda"))
+meddat <- transform(meddat,
+  HomRate03 = (HomCount2003 / Pop2003) * 1000,
+  HomRate08 = (HomCount2008 / Pop2008) * 1000
+)
+row.names(meddat) <- meddat$nh
+```
+
+What if `nhPopD` had some missing data?
+
+```{r md1, echo=TRUE}
+set.seed(12345)
+meddat$nhPopD[sample(1:45, 10)] <- NA
+summary(meddat$nhPopD)
+```
+
+We would want to compare units who are equally likely to have `nhPopD` missing. So, we create a new variable:
+
+```{r md2, echo=TRUE}
+newdat <- fill.NAs(meddat[, c("nhAboveHS", "nhPopD")])
+head(newdat)
+stopifnot(all.equal(row.names(newdat), row.names(meddat)))
+newdat <- cbind(newdat, meddat[, c("nhTrt", "HomRate08", "HomRate03")])
+head(newdat)
+```
+
+## Missing data and matching
+
+And we include that variable in our balance testing and matching:
+
+```{r echo=TRUE}
+theglm <- arm::bayesglm(nhTrt ~ nhAboveHS + nhPopD + nhPopD.NA + HomRate03, data = newdat)
+psdist <- match_on(theglm, data = meddat)
+maxCaliper(theglm$linear.predictor, z = newdat$nhTrt, widths = c(.1, .5, 1))
+balfmla <- formula(theglm)
+fm0 <- fullmatch(psdist + caliper(psdist, 2), data = newdat)
+summary(fm0, min.controls = 0, max.controls = Inf, propensity.model = theglm)
+summary(unlist(matched.distances(fm0, psdist)))
+newdat$fm0 <- fm0
+xb0 <- xBalance(balfmla, strata = list(fm0 = ~fm0), data = newdat, report = "all")
+xb0$overall
+xb0$results
+```
+
+## Missing Data and Matching
+
+So:
+
+ 1. Missing data on covariates is not a big problems --- such data reveals
+    information to us about the units pre-treatment, so we just stratify on it.
+    We treat missing data as just another covariate.
+ 2. Missing data on treatment assignment or the outcome is a bigger problem: we
+    will tend to use bounds to report on the range of possible answers in such
+    cases.
+
+
+# Design Search Approaches
+
 ## How to find a good design?: Design Search for both precision and balance {.allowframebreaks}
 
 Here I demonstrate searching for two calipers and `min.controls` using a grid of possible caliper values.
@@ -348,7 +479,7 @@ findbalance <- function(x, mhdist = mhdist, psdist = psdist, absdist = hrdist2, 
     return(c(x = x, d2p = NA, maxHR03diff = NA, n = NA, effn = NA))
   }
 
-  maxHomRate03diff <- max(unlist(matched.distances(thefm, distance = hrdist2)))
+  maxHomRate03diff <- max(unlist(matched.distances(thefm, distance = absdist)))
 
   return(c(
     x = x, d2p = thexb$overall["thefm", "p.value"],
@@ -363,6 +494,8 @@ findbalance <- function(x, mhdist = mhdist, psdist = psdist, absdist = hrdist2, 
 
 ```{r eval=TRUE,echo=TRUE, cache=TRUE, warning=FALSE}
 ## Test the function
+thecovs <- unique(c(names(meddat)[c(5:7, 9:24)], "HomRate03"))
+balfmla <- reformulate(thecovs,response="nhTrt")
 findbalance(c(psCal, mhCal, 0, 2), thedat = meddat, psdist = psdist, mhdist = mhdist)
 ## Don't worry about errors for certain combinations of parameters
 maxmhdist <- max(as.vector(mhdist))

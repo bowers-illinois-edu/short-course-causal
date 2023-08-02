@@ -45,7 +45,7 @@ library(nbpMatching)
 
 # Overview and Review
 
-## Last Time
+## So far:
 
 Deciding to stratify rather than remove linear relationships raised new
    questions about:
@@ -53,8 +53,8 @@ Deciding to stratify rather than remove linear relationships raised new
    1. distance matrices (on single covariates, Mahalanobis distances,
       propensity score distances),
       - And in turn raised questions about the separation problem in logistic
-        regression (and why we prefer `bayesglm` to `glm` when we create
-        propensity scores).
+	regression (and why we prefer `bayesglm` to `glm` when we create
+	propensity scores).
    2. calipers (as a way to control and reason about excluding units from the
       design and to focus the design on certain important covariates),
    3. ratios of treated to control units (as a way of improving statistical
@@ -63,67 +63,6 @@ Deciding to stratify rather than remove linear relationships raised new
       speed up the algorithm by breaking the computational problem into smaller
       pieces).
 
-We did not talk about missing data on covariates (and the `fill.NAs` command in
-optmatch). We also did not dive into the statistical power and set
-configuration relationship.
-
-## Missing data and matching
-
-```{r echo=FALSE, cache=TRUE}
-load(url("http://jakebowers.org/Data/meddat.rda"))
-meddat <- transform(meddat,
-  HomRate03 = (HomCount2003 / Pop2003) * 1000,
-  HomRate08 = (HomCount2008 / Pop2008) * 1000
-)
-row.names(meddat) <- meddat$nh
-```
-
-What if `nhPopD` had some missing data?
-
-```{r md1, echo=TRUE}
-set.seed(12345)
-meddat$nhPopD[sample(1:45, 10)] <- NA
-summary(meddat$nhPopD)
-```
-
-We would want to compare units who are equally likely to have `nhPopD` missing. So, we create a new variable:
-
-```{r md2, echo=TRUE}
-newdat <- fill.NAs(meddat[, c("nhAboveHS", "nhPopD")])
-head(newdat)
-stopifnot(all.equal(row.names(newdat), row.names(meddat)))
-newdat <- cbind(newdat, meddat[, c("nhTrt", "HomRate08", "HomRate03")])
-head(newdat)
-```
-
-## Missing data and matching
-
-And we include that variable in our balance testing and matching:
-
-```{r echo=TRUE}
-theglm <- arm::bayesglm(nhTrt ~ nhAboveHS + nhPopD + nhPopD.NA + HomRate03, data = newdat)
-psdist <- match_on(theglm, data = meddat)
-maxCaliper(theglm$linear.predictor, z = newdat$nhTrt, widths = c(.1, .5, 1))
-balfmla <- formula(theglm)
-fm0 <- fullmatch(psdist + caliper(psdist, 2), data = newdat)
-summary(fm0, min.controls = 0, max.controls = Inf, propensity.model = theglm)
-summary(unlist(matched.distances(fm0, psdist)))
-newdat$fm0 <- fm0
-xb0 <- xBalance(balfmla, strata = list(fm0 = ~fm0), data = newdat, report = "all")
-xb0$overall
-xb0$results
-```
-
-## Missing Data and Matching
-
-So:
-
- 1. Missing data on covariates is not a big problems --- such data reveals
-    information to us about the units pre-treatment, so we just stratify on it.
-    We treat missing data as just another covariate.
- 2. Missing data on treatment assignment or the outcome is a bigger problem: we
-    will tend to use bounds to report on the range of possible answers in such
-    cases.
 
 ## Set sizes and precision.
 
