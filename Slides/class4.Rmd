@@ -179,7 +179,7 @@ solverlist <- list(name = "highs", approximate = 0, t_max = 1000, trace = 1)
 
 The function `nmatch` does the optimization. It is not full-matching, but is pair-matching. 
 
-```{r}
+```{r echo=TRUE}
 mh_pairs <- nmatch(
   dist_mat = matchdist_mat,
   near = nearlist,
@@ -189,7 +189,7 @@ mh_pairs <- nmatch(
 ## mh_pairs
 ```
 
-```{r def_fn, echo=FALSE}
+```{r def_fn, echo=TRUE}
 #' Function to convert the output of nmatch into a factor variable for use in analysis
 nmatch_to_df <- function(obj, origid) {
 ## We want a factor that we can merge onto our
@@ -448,7 +448,7 @@ internet survey of Canadians during 2012 where each respondent drew a
 map of their "local community" and then reported their understanding of the
 demographic breakdown of this place.
 
-```{r echo=FALSE, results='hide'}
+```{r echo=TRUE, results='hide'}
 ## White English Speaking Canadians only
 load(url("http://jakebowers.org/ICPSR/canadamapdat.rda"))
 ## summary(canadamapdat)
@@ -476,7 +476,7 @@ And here is the question people were asked (groups in random order).
 White, Engish-speaking, Canadian respondents' reports about "visible minorities" in their hand drawn "local communities".
 
 \centering
-```{r echo=FALSE}
+```{r echo=TRUE}
 par(mfrow=c(1,2))
 with(canadamapdat, scatter.smooth(vm.da, vm.community.norm2,
   col = "gray", ylab="Perceptions",xlab="Census Neighborhood (DA)",
@@ -516,7 +516,7 @@ context (and maybe covariates) who differ in perceptions.
 But objective context is continuous not binary: rather than matching $m$ "treated"
 to $n-m$ "controls", we want to compare all $n$ with all $n$ respondents.
 
-```{r echo=FALSE}
+```{r echo=TRUE}
 ## Exclude people who did not offer a perception or an outcome
 wrkdat0<-canadamapdat[!is.na(canadamapdat$vm.community.norm2) &
 		      !is.na(canadamapdat$social.capital01),]
@@ -613,7 +613,7 @@ summary(nbp1vmdiffs)
 summary(nbp1percdiffs)
 ```
 
-```{r echo=FALSE, warning=FALSE, message=FALSE}
+```{r echo=TRUE, warning=FALSE, message=FALSE}
 source(url("http://jakebowers.org/Matching/nonbimatchingfunctions.R"))
 ```
 
@@ -648,7 +648,7 @@ No treatment and control groups to compare. But we can still compare the
 **relationships** between which person is higher versus lower on the adjusted
 variable (`vmdaPct`) and other covariates conditional on pair.
 
-```{r echo=FALSE}
+```{r echo=TRUE}
 rank.pairs<-function (x, block) { ## Identify the low and high subj in each pair
 	unsplit(lapply(split(x, block), function(x) {
 			       rank(x)
@@ -722,7 +722,7 @@ Does the person who perceives more visible minorities in their community tend
 to be higher (or lower) in `social.capital` than the other person in the pair?
 
 
-```{r}
+```{r echo=TRUE}
 wrkdat2$scRank<-with(wrkdat2,rank.pairs(social.capital01,nbp1))
 wrkdat2$vmCRank<-with(wrkdat2,rank.pairs(vm.community.norm2,nbp1))
 wrkdat2[order(wrkdat2$nbp1),c("nbp1","social.capital01","scRank","vm.community.norm2","vmCRank")][1:6,]
@@ -736,7 +736,7 @@ greatly in subjective context to display greater differences in social capital
 than pairs that differ a little.
 
 
-```{r echo=FALSE,results="hide"}
+```{r echo=TRUE,results="hide"}
 ## By default, this rescales each observation to be the distance from the group mean.
 align.by.block<-function (x, block, fn = mean, thenames=NULL) {
 	newx<-unsplit(lapply(split(x, block), function(x) {
@@ -749,7 +749,7 @@ align.by.block<-function (x, block, fn = mean, thenames=NULL) {
 }
 ```
 
-```{r}
+```{r echo=TRUE}
 wrkdat2$scMD <- with(wrkdat2, align.by.block(social.capital01, nbp1))
 wrkdat2$vmcn2MD <- with(wrkdat2, align.by.block(vm.community.norm2, nbp1))
 wrkdat2[order(wrkdat2$nbp1),c("social.capital01","scMD","vm.community.norm2","vmcn2MD","nbp1")][1:4,]
@@ -781,7 +781,7 @@ If perceptions matter for social capital above and beyond objective context
 then we would expect pairs differing greatly in subjective context to display
 greater differences in social capital than pairs that differ a little.
 
-```{r}
+```{r echo=TRUE}
 lm2
 lm3
 pairdiffs <- wrkdat2 %>%
@@ -794,7 +794,7 @@ lm4
 
 ## Summarize mean differences within pairs
 
-```{r}
+```{r echo=TRUE}
 summary(wrkdat2$vmcn2MD)
 summary(wrkdat2$scMD)
 ```
@@ -818,7 +818,7 @@ coef(lm1)[[2]]*.4/abs(diff(range(wrkdat2$scMD,na.rm=TRUE)))` of the range.
 
 Here is a look at the within-pair differences in perceptions of visible minorities as well as social capital.
 
-```{r smoothplot, out.width=".7\\textwidth", echo=FALSE}
+```{r smoothplot, out.width=".7\\textwidth", echo=TRUE}
 with(wrkdat2,scatter.smooth(vmcn2MD,scMD,span=.3,cex=.7,col="gray",pch=19,lpars=list(lwd=2)))
 abline(h=0,lwd=.5)
 ```
