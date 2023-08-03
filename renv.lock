@@ -1160,6 +1160,19 @@
       ],
       "Hash": "467ec0ca895d4e61a22cfbac9bccddf8"
     },
+    "formula.tools": {
+      "Package": "formula.tools",
+      "Version": "1.7.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "methods",
+        "operator.tools",
+        "utils"
+      ],
+      "Hash": "935ab0bce1a92340866983f3a97e09de"
+    },
     "fs": {
       "Package": "fs",
       "Version": "1.6.3",
@@ -2269,6 +2282,16 @@
         "askpass"
       ],
       "Hash": "273a6bb4a9844c296a459d2176673270"
+    },
+    "operator.tools": {
+      "Package": "operator.tools",
+      "Version": "1.6.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "utils"
+      ],
+      "Hash": "bd93354f4a2ee4e096e3d7ad33e08b72"
     },
     "optmatch": {
       "Package": "optmatch",
