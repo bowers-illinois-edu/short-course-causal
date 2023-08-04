@@ -1,0 +1,687 @@
+
+
+#  Matching on Many Covariates: Using Propensity Scores
+
+
+## The propensity score
+
+Given covariates $\mathbf{x} (=(x_1, \ldots, x_k))$, and a
+treatment variable $Z$, $Z(u) \in \{0, 1\}$,  $\PP (Z \vert \mathbf{x})$ is known as the (true) \textbf{propensity score} (PS).
+$$ \phi( \mathbf{x} ) \equiv \log\left( \PP (Z=1 \vert \mathbf{x})/\PP (Z=0 \vert \mathbf{x}) \right)$$
+is also known as the PS.  In practice, one works
+with an estimated PS, $\hat{\PP} (Z \vert \mathbf{x})$ or
+$\hat{\phi}(\mathbf{x})$.
+
+Theoretically, propensity-score strata or matched sets both
+
+ 1. reduce extrapolation; and
+ 2. balance each of $x_1, \ldots, x_k$.
+
+They do this by making the comparison more "experiment-like", at least in terms of $x_1, \ldots, x_k$.
+
+Theory @rosrub83 also tells us that in the **absence of hidden bias**, such a stratification
+supports unbiased estimation of treatment effects.
+
+
+## Propensity scoring in practice
+
+ - Fitted propensity scores help identify extrapolation.
+ - In practice, stratification on $\hat{\phi}(\mathbf{x})$
+helps balance each of $x_1, \ldots, x_k$ compared to no stratification.
+
+
+There are \emph{lots of cases} in which adjustment with the propensity score alone fails to generate estimates that agree with those of randomized studies.
+
+There are various reasons for this, starting with:
+
+ - lots of observational studies that don't measure quite enough $x$es or the right $x$es or the right $x$es in the right way
+ - **hidden biases** --- propensity scores address bias on measured variables, not unmeasured ones.
+
+## Intuition about the propensity score
+
+A propensity score is the output of a function of covariates as they relate to
+$Z$ (the "treatment" or "intervention"). Why reduce the dimension of $\bm{x}$
+in this way rather than, say, using Mahalanobis distance?
+
+\medskip
+
+Recall that an experiment breaks the relationship between $Z$ and $\bm{x}=\{ x_1,x_2,\ldots \}$ but not between $\bm{x}$ and $Y$ or $y_1,y_0$.
+
+\includegraphics[width=.25\textwidth]{xyzdiagram.pdf}
+
+```{r tikzarrows, eval=FALSE, include=FALSE, engine='tikz', engine.opts=list(template="icpsr-tikz2pdf.tex")}
+\usetikzlibrary{arrows}
+\begin{tikzcd}[ampersand replacement=\&, column sep=small]
+  Z  \arrow[from=1-1,to=1-3] &                               & Y \\
+  &   \mathbf{x} \arrow[from=2-2,to=1-1, "\text{0 if Z rand}"] \arrow[from=2-2,to=1-3] &
+\end{tikzcd}
+```
+
+Making strata of units who are similar on the propensity score reduces (or removes)
+the relationship between $Z$ and the relevant $\mathbf{x}$ within strata (either the
+units have similar values for $\bm{x}$ or the particular $x$s which do not have a
+strong (linear, additive) relationship with $Z$).
+
+## Matching on the propensity score
+
+**Make the score** (Note that we will be using `brglm` or `bayesglm` in the
+future because of logit separation problems when the number of covariates
+increases.)
+
+```{r}
+theglm <- glm(nhTrt ~ nhPopD + nhAboveHS, data = meddat, family = binomial(link = "logit"))
+thepscore <- theglm$linear.predictor
+thepscore01 <- predict(theglm, type = "response")
+```
+
+We tend to match on the linear predictor rather than the version required to
+range only between 0 and 1. Recall how distance matrices required choices of
+distance metrics? We don't want to categorize two observations as "close" just
+because the logit function squashed them together near 0 or 1.
+
+```{r echo=FALSE, out.width=".7\\textwidth"}
+par(mfrow = c(1, 2), oma = rep(0, 4), mar = c(3, 3, 2, 0), mgp = c(1.5, .5, 0))
+boxplot(split(thepscore, meddat$nhTrt), main = "Linear Predictor (XB)")
+stripchart(split(thepscore, meddat$nhTrt), add = TRUE, vertical = TRUE)
+
+boxplot(split(thepscore01, meddat$nhTrt), main = "Inverse Link Function (g^-1(XB))")
+stripchart(split(thepscore01, meddat$nhTrt), add = TRUE, vertical = TRUE)
+```
+
+
+## Matching on the propensity score: What do the distance matrix entries mean?
+
+optmatch creates a scaled propensity score distance by default --- scaling by, roughly, the pooled median absolute deviation of the covariate (or here, the propensity score). So, the distance matrix entries are like standard deviations  --- standardized scores.
+
+```{r}
+## Create a distance matrix using the propensity scores
+psdist <- match_on(theglm, data = meddat)
+psdist[1:4, 1:4]
+```
+
+What do those distances mean?
+```{r}
+simpdist <- outer(thepscore, thepscore, function(x, y) {
+  abs(x - y)
+})
+mad(thepscore[meddat$nhTrt == 1])
+mad(thepscore[meddat$nhTrt == 0])
+(mad(thepscore[meddat$nhTrt == 1]) + mad(thepscore[meddat$nhTrt == 0])) / 2
+## We can see the actual R function here: optmatch:::match_on_szn_scale
+## optmatch:::match_on_szn_scale(thepscore, Tx = meddat$nhTrt)
+simpdist["101", c("401", "402", "403")]
+simpdist["101", c("401", "402", "403")] / .9137
+psdist["101", c("401", "402", "403")]
+```
+
+
+## Matching on the propensity score
+
+The following design balances the two covariates used in the creation of the
+propensity score well. It does not balance the baseline outcome well (not that
+we assumed it would, but demonstrating here that the covariates used for the
+creation of the design need not necessarily be all of those used to
+**evaluate** the design).
+
+```{r}
+fmPs <- fullmatch(psdist, data = meddat)
+summary(fmPs, min.controls = 0, max.controls = Inf,propensity.model=theglm)
+meddat$fmPs <- factor(fmPs)
+
+xb2 <- xBalance(nhTrt ~ nhPopD + nhAboveHS,
+  strata = list(fmPs = ~fmPs), data = meddat,
+  report = "all"
+)
+xb2$overall[, ]
+
+xb2a <- xBalance(nhTrt ~ nhPopD + nhAboveHS + HomRate03,
+  strata = list(fmPs = ~fmPs), data = meddat,
+  report = "all"
+)
+xb2a$overall[, ]
+```
+
+Compare to Mahalanobis distance:
+
+```{r}
+mh_dist <- match_on(nhTrt ~ nhPopD + nhAboveHS,
+  data = meddat,
+  method = "rank_mahalanobis"
+)
+fmMh <- fullmatch(mh_dist, data = meddat)
+summary(fmMh)
+xb3 <- xBalance(nhTrt ~ nhPopD + nhAboveHS + HomRate03,
+  strata = list(unstrat = NULL, fmPs = ~fmPs, fmMh = ~fmMh), data = meddat,
+  report = "all"
+)
+xb3$overall[, ]
+xb3$results[, "std.diff", ]
+```
+
+```{r}
+plot(xb3, ggplot = TRUE) + theme_classic()
+```
+
+# Matching Tricks of the Trade: Calipers, Exact Matching
+
+## Calipers
+
+The optmatch package allows calipers (which forbids certain pairs from being matched).^[You can implement penalties by hand.] Here, for example, we forbid comparisons which differ by more than 2 propensity score standardized distances.
+
+```{r}
+## First inspect the distance matrix itself: how are the distances distributed?
+quantile(as.vector(psdist), seq(0, 1, .1))
+## Next, apply a caliper (setting entries to Infinite)
+psdistCal <- psdist + caliper(psdist, 2)
+as.matrix(psdist)[5:10, 5:10]
+as.matrix(psdistCal)[5:10, 5:10]
+```
+## Calipers
+
+The optmatch package allows calipers (which forbid certain pairs from being matched).^[You can implement penalties by hand.] Here, for example, we forbid comparisons which differ by more than 2 standard deviations on the propensity score. (Notice that we also use the `propensity.model` option to `summary` here to get a quick look at the balance test:)
+
+```{r}
+fmCal1 <- fullmatch(psdist + caliper(psdist, 2), data = meddat, tol = .00001)
+summary(fmCal1, min.controls = 0, max.controls = Inf, propensity.model = theglm)
+pmCal1 <- pairmatch(psdist + caliper(psdist, 2), data = meddat, remove.unmatchables = TRUE)
+summary(pmCal1, propensity.model = theglm)
+```
+
+## Calipers
+
+Another example: We may want to match on mahalanobis distance but disallow any pairs with extreme propensity distance and/or extreme differences in baseline homicide rates (here using many covariates all together).
+
+
+```{r}
+## Create an R formulate object from vectors of variable names
+balfmla <- reformulate(c("nhPopD", "nhAboveHS"), response = "nhTrt")
+
+## Create a mahalanobis distance matrix (of rank transformed data)
+mhdist <- match_on(balfmla, data = meddat, method = "rank_mahalanobis")
+
+## Now make a matrix recording absolute differences between neighborhoods in
+## terms of baseline homicide rate
+tmpHom03 <- meddat$HomRate03
+names(tmpHom03) <- rownames(meddat)
+absdist <- match_on(tmpHom03, z = meddat$nhTrt, data = meddat)
+absdist[1:3, 1:3]
+quantile(as.vector(absdist), seq(0, 1, .1))
+quantile(as.vector(mhdist),seq(0,1,.1))
+## Now create a new distance matrix using two calipers:
+distCal <- psdist + caliper(mhdist, 9) + caliper(absdist, 2)
+as.matrix(distCal)[5:10, 5:10]
+## Compare to:
+as.matrix(mhdist)[5:10, 5:10]
+```
+
+## Calipers
+
+Now, use this new matrix for the creation of stratified designs --- but possibly excluding some units (also showing here the `tol` argument. The version with the tighter tolerance produces a solution with smaller overall distances)
+
+```{r}
+fmCal2a <- fullmatch(distCal, data = meddat, tol = .001)
+summary(fmCal2a, min.controls = 0, max.controls = Inf)
+fmCal2b <- fullmatch(distCal, data = meddat, tol = .00001)
+summary(fmCal2b, min.controls = 0, max.controls = Inf, propensity.model=theglm)
+
+meddat$fmCal2a <- fmCal2a
+meddat$fmCal2b <- fmCal2b
+
+fmCal2a_dists <- matched.distances(fmCal2a, distCal)
+fmCal2b_dists <- matched.distances(fmCal2b, distCal)
+
+mean(unlist(fmCal2a_dists))
+mean(unlist(fmCal2b_dists))
+```
+
+## Exact Matching
+
+We often have covariates that are categorical/nominal and for which we really care about strong balance. One approach to solve this problem is match **exactly** on one or more of such covariates. If `fullmatch` or `match_on` is going slow, this is also an approach to speed things up.
+
+```{r echo=FALSE}
+meddat$classLowHi <- ifelse(meddat$nhClass %in% c(2, 3), "hi", "lo")
+```
+
+```{r}
+dist2 <- psdist + exactMatch(nhTrt ~ classLowHi, data = meddat)
+## or mhdist <- match_on(balfmla,within=exactMatch(nhTrt~classLowHi,data=meddat),data=meddat,method="rank_mahalanobis")
+## or fmEx1 <- fullmatch(update(balfmla,.~.+strata(classLowHi)),data=meddat,method="rank_mahalanobis")
+fmEx1 <- fullmatch(dist2, data = meddat, tol = .00001)
+summary(fmEx1, min.controls = 0, max.controls = Inf, propensity.model=theglm)
+print(fmEx1, grouped = T)
+meddat$fmEx1 <- fmEx1
+```
+## Exact Matching
+
+```{r}
+ftable(Class = meddat$classLowHi, Trt = meddat$nhTrt, fmEx1, col.vars = c("Class", "Trt"))
+```
+
+## What about using many covariates? The separation problem in logistic regression
+
+What if we want to match on more than two covariates? Let's step through the following to discover a problem with logistic regression when the number of covariates is large relative to the size of the dataset.
+
+```{r echo=TRUE}
+library(splines)
+library(arm)
+thecovs <- unique(c(names(meddat)[c(5:7,9:24)],"HomRate03"))
+balfmla<-reformulate(thecovs,response="nhTrt")
+psfmla <- update(balfmla,.~.+ns(HomRate03,2)+ns(nhPopD,2)+ns(nhHS,2))
+glm0 <- glm(balfmla,data=meddat,family=binomial(link="logit"))
+glm1 <- glm(psfmla,data=meddat,family=binomial(link="logit"))
+bayesglm0 <- bayesglm(balfmla,data=meddat,family=binomial(link="logit"))
+bayesglm1 <- bayesglm(psfmla,data=meddat,family=binomial(link="logit"))
+psg1 <- predict(glm1,type="response")
+psg0 <- predict(glm0,type="response")
+psb1 <- predict(bayesglm1,type="response")
+psb0 <- predict(bayesglm0,type="response")
+```
+## The separation problem
+
+Logistic regression is excellent at discriminating between groups \ldots often **too excellent** for us \autocite{gelman2008weakly}. First evidence of this is big and/or missing coefficients in the propensity score model. See the coefficients below (recall that we are predicting `nhTrt` with these covariates in those models):
+
+```{r echo=FALSE}
+thecoefs <- rbind(glm0=coef(glm0)[1:20],
+      glm1=coef(glm1)[1:20],
+      bayesglm0=coef(bayesglm0)[1:20],
+      bayesglm1=coef(bayesglm1)[1:20]
+      )
+thecoefs[,1:5]
+```
+
+## The separation problem
+
+```{r, echo=FALSE, out.width=".9\\textwidth"}
+par(mfrow=c(1,2))
+matplot(t(thecoefs),axes=FALSE)
+axis(2)
+axis(1,at=0:19,labels=colnames(thecoefs),las=2)
+
+matplot(t(thecoefs),axes=FALSE,ylim=c(-15,10))
+axis(2)
+axis(1,at=0:19,labels=colnames(thecoefs),las=2)
+
+legend("topright",col=1:4,lty=1:4,legend=c("glm0","glm1","bayesglm0","bayesglm1"))
+```
+
+
+## The separation problem in logistic regression
+
+So, if we are interested in using the propensity score to compare observations in regards the multi-dimensional space of many covariates, we would probably prefer a dimensional reduction model like `bayesglm` over `glm`.
+
+```{r out.width=".9\\textwidth", echo=FALSE}
+par(mfrow=c(2,2),mar=c(3,3,2,.1))
+boxplot(psg0~meddat$nhTrt,main=paste("Logit",length(coef(glm0))," parms",sep=" "))
+stripchart(psg0~meddat$nhTrt,vertical=TRUE,add=TRUE)
+boxplot(psg1~meddat$nhTrt,main=paste("Logit",length(coef(glm1))," parms",sep=" "))
+stripchart(psg1~meddat$nhTrt,vertical=TRUE,add=TRUE)
+boxplot(psb0~meddat$nhTrt,main=paste("Shrinkage Logit",length(coef(bayesglm0))," parms",sep=" "))
+stripchart(psb0~meddat$nhTrt,vertical=TRUE,add=TRUE)
+boxplot(psb1~meddat$nhTrt,main=paste("Shrinkage Logit",length(coef(bayesglm1))," parms",sep=" "))
+stripchart(psb1~meddat$nhTrt,vertical=TRUE,add=TRUE)
+```
+
+# How to find a good matched design?
+
+## Searching for a good matched design
+
+Often we find ourselves hunting for a matched design by fiddling with different
+parameters, etc.. Here I show a couple of approaches that are a bit more
+systematic or at least may help organize the fiddling.
+
+## Design Search for both precision and balance
+
+Here I demonstrate searching for two calipers.
+
+```{r gridsearch, cache=FALSE}
+findbalance<-function(x,mhdist=mhdist,psdist=psdist,thedat=meddat){
+    ##message(paste(x,collapse=" "))
+    thefm<-try(fullmatch(psdist+caliper(mhdist,x[2])+caliper(psdist,x[1]),data=thedat,tol=.00001))
+
+    if(inherits(thefm,"try-error")){
+        return(c(x=x,d2p=NA,maxHR03diff=NA,n=NA,effn=NA))
+    }
+
+    thedat$thefm <- thefm
+
+    thexb<-try(xBalance(balfmla,strata=list(thefm=~thefm),
+            data=thedat,
+            report=c("chisquare.test","p.values")),silent=TRUE)
+
+    if(inherits(thexb,"try-error")){
+        return(c(x=x,d2p=NA,maxHR03diff=NA,n=NA,effn=NA))
+    }
+
+    maxHomRate03diff<-max(unlist(matched.distances(thefm,distance=absdist)))
+
+    return(c(x=x,d2p=thexb$overall["thefm","p.value"],
+            maxHR03diff=maxHomRate03diff,
+            n=sum(!is.na(thefm)),
+            effn=summary(thefm)$effective.sample.size))
+
+}
+
+```
+
+## Design Search for both precision and balance
+
+```{r eval=TRUE,echo=FALSE, cache=TRUE, warning=FALSE}
+## Test the function
+findbalance(c(3,3),thedat=meddat,psdist=psdist,mhdist=mhdist)
+## Don't worry about errors for certain combinations of parameters
+maxmhdist<-max(as.vector(mhdist))
+minmhdist<-min(as.vector(mhdist))
+maxpsdist<-max(as.vector(psdist))
+minpsdist<-min(as.vector(psdist))
+```
+
+```{r findbal, eval=FALSE}
+set.seed(123455)
+system.time({
+    results<-replicate(1000,findbalance(x=c(runif(1,minpsdist,maxpsdist),
+                runif(1,minmhdist,maxmhdist)),thedat=meddat,psdist=psdist,mhdist=mhdist))
+}
+)
+```
+
+```{r findbalpar, eval=TRUE, cache=TRUE, echo=FALSE}
+## If you have a mac or linux machine you can speed this up:
+library(parallel)
+system.time({
+    resultsList<-mclapply(1:1000,function(i){
+        findbalance(x=c(runif(1,minpsdist,maxpsdist),
+                runif(1,minmhdist,maxmhdist)),thedat=meddat,psdist=psdist,mhdist=mhdist)
+                },
+        mc.cores=detectCores())
+    resultsListNA<-sapply(resultsList,function(x){ any(is.na(x)) })
+    results<-simplify2array(resultsList[!resultsListNA])
+}
+)
+
+```
+
+
+## Which matched design might we prefer?
+
+Now, how might we interpret the results of this search for matched designs?
+Here are a few ideas.
+
+```{r }
+if(class(results)=="list"){
+    resAnyNA<-sapply(results,function(x){ any(is.na(x)) })
+    resNoNA<-simplify2array(results[!resAnyNA])
+} else {
+    resAnyNA<-apply(results,2,function(x){ any(is.na(x)) })
+    resNoNA<-simplify2array(results[,!resAnyNA])
+}
+apply(resNoNA,1,summary)
+highbalres<-resNoNA[,resNoNA["d2p",]>.5]
+apply(highbalres,1,summary)
+```
+
+## Which matched design might we prefer?
+
+The darker points have smaller maximum within set differences on the baseline outcome.
+
+```{r eval=TRUE, echo=FALSE}
+# color points more dark for smaller differences
+plot(resNoNA["d2p",],resNoNA["n",],
+    xlab='d2p',ylab='n',
+    col=gray(1- ( resNoNA["maxHR03diff",]/max(resNoNA["maxHR03diff",]))),
+    pch=19)
+
+## identify(resNoNA["d2p",],resNoNA["n",],labels=round(resNoNA["maxHR03diff",],3),cex=.7)
+```
+
+## Which matched design might we prefer?
+
+```{r canddesigns, eval=TRUE,echo=TRUE}
+interestingDesigns<- (resNoNA["d2p",]>.1 & resNoNA["n",]>=40 &
+    resNoNA["maxHR03diff",]<=10 & resNoNA["effn",] > 6)
+candDesigns <- resNoNA[,interestingDesigns,drop=FALSE]
+str(candDesigns)
+apply(candDesigns,1,summary)
+candDesigns<-candDesigns[,order(candDesigns["d2p",],decreasing=TRUE)]
+candDesigns <- candDesigns[,1]
+```
+
+## How would we use this information in `fullmatch`?
+
+```{r bigmatch}
+stopifnot(nrow(candDesigns)==1)
+fm4<-fullmatch(psdist+caliper(psdist,candDesigns["x1"])+caliper(mhdist,candDesigns["x2"]),data=meddat,tol=.00001)
+
+summary(fm4,min.controls=0,max.controls=Inf,propensity.model=bayesglm0)
+
+meddat$fm4<-NULL ## this line exists to prevent confusion with new fm4 objects
+meddat[names(fm4),"fm4"]<-fm4
+
+xb3<-xBalance(balfmla,strata=list(fm4=~fm4),
+	      data=meddat, report=c("all"))
+xb3$overall[,1:3]
+zapsmall(xb3$results["HomRate03",,])
+```
+
+## Another approach: more fine tuned optimization
+
+Here is another approach that tries to avoid searching the whole space. It focuses on getting close to a target $p$-value from the omnibus/overall balance test. Here we are just looking for one caliper value that gets us close to a particular target balance using one distance matrix.
+
+```{r eval=TRUE,cache=FALSE}
+matchAndBalance2<-function(x,distmat,alpha){
+	#x is a caliper widths
+	if(x>max(as.vector(distmat)) | x<min(as.vector(distmat))){ return(99999) }
+	thefm<-fullmatch(distmat+caliper(distmat,x),data=meddat,tol=.00001)
+	thexb<-xBalance(balfmla,
+			strata=data.frame(thefm=thefm),
+			data=meddat,
+			report=c("chisquare.test"))
+	return(thexb$overall[,"p.value"])
+}
+
+maxpfn<-function(x,distmat,alpha){
+	## here x is the targeted caliper width and x2 is the next wider
+	## caliper width
+	p1<-matchAndBalance2(x=x[1],distmat,alpha)
+	p2<-matchAndBalance2(x=x[2],distmat,alpha)
+	return(abs( max(p1,p2) - alpha) )
+}
+
+maxpfn(c(minpsdist,minpsdist+1),distmat=psdist,alpha=.25)
+#quantile(as.vector(psdist),seq(0,1,.1))
+#sort(as.vector(psdist))[1:10]
+```
+
+## Another approach: more fine tuned optimization
+
+```{r solnp, warning=FALSE, message=FALSE, cache=TRUE}
+library(Rsolnp)
+### This takes a long time
+results3<-gosolnp(fun=maxpfn,
+		  ineqfun=function(x,distmat,alpha){ x[2] - x[1] },
+		  ineqLB = 0,
+		  ineqUB = maxpsdist,
+		  LB=c(minpsdist,minpsdist+.01),
+		  UB=c(maxpsdist-.01,maxpsdist),
+		  n.restarts=2,
+		  alpha=.5,
+          distmat=psdist,
+		  n.sim=500,
+		  rseed=12345,
+		  control=list(trace=1)
+)
+
+results3$pars
+results3$values
+```
+
+## Another approach: more fine tuned optimization
+
+```{r}
+maxpfn(results3$pars,distmat=psdist,alpha=.25)
+matchAndBalance2(results3$pars[1],distmat=psdist,alpha=.25)
+```
+
+## Back to matching on a scalar: Inspecting the Design from a substantive perspective
+
+Do any of these sets look like the differences are too big within the set?
+
+```{r}
+absHomMatch <- fullmatch(absdist, data = meddat)
+meddat$absHomMatch <- absHomMatch
+setdiffsHM <- meddat %>%
+  group_by(absHomMatch) %>%
+  summarize(
+    mndiffs =
+      mean(HomRate03[nhTrt == 1]) -
+        mean(HomRate03[nhTrt == 0]),
+    mnHomRate03 = mean(HomRate03),
+    minHomRate03 = min(HomRate03),
+    maxHomRate03 = max(HomRate03)
+  )
+setdiffsHM
+```
+
+## Decision Points in Creating Matched Designs
+
+ - Which covariates and their scaling and coding. (For example, exclude covariates with no variation!)
+ - Which distance matrices (scalar distances for one or two important variables, Mahalanobis distances (rank  transformed or not), Propensity distances (using linear predictors)).
+ - (Possibly) which calipers (and how many, if any, observations to drop. Note about ATT as a random quantity and ATE/ACE as fixed.)
+ - (Possibly) which exact matching or strata
+ - (Possibly) which structure of sets (how many treated per control, how many controls per treated)
+ - Which remaining differences are tolerable from a substantive perspective?
+ - How well does the resulting research design compare to an equivalent block-randomized study (`xBalance`)?
+ - (Possibly) How much statistical power does this design provide for the quantity of interest?
+ - Other questions to ask about a research design aiming to help clarify comparisons.
+
+
+
+## Next time:
+
+ - Matching when we have more than one group (non-bipartite matching)
+
+## Remaining questions?
+
+
+## References
+
+
+
+# Recap
+
+## Regression is not research design {.shrink}
+
+What does this mean?
+
+Research design occurs **before** estimation and testing. You can try out lots
+of ideas, simulate, discuss, pre-register your planned analysis and your
+design, all before you produce the estimate or test having to do with some
+causal effect. This means (1) you are not seeing the estimates and tests when
+you are looking for a good design and (2) standards for good design are not the
+same as the standards for good estimators and tests.
+
+When you present the result of a regression model after searching for a
+specification, readers wonder:
+
+1. is this just the best result out of
+thousands? Are most results like this? Or was this cherry picked?
+2. how many
+$p$-values were looked at before reporting this one with $p < .05$?
+
+\small{Recall
+that if we reject $H_0$ when $p < .05$, we are saying that it is ok for 5% of
+tests to mislead us --- to have $p < .05$ when there is no effect (when $H_0$
+is true). So, a $p < .05$ after one test means that either have a rare testing
+error (a false positive result) or that $H_0$ is false.  But an unadjusted $p <  .05$ after 100 tests is virtually
+certain to occur (with prob of .99) when $H_0$ is true: $p < .05$ is a signal of a false positive error not of a substantive signal about $H_0$. So we
+should not reject the null even if the $p < .05$ in this case. (See
+[EGAP Guide on Multiple Comparisons](https://egap.org/resource/10-things-to-know-about-multiple-comparisons/) ).
+}
+
+## Regression is not research design
+
+Say we want to describe the relationship between an outcome $y$, a focal explanatory
+variable, $z$ and a potential confounder $x$ as a linear and additive function:
+$y_i = \beta_0 + \beta_1 z_i + \beta_2 x_i$. What can we say about this?
+
+1. "The **math implies** that the difference in $y$ between any two values of $z$ that differ by 1 must be the same regardless of which two values and regardless of the values that we plug-in for $x$." (Correct)
+2. "The **math says** that relationship between differences in $z$ and differences in $y$ ($\frac{dy}{dz}$), is the same for all values of $z$ and $x$. This is a constant relation." (Correct)
+
+## Regression is not research design
+
+
+Say we fit that mathematical model, $y_i = \beta_0 + \beta_1 z_i + \beta_2 x_i$, to data. What can we say?
+
+```{r, echo=FALSE, out.width=".5\\textwidth"}
+load(here::here("day7_dat.rda"))
+lm_Y_x1 <- lm(Y ~ x1, data = dat)
+lm_Z_x1 <- lm(Z ~ x1, data = dat)
+dat$resid_Y_x1 <- resid(lm_Y_x1)
+dat$resid_Z_x1 <- resid(lm_Z_x1)
+lm2 <- lm(Y~Z+x1,data=dat)
+coef(lm2)
+```
+
+Here is a plot of Y-without-linear-x1 on X-without-linear-x1 with a slope of `r coef(lm2)[["Z"]]`.
+
+```{r, echo=FALSE, out.width=".5\\textwidth",warning=FALSE}
+g1 <- ggplot(dat,aes(x=resid_Z_x1,y=resid_Y_x1,color=x1))+geom_point()+geom_smooth(method="lm",se=FALSE)
+print(g1)
+```
+
+
+## Regression is not research design {.shrink}
+
+```{r, echo=FALSE, out.width=".8\\textwidth",warning=FALSE}
+g2 <- ggplot(dat,aes(x=x1,y=Y,color=factor(Z)))+geom_point()+
+	geom_abline(intercept=coef(lm2)[["(Intercept)"]],slope=coef(lm2)[["x1"]])+
+	geom_abline(intercept=(coef(lm2)[["(Intercept)"]]+coef(lm2)[["Z"]]),
+		    slope=coef(lm2)[["x1"]],color="turquoise")
+
+##print(g2)
+library(cowplot)
+plot_grid(g1,g2)
+```
+
+
+1. "Are we comparing $Y$ values with different $Z$ values but the same $x1$ value? Does our data fitting do the same thing as actually holding constant $x1$?" (No.)
+2. "Does fitting our mathematical model to data do the same thing as physically holding constant?" (No.)
+3. "Do predictions of $Y$ from our model for two values of $Z$ that are 1 apart differ by the same amount regardless of (a) which two values they are and (b) any value that we put in for $x$?" (Yes. This is because we decided to describe all of the relationships with a line.)
+
+
+## A 3D surface
+
+Notice that the lines have the same slope as you move across the plane.
+
+```{r, fig.keep="last"}
+library(rgl)
+n <- 20
+uniq_x <- seq(0,1,length=n)
+uniq_z <- seq(0,1,length=n)
+region <- expand.grid(x = uniq_x, z = uniq_z)
+y <- matrix((region$x + region$z), n, n)
+surface3d(x=uniq_x, y=uniq_z, z=y, back = 'line', front = 'line', col = 'red', lwd = 1.5, alpha = 0.4)
+axes3d()
+```
+
+## Recap summary:
+
+- Correct interpretation of mathematical linear models may involve the word
+  "constant" (after all, lines have constant slope, planes have constant slopes
+  (one slope per dimension)).
+- Mathematical linear models fit to data are not research designs. We learn
+  which linear model fits the data best (where "best" can be defined in least
+  squares ways for example), but we cannot learn whether confounding is linear
+  from fitting such a model.
+- Linear models estimate average treatment effects well (since OLS is a
+  mean-difference calculator) and friendly software designers provide tests of
+  the weak null of no average effects by default (that are valid given
+  assumptions about standard errors and CLTs).
+- Linear models are not research designs and should not be used as such.
+- Using linear models for adjustment might make sense if you are not worried
+  about and/or have investigated: extrapolation, interpolation, functional
+  form, influential points, and you have pre-specified your specification to
+  avoid multiple testing problems and/or maybe generate a specification curve
+  (of the millions of ways to specify the **adjustment part** of the linear
+  model).
+
+

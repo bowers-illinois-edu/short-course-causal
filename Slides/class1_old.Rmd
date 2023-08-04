@@ -1,0 +1,82 @@
+
+## What about controlling for x1?
+
+If we knew that x1 causes both Z and Y, then perhaps we can "control for it"?
+What does this do? Say we do not know how Z was assigned. Which should we use?
+
+```{r echo=TRUE}
+set.seed(12345)
+dat$Z <- new_exp2(dat$Z,dat$x1)
+e1 <-lm(Y~Z,data=dat)
+e2 <- lm(Y~Z+x1,data=dat)
+coef(e1)[["Z"]]
+coef(e2)[["Z"]]
+```
+
+## What about controlling for x1?
+
+What does it mean when we "control for" x1?
+
+```{r}
+with(dat,plot(x1,Y,pch=c(1,19)[Z+1],col=c("black","grey")[Z+1]))
+abline(a=coef(e2)[[1]],b=coef(e2)[["x1"]])
+abline(a=coef(e2)[[1]]+1,b=coef(e2)[["x1"]])
+text(y=c(coef(e2)[[1]],coef(e2)[[1]]+1),x=c(0,0),labels=c("Z=0","Z=1"))
+```
+
+## What about controlling for x1?
+
+Controlling for as residualization:
+
+```{r echo=TRUE}
+resid1 <- residuals(lm(Y~x1,data=dat))
+resid2 <- residuals(lm(Z~x1,data=dat))
+e2new <- lm(resid1~resid2)
+coef(e2new)[[2]]
+stopifnot(all.equal(coef(e2new)[[2]], coef(e2)[["Z"]]))
+```
+
+```{r out.width=".5\\textwidth"}
+par(mfrow=c(1,2),oma=rep(0,4),mar=c(3,3,1,1),mgp=c(1.25,.5,0))
+with(dat,plot(x1,Y))
+abline(lm(Y~x1,data=dat))
+plot(dat$x1,resid1)
+abline(lm(resid1~dat$x1))
+```
+
+
+## What about controlling for x1?
+
+Controlling for as residualization:
+
+```{r out.width=".8\\textwidth"}
+par(mfrow=c(1,2),oma=rep(0,4),mar=c(3,3,1,1),mgp=c(1.25,.5,0))
+with(dat,plot(x1,Y))
+abline(lm(Y~x1,data=dat))
+plot(dat$x1,resid1)
+abline(lm(resid1~dat$x1))
+```
+
+## What about controlling for x1?
+
+**How** should we control for x1? How to choose?
+
+```{r echo=TRUE}
+set.seed(12345)
+dat$Z <- new_exp2(dat$Z,dat$x1)
+e1 <-lm(Y~Z,data=dat)
+e2 <- lm(Y~Z+x1,data=dat)
+e3 <- lm(Y~Z+x1+I(x1^2),data=dat)
+e4 <- lm(Y~Z*x1+I(x1^2),data=dat)
+coef(e1)[["Z"]]
+coef(e2)[["Z"]]
+coef(e3)[["Z"]]
+preddat <- expand.grid(Z=unique(dat$Z),x1=unique(dat$x1))
+preddat$e4fit <- predict(e4,newdata=preddat)
+## Equal weight estimate
+with(preddat,mean(e4fit[Z==1]) - mean(e4fit[Z==0]))
+```
+
+Is this enough? What else might we do? Did we do a good job? How would we know? What does "controlling for" really mean?
+
+

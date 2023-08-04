@@ -1,0 +1,102 @@
+
+## The World of Matching Today
+
+This is an active and productive research area (i.e. lots of new ideas, not
+everyone agrees about everything). Here are just a few of the different
+approaches to creating strata or sets or selecting subsets. I'm excluding work
+that mostly focuses on finding optimal weights directly rather than first
+finding defensible/optimal stratified designs from this list, but that is also
+an area worth exploring.
+
+ - The work on cardinality matching and fine balance
+   <http://jrzubizarreta.com/>
+   <https://cran.rstudio.com/web/packages/designmatch/> )
+ - The work on speedier approximate full matching with more data  <http://fredriksavje.com/>
+   <https://github.com/fsavje/quickmatch>, <https://cran.r-project.org/web/packages/rcbalance/index.html>.
+ - The work on using genetic algorithms to (1) find approximate strata
+   **with-replacement** <http://sekhon.berkeley.edu/matching/> and (2) to find
+   an approximation to a completely randomized study (i.e. best subset
+   selection) <http://cho.pol.illinois.edu/wendy/papers/bossor.pdf>
+ - The work on coarsened exact matching <https://gking.harvard.edu/cem>
+ - The work on entropy-balancing approach to causal effects <https://web.stanford.edu/~jhain/software.htm#ebal>.
+ - The covariate-balancing propensity score (CBPS) <https://imai.princeton.edu/research/CBPS.html>.
+
+
+
+## Overly Ambitious Plan
+
+  - 00:00 -- 00:30 --- Review
+  - 00:30 -- 01:30 ---  Lecture by Jake with lots of questions from the class
+  - 01:30 -- 01:40 --- Break
+  - 01:40 -- 02:00 --- Questions about the lecture and/or readings
+  - 02:00 -- 03:00 --- Break and Exercise 3 and maybe Exercise 4.
+  - 03:00 -- 04:00 --- Discussion of questions arising from the exercises and
+    questions lingering from reading, or lecture, or open discussion on any
+    topic.
+
+
+## The Curse of Dimensionality and linear adjustment for one more variable.
+
+What about more than one variable? Have we controlled for both population
+density and educational attainment enough? How would we know?
+
+```{r lm2x, echo=TRUE}
+lm2x <- lm(HomRate08 ~ nhTrt + nhPopD + nhAboveHS, data = meddat)
+coef(lm2x)["nhTrt"]
+```
+
+Maybe another plot?
+
+```{r eval=FALSE}
+meddat$nhTrtF <- factor(meddat$nhTrt)
+library(car)
+scatter3d(HomRate08 ~ nhAboveHS + nhPopD,
+  groups = meddat$nhTrtF,
+  data = meddat, surface = TRUE,
+  fit = c("linear")
+) # additive"))
+```
+
+```{r echo=FALSE, eval=FALSE}
+scatter3d(HomRate08 ~ nhAboveHS + nhPopD,
+  groups = meddat$nhTrtF,
+  data = meddat, surface = TRUE,
+  fit = c("additive")
+)
+```
+
+
+## The Problem of Using  the Linear Model for  Adjustment
+
+ - Problem of Interepretability: "Controlling for" is  "removing (additive) linear relationships" it is  not "holding constant"
+ - Problem of Diagnosis and Assessment: What is the  standard against which we can compare a given linear covariance adjustment specification?
+ - Problem of extrapolation and interpolation: Often known as "common support", too.
+ - Problems of overly influential points and curse of  dimensionality: As dimensions increase, odds of influential  point increase (ex. bell curve in one dimension, one very influential point in 2 dimensions); also real limits on number of covariates (roughly $\sqrt{n}$ for OLS).
+
+## The Problem of Using  the Linear Model for  Adjustment
+
+ - Problems of  bias even in randomized experiments:
+
+\begin{equation}
+Y_i = \beta_0 + \beta_1 Z_i + e_i
+\label{eq:olsbiv}
+\end{equation}
+
+This is a common practice because, we know that the formula to estimate
+$\beta_1$ in equation \eqref{eq:olsbiv} is the same as the difference of means
+in $Y$ between treatment and control groups:
+
+\begin{equation}
+\hat{\beta}_1 = \overline{Y|Z=1} - \overline{Y|Z=0} = \frac{cov(Y,Z)}{var(Z)}.
+\end{equation}
+
+\begin{equation}
+Y_i = \beta_0 + \beta_1 Z_i + \beta_2 X_i + e_i \label{eq:olscov}
+\end{equation}
+
+What is $\beta_1$ in this case? We know the matrix representation here $(\bX^{T}\bX)^{-1}\bX^{T}\by$, but here is the scalar formula for this particular case in \eqref{eq:olscov}:
+
+\begin{equation}
+\hat{\beta}_1 = \frac{\var(X)\cov(Z,Y) - \cov(X,Z)\cov(X,Y)}{\var(Z)\var(X) - \cov(Z,X)^2}
+\end{equation}
+
