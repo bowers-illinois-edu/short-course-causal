@@ -40,6 +40,7 @@ source(here::here("Exercises/rmd_setup.R"))
 library(tidyverse)
 library(optmatch)
 library(RItools)
+library(coin)
 library(estimatr)
 library(sensitivitymv)
 library(sensitivitymw)
@@ -53,11 +54,15 @@ library(sensemakr)
 
 ## So far:
 
- 1. Introduced non-bipartite matching (see also DOS on Risk Set Matching and Longitudinal Applications)
+ 1. Introduced non-bipartite matching (see also *Design of Observational
+    Studies* on Risk Set Matching and Longitudinal Applications)
  2. New questions arose:
-    1. How to encourage pairs to **differ** in the causal/explanatory variable. (use the `far` option in `nmatch`).
-    2. What does "balance" mean in this case? Does it compare to an experiment in some way? Which experiment?
-    3. How to think about effects: should it just be higher-vs-lower? Or more-versus-less?
+    1. How to encourage pairs to **differ** in the causal/explanatory variable.
+       (use the `far` option in `nmatch`).
+    2. What does "balance" mean in this case? Does it compare to an experiment
+       in some way? Which experiment?
+    3. How to think about effects: should it just be higher-vs-lower? Or
+       more-versus-less?
 
 ## Today: Sensitivity Analysis
 
@@ -153,12 +158,14 @@ options(show.signif.stars = FALSE)
 I  use a gain score approach using a pairmatch (Notice that the difference in
 the gain scores is the difference in the differences. Only here we make no
 parallel trends assumption, our assumptions are different from those used by
-DiD approaches.)
+DiD approaches: to the extent that we claim to be estimating an ATE, we are
+assuming "as-if randomized" rather than parallel trends.)
 
 ```{r echo=TRUE}
 balfmla <- nhTrt ~ HomRate03 + nhPopD + nhHS + nhAboveHS + nhEmp + nhAgeMid + nhAgeYoung + nhMarDom + nhOwn + nhRent
 glm1 <- arm::bayesglm(balfmla, data = meddat)
-meddat <- transform(meddat, pairm = pairmatch(glm1, data = meddat))
+pm1 <- pairmatch(glm1,data=meddat)
+meddat$pairm <- factor(pm1)
 xb1 <- balanceTest(update(balfmla,.~.+strata(pairm)), data = meddat)
 xb1$overall
 ```
@@ -166,12 +173,15 @@ xb1$overall
 And here is an **outcome analysis** using `HomRate08 - HomRate03` as my outcome:
 
 ```{r echo=TRUE}
-xbtest3 <- balanceTest(nhTrt ~ HomRate0803+strata(pairm), data = meddat[matched(meddat$pairm), ])
-xbtest3$overall
-xbtest3$results[, c("adj.diff", "z", "p"), ]
-## OR using a different asymptotic approximation:
 lm1 <- lm_robust(HomRate0803 ~ nhTrt, fixed_effects = ~pairm, data = meddat, subset = !is.na(pairm))
 lm1
+## Or using a permutation based test: since the focus in Rosenbaum is on p-values
+meddat$nhTrtF <- factor(meddat$nhTrt)
+set.seed(12345)
+test1 <- oneway_test(HomRate0803~nhTrtF|pairm,data=meddat,distribution=approximate(nresample=10000))
+pvalue(test1)[1]
+test1a <- oneway_test(HomRate0803~nhTrtF|pairm,data=meddat,distribution=approximate(nresample=10000))
+pvalue(test1a)[1]
 ```
 
 
@@ -555,10 +565,6 @@ plot(sens2,sensitivity.of="t-value")
  - See the Rabb et al (2022) piece for an example of this kind of sensitivity analysis in application.
  - See Hazlett (2020) for an application of the regression based approach: "Angry or Weary?
 How Violence Impacts Attitudes toward Peace among Darfurian Refugees".
-
-
- 
- 
 
 
 ## References

@@ -246,7 +246,7 @@ meddat2 <- meddat2 %>%
   ungroup()
 
 ## Notice pair bm=1
-meddat2 %>% dplyr::select(bm,nh, nhOwn,rank_own,nhEmp, rank_emp)
+meddat2 %>% dplyr::select(bm,nh, nhOwn,rank_own,nhEmp, rank_emp, HomRate03,nhAboveHS)
 
 ## Check for sets with a tie
 table(meddat2$rank_own)
